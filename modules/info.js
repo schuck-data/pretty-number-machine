@@ -287,7 +287,44 @@ function onPointerDown(e) {
 }
 
 function onPointerUp(e) {
+  // A sticky tooltip was opened deliberately (by the lens, on tap) and must
+  // survive the release that opened it. The opener is responsible for closing.
+  if (stickyTooltip) return;
   if (e.button === 2 || e.button === 0) hideTooltip();
+}
+
+// === PUBLIC API ===
+//
+// Exists so the lens can offer tap-for-info without reimplementing any of the
+// hit-testing or the tooltip content. Right-click remains this module's own
+// trigger; this is a second door onto the same room.
+
+let stickyTooltip = false;
+
+// Returns true if a node or curve was hit and a tooltip is now showing.
+export function showInfoAt(clientX, clientY) {
+  if (!mod.enabled || mod._crashed || !cameraRef) return false;
+  const at = { clientX, clientY };
+
+  const nd = hitTestNodes(at);
+  if (nd) {
+    stickyTooltip = true;
+    showTooltip(nodeTooltipHTML(nd), clientX, clientY);
+    return true;
+  }
+
+  const prime = hitTestCurves(at);
+  if (prime) {
+    stickyTooltip = true;
+    showTooltip(curveTooltipHTML(prime), clientX, clientY);
+    return true;
+  }
+  return false;
+}
+
+export function hideInfo() {
+  stickyTooltip = false;
+  hideTooltip();
 }
 
 // === MODULE DEFINITION ===

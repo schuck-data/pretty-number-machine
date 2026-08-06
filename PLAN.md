@@ -1,10 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.11.0 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.12.1 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 7 — live; speed on the handle)
+**Last updated:** 2026-08-06 (rev 8 — the lens)
 
 ---
 
@@ -58,7 +58,8 @@ pnm/
 │   └── transport.js     5 KB   play/pause playhead, scrubs the shape morph
 ├── modules/
 │   ├── physics.js      17 KB   registered
-│   └── info.js         10 KB   registered
+│   ├── info.js         10 KB   registered; exports showInfoAt/hideInfo
+│   └── lens.js          7 KB   chalkboard wipe, projected labels, tap-for-info
 ├── manifest.webmanifest        PWA manifest, relative start_url/scope
 ├── sw.js                       service worker — BUMP CACHE_VERSION on deploy
 ├── icons/                      192, 512, 512-maskable, apple-touch
@@ -201,6 +202,56 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-06 rev 8** — v0.12.1. **The lens ships.**
+
+`modules/lens.js` — a classroom layer dragged across the figure by a tab on
+the left edge of the viewport. Left of the handle is chalkboard with every
+node labelled and tappable for its maths; right of it is the plain view. Both
+visible at once, hard edge between them.
+
+The governing constraint was the owner's: the figure must not be disturbed —
+smooth and visible throughout. That ruled out the obvious implementations:
+
+- **Chalkboard** is a DOM layer over the canvas using `mix-blend-mode:
+  lighten`. The background is near-black and the content is bright, so lighten
+  takes the board where the scene is darker and the scene where it is
+  brighter. The board replaces the background and leaves every node untouched,
+  with no renderer involvement at all. Texture is CSS — no asset loaded, still
+  zero external requests.
+- **Labels** are HTML projected from 3D each frame. The existing `showLabels`
+  flag is not in `HOT_KEYS`, so toggling it rebuilds the whole scene —
+  precisely the disturbance being avoided. Above 150 nodes labels are
+  suppressed; they are unreadable at that density and the DOM cost is real.
+- **Tap-for-info** calls a new `showInfoAt()` / `hideInfo()` exported from
+  `info.js` rather than reimplementing hit-testing or tooltip content. That
+  module already raycast nodes *and* curves; it was simply unreachable on a
+  phone, being bound to right-click.
+
+Three bugs found building it, all worth remembering:
+
+1. **`destroy()` is not a teardown hook.** `cleanup()` calls every module's
+   `destroy()` before *every* scene rebuild. The lens removed its DOM there,
+   so the feature deleted itself on the first rebuild after boot. A module's
+   `destroy()` must release per-scene state only.
+2. **`cache.addAll()` may satisfy itself from the browser's HTTP cache.** A
+   freshly bumped `CACHE_VERSION` served a module missing an export that had
+   already shipped — the new cache filled with old files, which is the exact
+   failure the version bump exists to prevent. Now precaches with
+   `new Request(url, { cache: 'reload' })`.
+3. **A sticky tooltip never got dismissed.** Opting out of `info.js`'s
+   release-to-hide meant it survived every later tap. Any canvas press now
+   dismisses first, then re-shows only if the tap landed inside the lens.
+
+Open: `lens.init()` was observed running twice per load while `info.init()`
+ran once. Cause not identified. `buildDom()` is idempotent and the listener is
+removed before being added, so it is harmless — but it is not understood, and
+something in the module registry may be calling init more than once.
+
+Also fixed: the transport icons rendered **orange on Android**. Not a colour
+choice — U+23F8 and U+25B6 carry emoji presentation, so the platform
+substituted its own glyph and ignored `color`. Icons are CSS shapes now, and
+the corner Reset uses inline SVG for the same reason.
 
 **2026-08-06 rev 7** — v0.11.0. **The site is live.**
 

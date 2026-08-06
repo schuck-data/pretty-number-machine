@@ -8,7 +8,7 @@
 // BUMP CACHE_VERSION on every deploy that changes any precached file.
 // Without a bump, returning visitors keep the old code forever.
 
-const CACHE_VERSION = 'pnm-v0.11.0';
+const CACHE_VERSION = 'pnm-v0.12.1';
 
 const PRECACHE = [
   './',
@@ -25,6 +25,7 @@ const PRECACHE = [
 
   './modules/physics.js',
   './modules/info.js',
+  './modules/lens.js',
 
   './lib/three/three.module.js',
   './lib/three/addons/controls/OrbitControls.js',
@@ -45,9 +46,17 @@ const PRECACHE = [
 self.addEventListener('install', (event) => {
   // addAll is atomic on purpose: a partial cache is a broken offline app, and
   // failing loudly here beats a mystery blank screen in airplane mode.
+  // {cache: 'reload'} is load-bearing. A plain addAll() is allowed to satisfy
+  // itself from the browser's own HTTP cache, so bumping CACHE_VERSION could
+  // fill the *new* cache with *old* files and leave someone running a mixture
+  // of two versions — the exact failure the version bump exists to prevent.
+  // Seen for real: a freshly bumped cache served a JavaScript module missing
+  // an export that had already shipped.
   event.waitUntil(
     caches.open(CACHE_VERSION)
-      .then((cache) => cache.addAll(PRECACHE))
+      .then((cache) => cache.addAll(
+        PRECACHE.map((url) => new Request(url, { cache: 'reload' }))
+      ))
       .catch((err) => {
         console.error('[PNM sw] precache failed, install aborted:', err);
         throw err;
