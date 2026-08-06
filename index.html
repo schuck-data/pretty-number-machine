@@ -261,8 +261,25 @@
        dragging, and the morph moves it every frame anyway. */
     transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
   }
+  /* Icons are drawn in CSS, not typed as characters. U+23F8 PAUSE and U+25B6
+     PLAY carry emoji presentation, so Android substitutes its own orange
+     colour glyph and ignores `color` entirely. Shapes always obey the theme. */
+  #transport-btn::before, #transport-btn::after {
+    content: ''; display: block;
+    width: 4px; height: 15px; border-radius: 1px;
+    background: currentColor;
+  }
+  #transport-btn::before { margin-right: 5px; }
+  #transport-btn.paused::before {
+    width: 0; height: 0; background: none; border-radius: 0;
+    margin: 0 0 0 3px;                 /* optically centre the triangle */
+    border-left: 14px solid currentColor;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+  }
+  #transport-btn.paused::after { display: none; }
+
   #transport-btn.paused {
-    padding-left: 3px;                 /* optically centre the play triangle */
     border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.7);
     box-shadow: 0 3px 14px rgba(0,0,0,0.55),
                 0 0 12px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.22);
@@ -611,7 +628,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.10.1 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.10.2 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>

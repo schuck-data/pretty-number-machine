@@ -19,9 +19,6 @@ import { state } from './state.js';
 import { update } from './renderer.js';
 import { getMinDim, getMaxDim } from './positions.js';
 
-const PLAY_GLYPH = '▶';
-const PAUSE_GLYPH = '⏸';
-
 // Pointer slop below which a press counts as a tap rather than a drag. Without
 // it, the tremor in a real thumb-press turns every play/pause tap into a scrub.
 const TAP_SLOP_PX = 4;
@@ -45,7 +42,9 @@ function dimensionFromClientX(clientX) {
 
 function renderButtonState() {
   const paused = !!state.paused;
-  button.textContent = paused ? PLAY_GLYPH : PAUSE_GLYPH;
+  // The icon itself is drawn in CSS off the .paused class — see index.html.
+  // Characters are not used: U+23F8 and U+25B6 have emoji presentation and
+  // Android renders its own orange glyph regardless of `color`.
   button.setAttribute('aria-label', paused ? 'Play' : 'Pause');
   button.title = paused ? 'Play — drag to scrub the shape'
                         : 'Pause — drag to scrub the shape';
