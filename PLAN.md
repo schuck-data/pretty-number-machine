@@ -200,6 +200,24 @@ mode, and its credibility is worth more.
 
 ## 5. Status log
 
+**2026-08-06 rev 4b** — v0.8.1. First real-device feedback, on a Pixel 9
+served over LAN. Two faults that every synthetic check had passed:
+
+- The viewport ran full-bleed with the sheet floating over it, so the
+  visualisation sat *behind* the controls — black top half, object hidden.
+  Every measurement said the layout was correct, because it was: the geometry
+  was right and the composition was wrong. The viewport now ends where the
+  sheet begins (`--sheet-h`, one value shared by both) and reclaims the screen
+  when the sheet is dismissed.
+- The sheet opened by default, so a phone user landed on a wall of controls
+  instead of the thing the app is for. It now starts collapsed below 640px,
+  set before the renderer initialises so the scene is never sized to the wrong
+  box.
+
+Worth keeping: measuring geometry does not test composition. "Nothing
+overlaps" and "you can see the point of the app" are different claims, and
+only the second one matters.
+
 **2026-08-06 rev 4** — Burst 2 shipped. v0.7.0 → v0.8.0.
 
 Built while GitHub Pages was down in an outage, so nothing here is verified on
