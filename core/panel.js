@@ -6,6 +6,24 @@ import { update, resolveN, getInfo, buildScene } from './renderer.js';
 
 const $ = id => document.getElementById(id);
 
+// The grid offers 32 of the 33 primes math.js knows about. 137 is omitted so
+// the fully expanded grid ends exactly on All / None / Less instead of
+// spilling one lone button onto a sixth row. FIRST_PRIMES itself is left
+// intact — info.js derives prime ordinals from it by index, and truncating it
+// would silently break the readout for 137.
+const SELECTABLE_PRIMES = FIRST_PRIMES.slice(0, 32);
+
+// How many prime buttons are visible at each expansion step. Chosen so that
+// each step plus the three trailing buttons fills whole rows of seven, which
+// is what a phone fits. A narrower panel wraps differently; the counts stay
+// sensible, the row arithmetic just stops being exact.
+const PRIME_TIERS = [11, 18, 25, SELECTABLE_PRIMES.length];
+let primeTier = 0;
+
+// Node size is auto-derived from N until the user moves the slider, after
+// which it is theirs and we stop touching it.
+let nodeSizeUserSet = false;
+
 let selectedPrimes = [...state.primes];
 let rebuildTimeout = null;
 
@@ -50,7 +68,7 @@ function updateStatus() {
 // ============================================================
 function buildPrimeGrid() {
   const grid = $('prime-grid');
-  FIRST_PRIMES.forEach(p => {
+  SELECTABLE_PRIMES.forEach(p => {
     const btn = document.createElement('button');
     btn.className = 'prime-btn';
     btn.textContent = p;
@@ -70,6 +88,10 @@ function buildPrimeGrid() {
   allBtn.textContent = 'All';
   allBtn.addEventListener('click', () => {
     grid.querySelectorAll('.prime-btn').forEach(b => b.classList.add('active'));
+    // Selecting everything while most of it is hidden would be a lie about
+    // what is switched on, so expand to show what was just selected.
+    primeTier = PRIME_TIERS.length - 1;
+    applyPrimeTier();
     updateSelectedPrimes();
     scheduleRebuild();
   });
@@ -84,6 +106,45 @@ function buildPrimeGrid() {
     scheduleRebuild();
   });
   grid.appendChild(noneBtn);
+
+  const moreBtn = document.createElement('button');
+  moreBtn.className = 'grid-btn';
+  moreBtn.id = 'more-btn';
+  moreBtn.addEventListener('click', () => {
+    primeTier = (primeTier >= PRIME_TIERS.length - 1)
+      ? smallestTierShowingSelection()   // "Less" — but never hide a live prime
+      : primeTier + 1;
+    applyPrimeTier();
+  });
+  grid.appendChild(moreBtn);
+
+  applyPrimeTier();
+}
+
+// Collapsing must never leave a selected prime switched on but invisible —
+// the render would show factors the user cannot see or unselect. So "Less"
+// falls back to the smallest step that still displays everything active.
+function smallestTierShowingSelection() {
+  const needed = selectedPrimes.reduce(
+    (max, p) => Math.max(max, SELECTABLE_PRIMES.indexOf(p) + 1), 0);
+  const i = PRIME_TIERS.findIndex(t => t >= needed);
+  return i === -1 ? PRIME_TIERS.length - 1 : i;
+}
+
+function applyPrimeTier() {
+  const grid = $('prime-grid');
+  const shown = PRIME_TIERS[primeTier];
+  grid.querySelectorAll('.prime-btn').forEach((btn, i) => {
+    btn.classList.toggle('tier-hidden', i >= shown);
+  });
+  const moreBtn = $('more-btn');
+  if (moreBtn) {
+    const expanded = primeTier >= PRIME_TIERS.length - 1;
+    moreBtn.textContent = expanded ? 'Less' : 'More';
+    moreBtn.title = expanded
+      ? 'Show fewer primes'
+      : `Show more primes (${PRIME_TIERS[primeTier + 1] - shown} more)`;
+  }
 }
 
 function updateSelectedPrimes() {
@@ -101,7 +162,7 @@ function updateSelectedPrimes() {
 function updateAllBtnHighlight() {
   const allBtn = $('all-btn');
   if (!allBtn) return;
-  const allActive = selectedPrimes.length === FIRST_PRIMES.length;
+  const allActive = selectedPrimes.length === SELECTABLE_PRIMES.length;
   allBtn.classList.toggle('active', allActive);
 }
 
@@ -161,6 +222,30 @@ function updateN() {
     : '';
 
   $('n-display').textContent = n.toLocaleString();
+  applyAutoNodeSize(n);
+}
+
+// Node spacing shrinks as N grows, so a fixed node size that looks right at
+// N=30 turns into overlapping blobs at N=2500 and swallows the parastichy
+// lines entirely. Scale the default down with N — gently, since the layout is
+// roughly area-filling, so radius wants about the fourth root.
+//
+//   N=30 -> 1.0    N=500 -> 0.5    N=2500 -> 0.3    N=10000 -> 0.2
+//
+// Once the user moves the slider the value is theirs and this stops firing.
+function autoNodeSizeFor(n) {
+  const raw = Math.pow(30 / Math.max(n, 1), 0.25);
+  const stepped = Math.round(raw * 10) / 10;   // slider step is 0.1
+  return Math.min(1.0, Math.max(0.2, stepped));
+}
+
+function applyAutoNodeSize(n) {
+  if (nodeSizeUserSet) return;
+  const size = autoNodeSizeFor(n);
+  const el = $('node-size');
+  if (!el || +el.value === size) return;
+  el.value = size;
+  $('node-size-display').textContent = size.toFixed(1);
 }
 
 // ============================================================
@@ -417,6 +502,7 @@ export function initPanel() {
 
   // Node size slider (real-time rebuild on drag)
   $('node-size').addEventListener('input', () => {
+    nodeSizeUserSet = true;   // hands off from here — this is their value now
     $('node-size-display').textContent = $('node-size').value;
     scheduleRebuild();
   });
@@ -559,6 +645,10 @@ export function initPanel() {
     $('filter-primes').checked = true;
     $('filter-powers').checked = true;
     $('filter-composites').checked = true;
+    // Hand node size back to the automatic curve, and re-collapse the grid.
+    nodeSizeUserSet = false;
+    primeTier = 0;
+    applyPrimeTier();
     $('node-size').value = 1.0;
     $('node-size-display').textContent = '1.0';
     $('drift-speed').value = 0.5;

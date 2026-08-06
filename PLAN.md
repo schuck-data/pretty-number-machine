@@ -1,10 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.8.1 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.9.0 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 4b — device feedback)
+**Last updated:** 2026-08-06 (rev 5 — device feedback round 2)
 
 ---
 
@@ -53,7 +53,8 @@ pnm/
 │   ├── math.js          8 KB   FIRST_PRIMES, getPrimeRGB
 │   ├── positions.js     5 KB   getShapes, getMaxDim, getMinDim
 │   ├── panel.js        21 KB   UI construction + state sync
-│   └── renderer.js     34 KB   Three.js scene, buildScene, update, resolveN
+│   ├── renderer.js     34 KB   Three.js scene, buildScene, update, resolveN
+│   └── sheet.js         4 KB   phone bottom-sheet state + drag-to-resize
 ├── modules/
 │   ├── physics.js      17 KB   registered
 │   └── info.js         10 KB   registered
@@ -199,6 +200,40 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-06 rev 5** — v0.9.0. Second round of device feedback, five requests.
+
+- **Drawer handle** is now a wide accent pill riding the sheet's top edge:
+  at the bottom of the screen when the sheet is away, lifted above it when
+  open. Reads as a handle rather than a stray button and stays in the thumb's
+  arc either way.
+- **Drag to resize** the view/drawer split, in a new `core/sheet.js`. It owns
+  where the sheet sits, not what is in it — `panel.js` is coupled to the
+  markup tightly enough already. Bounds 25–85% of screen height. Everything
+  hangs off the single `--sheet-h` property, so the sheet edge and the
+  viewport edge cannot drift apart, and the renderer picks up the new size
+  through its existing ResizeObserver with no wiring between the two.
+- **Node size now scales with N** — `(30/N)^0.25`, clamped to 0.2–1.0, giving
+  1.0 at N=30 and 0.2 at N=10000. Fixed nodes at high N overlapped into blobs
+  and buried the parastichy lines. Touching the slider hands control to the
+  user permanently; Reset hands it back.
+- **Shape section** moved above Primes.
+- **Prime grid expands in steps** — 11 / 18 / 25 / 32 primes, with All / None /
+  More trailing the visible set and More becoming Less at full extent.
+
+Decisions worth keeping:
+- The grid offers 32 primes, not 33. Dropping 137 makes the expanded grid end
+  exactly on All/None/Less instead of spilling one button onto a sixth row.
+  `FIRST_PRIMES` itself is untouched — `info.js` derives prime ordinals from
+  it by index, so truncating it would have silently broken the readout for
+  137. The UI list is a slice, declared in `panel.js`.
+- Row counts only work out exactly at seven-per-row, which is what a phone
+  fits. A narrow desktop sidebar wraps differently; the step sizes stay
+  sensible, the row arithmetic just stops being exact.
+- Less can never hide a selected prime. It collapses to the smallest step that
+  still shows everything active, because a prime switched on but invisible
+  would affect the render with no way to see or unset it. All expands for the
+  same reason.
 
 **2026-08-06 rev 4b** — v0.8.1. First real-device feedback, on a Pixel 9
 served over LAN. Two faults that every synthetic check had passed:

@@ -93,6 +93,11 @@
     color: rgba(224,221,213,0.35);
   }
   .prime-btn.active { border-color: var(--text); color: var(--text); }
+  /* Collapsed by the More/Less control. Hidden, not removed — a hidden button
+     keeps its .active state, and applyPrimeTier() guarantees nothing active is
+     ever hidden. */
+  .prime-btn.tier-hidden { display: none; }
+  #more-btn { color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.75); }
 
   label { display: block; font-size: 0.78rem; margin: 6px 0 3px; color: var(--text-dim); font-weight: 400; }
   label span { color: var(--text); font-weight: 600; }
@@ -296,20 +301,65 @@
     }
     #panel.collapsed ~ #viewport { left: 0; bottom: 0; }
 
-    /* Toggle moves to the top-right, clear of the sheet below and
-       of the status bar above. Both left rules must be beaten. */
+    /* The toggle rides the top edge of the sheet: at the bottom of the
+       screen when the sheet is away, lifted above it when the sheet is up.
+       It reads as a handle for the drawer rather than as a stray button,
+       and it stays in the thumb's arc either way. Both `left` rules from
+       the desktop layout have to be beaten. */
     #panel-toggle,
     #panel:not(.collapsed) ~ #panel-toggle {
-      left: auto;
-      right: calc(12px + env(safe-area-inset-right));
-      top: calc(12px + env(safe-area-inset-top));
+      left: 50%; right: auto; top: auto;
+      transform: translateX(-50%);
+      bottom: calc(var(--sheet-h) + 16px);
+      width: 76px; height: 44px; border-radius: 22px;
+      background: rgba(12, 12, 15, 0.94);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
+      color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.55),
+                  0 0 0 1px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.08);
+      transition: bottom 0.3s ease, border-color 0.2s, color 0.2s;
     }
-    /* The inline handler writes a left/right arrow, which is wrong
-       for a sheet that moves vertically. Override it in CSS so the
-       markup and the handler stay untouched. */
+    #panel.collapsed ~ #panel-toggle {
+      bottom: calc(18px + env(safe-area-inset-bottom));
+    }
+    /* The inline handler writes a left/right arrow, which is wrong for a
+       sheet that moves vertically. Override it in CSS so the markup and the
+       handler stay untouched. */
     #panel-toggle { font-size: 0; }
-    #panel-toggle::before { content: '\25BE'; font-size: 18px; line-height: 1; }
+    #panel-toggle::before { content: '\25BE'; font-size: 20px; line-height: 1; }
     #panel.collapsed ~ #panel-toggle::before { content: '\25B4'; }
+
+    /* Drag handle sitting exactly on the sheet's top edge. Hidden when the
+       sheet is away — there is no edge to grab. */
+    #sheet-grip {
+      position: absolute; left: 0; right: 0; z-index: 15;
+      bottom: var(--sheet-h);
+      height: 24px; margin-bottom: -12px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: ns-resize; touch-action: none;
+    }
+    #sheet-grip::before {
+      content: ''; width: 44px; height: 4px; border-radius: 2px;
+      background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+      transition: background 0.2s, width 0.2s;
+    }
+    #sheet-grip.dragging::before {
+      background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
+      width: 64px;
+    }
+    #panel.collapsed ~ #sheet-grip { display: none; }
+
+    /* While dragging, animations fight the pointer. */
+    :root.sheet-resizing #panel,
+    :root.sheet-resizing #viewport,
+    :root.sheet-resizing #panel-toggle,
+    :root.sheet-resizing #sheet-grip { transition: none !important; }
+  }
+
+  /* The grip is a phone affordance only; the desktop panel is a fixed
+     sidebar with nothing to resize. */
+  @media (min-width: 641px) {
+    #sheet-grip { display: none; }
 
     #panel h1 { font-size: 12px; margin-bottom: 10px; }
   }
@@ -323,6 +373,25 @@
 
 <div id="panel">
   <h1>Pretty Number Machine</h1>
+
+  <h2 class="section-header">Shape</h2>
+  <div class="section-content">
+    <div class="control-row">
+      <div class="control-label">Dimension <span class="value" id="dim-display">Disk</span></div>
+      <div class="control-line">
+        <input type="range" id="dimension" min="0" max="2.5" step="0.005" value="0.5">
+      </div>
+    </div>
+    <div class="effect-row">
+      <label class="toggle" for="shape-drift" style="margin:0">
+        <input type="checkbox" id="shape-drift">
+        <span class="toggle-track"></span>
+        Morph
+      </label>
+      <input type="range" id="shape-drift-speed" min="0.05" max="2.0" step="0.05" value="0.1">
+      <span class="value" id="shape-drift-speed-display">0.1</span>
+    </div>
+  </div>
 
   <h2 class="section-header open">Primes</h2>
   <div class="section-content">
@@ -377,25 +446,6 @@
       <div class="n-info"><span id="n-display">30</span></div>
     </div>
     <input type="range" id="n-slider" min="1" max="2500" value="30">
-  </div>
-
-  <h2 class="section-header">Shape</h2>
-  <div class="section-content">
-    <div class="control-row">
-      <div class="control-label">Dimension <span class="value" id="dim-display">Disk</span></div>
-      <div class="control-line">
-        <input type="range" id="dimension" min="0" max="2.5" step="0.005" value="0.5">
-      </div>
-    </div>
-    <div class="effect-row">
-      <label class="toggle" for="shape-drift" style="margin:0">
-        <input type="checkbox" id="shape-drift">
-        <span class="toggle-track"></span>
-        Morph
-      </label>
-      <input type="range" id="shape-drift-speed" min="0.05" max="2.0" step="0.05" value="0.1">
-      <span class="value" id="shape-drift-speed-display">0.1</span>
-    </div>
   </div>
 
   <h2 class="section-header">Nodes</h2>
@@ -505,25 +555,11 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.8.1 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.9.0 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
 <div id="viewport"></div>
-
-<script>
-  // On a phone, open to the visualisation rather than to a wall of controls.
-  // The whole idea is visible in the picture; the panel is what you reach for
-  // second. Runs before the renderer initialises so the viewport is already
-  // full-height and the scene is never sized to the wrong box.
-  //
-  // Matches the CSS breakpoint in the phone-layout block above — keep the two
-  // in step.
-  if (window.matchMedia('(max-width: 640px)').matches) {
-    document.getElementById('panel').classList.add('collapsed');
-    document.getElementById('panel-toggle').textContent = '▸';
-  }
-</script>
 
 <script type="importmap">
 {
@@ -536,6 +572,11 @@
 <script type="module">
   import { init } from './core/renderer.js';
   import { initPanel } from './core/panel.js';
+  import { initSheet } from './core/sheet.js';
+
+  // First: sets the sheet's initial state, so everything below sizes against
+  // the layout the user will actually see.
+  initSheet();
 
   // Dynamic module loading — each one is isolated
   const featureModules = [
