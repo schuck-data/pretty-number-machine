@@ -1,9 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.7.0 (repo: `schuck-data/pretty-number-machine`, private)
+**Current version:** v0.8.0 (repo: `schuck-data/pretty-number-machine`, public)
+**Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 3 — Burst 1 shipped)
+**Last updated:** 2026-08-06 (rev 4 — Burst 2 shipped)
 
 ---
 
@@ -41,7 +42,8 @@ update §5 at the end of one.
 
 ## 1. Current material
 
-Static site, no build step, native ES modules, Three.js via importmap from CDN.
+Static site, no build step, native ES modules, Three.js via importmap from a
+locally vendored copy. No runtime dependency on any third party.
 
 ```
 pnm/
@@ -80,8 +82,8 @@ with it, explain it.
 ~20 core controls by hardcoded element ID, coupling core state to markup in
 `index.html`. Blocks a skin system. Does not block anything in Phase 1.
 
-**Known bugs:** three conflicting N ceilings — `state.maxN`=50000,
-`getMaxN()`=10000, slider max=2500.
+**Known bugs:** ~~three conflicting N ceilings~~ resolved in v0.8.0. See §5
+rev 4 and §6 item 7 for what remains.
 
 ---
 
@@ -112,14 +114,16 @@ Each is one burst. Each ships. Order matters; scope does not creep.
   real device and a public HTTPS URL. Verified locally: offline load with the
   server killed, and the full update path. See §7.
 
-### Burst 2 — Mobile interaction
-- [ ] Panel → bottom sheet under ~640px (280px fixed sidebar eats two-thirds
+### Burst 2 — Mobile interaction ✅ SHIPPED 2026-08-06 (v0.8.0)
+- [x] Panel → bottom sheet under ~640px (280px fixed sidebar eats two-thirds
       of a phone screen)
-- [ ] Touch targets to 44px min (prime buttons 38×28, slider thumbs 12×22)
-- [ ] Gate hover states behind `@media (hover: hover)` — they latch after tap
-- [ ] `env(safe-area-inset-*)` padding (`viewport-fit=cover` is set, unhandled)
-- [ ] Reconcile the three N ceilings
+- [x] Touch targets to 44px min (prime buttons 38×28, slider thumbs 12×22)
+- [x] Gate hover states behind `@media (hover: hover)` — they latch after tap
+- [x] `env(safe-area-inset-*)` padding (`viewport-fit=cover` is set, unhandled)
+- [x] Reconcile the three N ceilings
 - **Done when:** usable one-handed without pinch-zooming
+- **Outstanding:** the one-handed judgement itself needs a thumb on a real
+  phone. Geometry and every rule verified in-browser; ergonomics cannot be.
 
 ### Burst 3 — Serialization and sharing
 - [ ] Config → URL hash
@@ -196,6 +200,41 @@ mode, and its credibility is worth more.
 
 ## 5. Status log
 
+**2026-08-06 rev 4** — Burst 2 shipped. v0.7.0 → v0.8.0.
+
+Built while GitHub Pages was down in an outage, so nothing here is verified on
+a device yet.
+
+Shipped:
+- Below 640px the panel is a bottom sheet: full width, 58vh, rounded top,
+  slides down out of frame when dismissed. Viewport goes full-bleed behind it.
+  Toggle relocates to the top-right, clear of both the sheet and the status
+  bar, and its arrow flips to ▾/▴ via CSS so the inline handler stays untouched.
+- Safe-area insets on the sheet's padding and the toggle's position.
+- All 8 `:hover` rules moved into a single `@media (hover: hover)` block.
+- Touch targets ≥44px under `@media (pointer: coarse)` — keyed on pointer
+  type, not width, so a narrow desktop window keeps its mouse-sized controls
+  and a tablet gets thumb-sized ones. Form fields go to 16px to stop iOS
+  zooming on focus.
+- N ceilings unified in `state.js` as `MAX_N` / `SLIDER_MAX_N` / `AUTO_N_MAX`.
+
+Discovered:
+- The "three conflicting N ceilings" were two ceilings and one corpse.
+  `DEFAULT_CONFIG.maxN = 50000` was read by nothing. `MAX_N` (10000) and
+  `SLIDER_MAX_N` (2500) differ deliberately — slider precision would be
+  useless spanning 10000.
+- The genuine bug underneath: above 2500 the slider parked at its maximum and
+  silently misreported N, then yanked N down to 2500 on the next nudge. It is
+  now disabled and dimmed above the slider range, with a tooltip.
+- Reset sets the N slider by hand and never calls `updateN()`, so it needed
+  the new out-of-range styling cleared explicitly or a reset from N=5000 left
+  a dead grey slider.
+- **The service worker makes local iteration lie.** Navigations are
+  network-first so `index.html` looked fresh, but `core/*.js` are subresources
+  and came cache-first — an entire round of N-ceiling testing ran against
+  v0.7.0's JavaScript and reported a fix as broken. Bump `CACHE_VERSION`
+  before testing, every time.
+
 **2026-08-06 rev 3** — Burst 1 shipped. v0.6.6 → v0.7.0.
 
 Charter amended by owner: **the app is the deliverable.** The Play Store
@@ -262,7 +301,12 @@ blocker to skins. Plan drafted.
    closes the app can sit on old code indefinitely. Correct for a store app,
    where users close things. If it becomes a problem, the fix is an
    "update available — reload" toast, not `skipWaiting()`.
-7. **The gate has no instrument.** §4 says no data collection, ever. The GATE
+7. **Reset does not update `selectedPrimes`.** `reset-btn` re-paints the prime
+   buttons to show 2/3/5 active but never touches the `selectedPrimes` array
+   backing them, so after changing primes a reset leaves the UI and the state
+   disagreeing. Pre-existing, found during Burst 2, deliberately not fixed
+   there — it is a state bug, not a mobile one.
+8. **The gate has no instrument.** §4 says no data collection, ever. The GATE
    says watch for return visits and shares. Those are incompatible: with zero
    analytics the only observable signal is people talking to you. Decide
    whether the gate is explicitly qualitative or whether one privacy-preserving
@@ -285,6 +329,13 @@ more than was tested.
 | Installs to Android home screen | ❌ | Needs a public HTTPS URL + device |
 | Works in airplane mode on device | ❌ | Same |
 | Lighthouse PWA checks | ❌ | Same |
+| Bottom sheet geometry below 640px | ✅ | Open y=384 h=531 w=412; closed y=915 = exactly offscreen |
+| Viewport full-bleed behind sheet | ✅ | x=0, matches innerWidth/innerHeight |
+| Desktop layout unregressed | ✅ | 280px sidebar, viewport x=280, 69 controls, no errors |
+| Hover rules mouse-only | ✅ | All 8 inside `(hover: hover)`; zero outside |
+| Touch targets ≥ 44px | ⚠️ | Rules verified in the CSSOM; `pointer: coarse` cannot be emulated here |
+| N ceiling behaviour | ✅ | 5000 disables slider, 99999 clamps to 10000, reset clears state |
+| One-handed usability | ❌ | Needs a thumb on a real phone |
 
 Automated screenshots do not work in this environment — the browser pane must
 be visible to composite frames, so the render loop is suspended and the canvas
@@ -305,3 +356,11 @@ limit, not an app bug. Visual checks need a human at a real browser.
   for `three/addons/` finds four files; the app needs six.
 - **A waiting service worker does not activate on reload.** Close every client
   and reopen, or you will conclude the update path is broken when it is not.
+- **The service worker will serve you stale JavaScript while you develop.**
+  Navigations are network-first so `index.html` looks fresh, but everything
+  under `core/` and `modules/` is cache-first. Bump `CACHE_VERSION` before
+  testing a change or you will debug code that is not running.
+- **CSS transitions freeze in a non-compositing browser pane.** A transitioned
+  property reports its *start* value forever, so `transform` reads as identity
+  and a working slide-out looks broken. Set `transition: none` before
+  measuring.

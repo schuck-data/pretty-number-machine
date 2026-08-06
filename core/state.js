@@ -36,10 +36,20 @@ export function getModules() {
 // ============================================================
 // STATE
 // ============================================================
+// N ceilings. Single source of truth — these used to be three unrelated
+// literals in two files plus a dead `maxN: 50000` in DEFAULT_CONFIG that
+// nothing ever read.
+//
+// MAX_N and SLIDER_MAX_N differ on purpose: a slider spanning 1..10000 has
+// useless precision down where the interesting structure is, so the slider
+// covers the common range and the number field goes further.
+export const MAX_N = 10000;        // hard ceiling, the number field
+export const SLIDER_MAX_N = 2500;  // slider range
+export const AUTO_N_MAX = 500;     // cap when N is derived from the primes
+
 export const DEFAULT_CONFIG = {
   primes: [2, 3, 5],
   N: null,
-  maxN: 50000,
   dimension: 0.5,
   colorScheme: 'rgb',
   nodeSize: 1.0,

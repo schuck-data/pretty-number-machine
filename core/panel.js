@@ -1,5 +1,5 @@
 // PNM V5 — Side Panel UI
-import { state, emit, getModules } from './state.js';
+import { state, emit, getModules, MAX_N, SLIDER_MAX_N, AUTO_N_MAX } from './state.js';
 import { FIRST_PRIMES, getPrimeRGB } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
 import { update, resolveN, getInfo, buildScene } from './renderer.js';
@@ -134,27 +134,32 @@ function updatePrimeColors() {
 // ============================================================
 // N CONTROLS
 // ============================================================
-function getMaxN() {
-  return 10000;
-}
-
 function updateN() {
-  const cap = getMaxN();
-  const sliderMax = 2500;
-  $('n-input').max = cap;
-  $('n-slider').max = sliderMax;
+  $('n-input').max = MAX_N;
+  $('n-slider').max = SLIDER_MAX_N;
 
   let n;
   if ($('auto-n').checked && selectedPrimes.length > 0) {
     n = selectedPrimes.reduce((a, b) => a * b, 1);
-    if (n > 500) n = 500; // Auto-N caps at 500
+    if (n > AUTO_N_MAX) n = AUTO_N_MAX;
     if (n < 1) n = 1;
   } else {
-    n = Math.max(1, Math.min(cap, +$('n-input').value || 1));
+    n = Math.max(1, Math.min(MAX_N, +$('n-input').value || 1));
   }
 
   $('n-input').value = n;
-  $('n-slider').value = Math.min(n, sliderMax);
+
+  // Above SLIDER_MAX_N the slider cannot represent N. Park it at its
+  // maximum but disable it, so it reads as "out of range" instead of
+  // silently claiming N is 2500 and yanking it down on the next nudge.
+  const beyondSlider = n > SLIDER_MAX_N;
+  $('n-slider').value = Math.min(n, SLIDER_MAX_N);
+  $('n-slider').disabled = beyondSlider;
+  $('n-slider').style.opacity = beyondSlider ? '0.35' : '';
+  $('n-slider').title = beyondSlider
+    ? `Above ${SLIDER_MAX_N.toLocaleString()} — type a value to change N`
+    : '';
+
   $('n-display').textContent = n.toLocaleString();
 }
 
@@ -519,7 +524,13 @@ export function initPanel() {
     $('background-style').value = 'black';
     $('auto-n').checked = true;
     $('n-input').disabled = true;
+    // Clear the out-of-range slider state too, or resetting from N > 2500
+    // leaves the slider dimmed and dead. Set explicitly rather than calling
+    // updateN(), which would read selectedPrimes — and reset does not
+    // currently update that (see PLAN.md §6).
     $('n-slider').disabled = false;
+    $('n-slider').style.opacity = '';
+    $('n-slider').title = '';
     $('show-nodes').checked = true;
     $('show-all-integers').checked = false;
     $('show-zero').checked = true;

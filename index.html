@@ -60,7 +60,6 @@
     transition: left 0.3s ease, border-color 0.2s, color 0.2s;
   }
   #panel:not(.collapsed) ~ #panel-toggle { left: 292px; }
-  #panel-toggle:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4); color: var(--text); }
   #panel h1 {
     font-size: 13px; color: var(--text); font-weight: 300;
     letter-spacing: 0.2em; margin-bottom: 14px; text-transform: uppercase;
@@ -75,7 +74,6 @@
     transition: color 0.2s;
   }
   .section-header:first-of-type { border-top: none; margin-top: 0; }
-  .section-header:hover { color: rgba(224,221,213,0.7); }
   .section-header::before {
     content: '\25B8'; font-size: 0.6rem; transition: transform 0.2s;
     display: inline-block; width: 10px;
@@ -94,8 +92,6 @@
     font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.03em;
     color: rgba(224,221,213,0.35);
   }
-  .prime-grid .grid-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(224,221,213,0.7); }
-  .prime-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(224,221,213,0.7); }
   .prime-btn.active { border-color: var(--text); color: var(--text); }
 
   label { display: block; font-size: 0.78rem; margin: 6px 0 3px; color: var(--text-dim); font-weight: 400; }
@@ -122,10 +118,6 @@
     background: linear-gradient(to bottom, #555, #333);
     border: 1px solid rgba(180,200,210,0.2); border-radius: 3px;
     box-shadow: 0 0 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
-  }
-  input[type=range]::-webkit-slider-thumb:hover {
-    background: linear-gradient(to bottom, #666, #444);
-    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4);
   }
   input[type=range]::-moz-range-track {
     height: 4px; background: var(--track-bg); border-radius: 2px; border: none;
@@ -162,7 +154,6 @@
     font-size: 0.75rem; color: var(--text-dim); font-weight: 400;
     user-select: none; transition: color 0.2s;
   }
-  .toggle:hover { color: rgba(224,221,213,0.65); }
   .toggle input[type=checkbox] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
   .toggle-track {
     position: relative; flex-shrink: 0;
@@ -179,7 +170,6 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
     transition: all 0.25s ease;
   }
-  .toggle:hover .toggle-track { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25); }
   .toggle input:checked + .toggle-track {
     background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.15);
     border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4);
@@ -204,8 +194,6 @@
     font-size: 10px; font-family: inherit; cursor: pointer;
     border-radius: 6px; transition: all 0.2s; letter-spacing: 0.05em;
   }
-  #reset-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
-
   #status { font-size: 0.6rem; color: rgba(224,221,213,0.2); margin-top: 6px; letter-spacing: 0.03em; }
   #viewport { position: absolute; top: 0; left: 280px; right: 0; bottom: 0; transition: left 0.3s ease; }
   #panel.collapsed ~ #viewport { left: 0; }
@@ -229,6 +217,96 @@
   #panel::-webkit-scrollbar { width: 3px; }
   #panel::-webkit-scrollbar-track { background: transparent; }
   #panel::-webkit-scrollbar-thumb { background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.15); border-radius: 2px; }
+
+  /* ==========================================================
+     HOVER — mouse only.
+     On a touchscreen there is no pointer to move away, so a
+     :hover style applied on tap stays stuck until you tap
+     something else. Every hover rule in this file lives here.
+     ========================================================== */
+  @media (hover: hover) {
+    #panel-toggle:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4); color: var(--text); }
+    .section-header:hover { color: rgba(224,221,213,0.7); }
+    .prime-grid .grid-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(224,221,213,0.7); }
+    .prime-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(224,221,213,0.7); }
+    .toggle:hover { color: rgba(224,221,213,0.65); }
+    .toggle:hover .toggle-track { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25); }
+    #reset-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
+    input[type=range]::-webkit-slider-thumb:hover {
+      background: linear-gradient(to bottom, #666, #444);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4);
+    }
+  }
+
+  /* ==========================================================
+     TOUCH TARGETS — 44px minimum.
+     Keyed on pointer:coarse, not screen width: a small window
+     on a desktop still has a mouse, and a tablet does not.
+     ========================================================== */
+  @media (pointer: coarse) {
+    .prime-btn, .prime-grid .grid-btn { min-width: 44px; height: 44px; font-size: 12px; }
+    .toggle { min-height: 44px; padding: 0; align-items: center; }
+    .range-row .toggle, .node-row .toggle, .effect-row .toggle { padding: 0; }
+    select, input[type=number] { min-height: 44px; font-size: 16px; }  /* 16px stops iOS zoom-on-focus */
+    #reset-btn { min-height: 44px; font-size: 12px; }
+    #panel-toggle { width: 44px; height: 44px; font-size: 18px; }
+    .section-header { padding-top: 14px; padding-bottom: 8px; }
+
+    /* Fatter slider thumbs and a taller grab area. The track stays
+       4px; only the hit region grows. */
+    input[type=range] { height: 44px; }
+    input[type=range]::-webkit-slider-thumb { width: 20px; height: 28px; margin-top: -12px; }
+    input[type=range]::-moz-range-thumb { width: 20px; height: 28px; }
+  }
+
+  /* ==========================================================
+     PHONE LAYOUT — panel becomes a bottom sheet.
+     A fixed 280px sidebar eats two-thirds of a phone screen and
+     leaves the visualisation in a sliver. Below 640px the panel
+     anchors to the bottom, the viewport goes full-bleed behind
+     it, and safe-area insets keep content clear of the notch,
+     the home indicator, and rounded corners.
+     ========================================================== */
+  @media (max-width: 640px) {
+    #panel {
+      top: auto; bottom: 0; left: 0;
+      width: 100%; height: 58vh;
+      border-right: none;
+      border-top: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.12);
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -12px 32px rgba(0,0,0,0.45);
+      overscroll-behavior: contain;
+      padding: 16px calc(16px + env(safe-area-inset-right))
+               calc(20px + env(safe-area-inset-bottom))
+               calc(16px + env(safe-area-inset-left));
+    }
+    #panel.collapsed { transform: translateY(100%); }
+
+    /* Viewport fills the screen; the sheet floats over it. */
+    #viewport { left: 0; }
+    #panel.collapsed ~ #viewport { left: 0; }
+
+    /* Toggle moves to the top-right, clear of the sheet below and
+       of the status bar above. Both left rules must be beaten. */
+    #panel-toggle,
+    #panel:not(.collapsed) ~ #panel-toggle {
+      left: auto;
+      right: calc(12px + env(safe-area-inset-right));
+      top: calc(12px + env(safe-area-inset-top));
+    }
+    /* The inline handler writes a left/right arrow, which is wrong
+       for a sheet that moves vertically. Override it in CSS so the
+       markup and the handler stay untouched. */
+    #panel-toggle { font-size: 0; }
+    #panel-toggle::before { content: '\25BE'; font-size: 18px; line-height: 1; }
+    #panel.collapsed ~ #panel-toggle::before { content: '\25B4'; }
+
+    #panel h1 { font-size: 12px; margin-bottom: 10px; }
+  }
+
+  /* Landscape on a phone is ~844px wide, so it stays a sidebar and
+     never reaches the block above. That is the intended behaviour:
+     in landscape there is width to spare and height to protect. */
 </style>
 </head>
 <body>
@@ -417,7 +495,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.7.0 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.8.0 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
