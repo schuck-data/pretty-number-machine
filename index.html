@@ -458,12 +458,20 @@
 
   // Offline support. Registered last and failing silently on purpose — a
   // service worker problem must never keep the app from starting.
+  //
+  // The readyState check is load-bearing, not defensive boilerplate. The
+  // module above uses top-level await for the dynamic imports, so this line
+  // can run *after* the load event has already fired — in which case a plain
+  // window.addEventListener('load', ...) never fires and offline support
+  // silently never installs.
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    const registerSW = () => {
       navigator.serviceWorker.register('./sw.js').catch((err) => {
         console.warn('[PNM] Service worker registration failed:', err);
       });
-    });
+    };
+    if (document.readyState === 'complete') registerSW();
+    else window.addEventListener('load', registerSW, { once: true });
   }
 </script>
 </body>

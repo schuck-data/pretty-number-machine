@@ -290,3 +290,18 @@ Automated screenshots do not work in this environment — the browser pane must
 be visible to composite frames, so the render loop is suspended and the canvas
 reports 0x0. This affects the original v0.6.6 identically, so it is a tooling
 limit, not an app bug. Visual checks need a human at a real browser.
+
+---
+
+## 8. Gotchas for future bursts
+
+- **Registering the service worker on `window.load` does not work here.** The
+  bootstrap module in `index.html` uses top-level `await` for its dynamic
+  module imports, so it can resume *after* `load` has already fired, and a
+  listener added at that point never runs. Offline support then silently never
+  installs, with no error anywhere. Guard on `document.readyState` instead.
+  Caught in v0.7.0 only because the cache was cleared and re-tested.
+- **Vendored Three.js addons need transitive imports.** Grepping app source
+  for `three/addons/` finds four files; the app needs six.
+- **A waiting service worker does not activate on reload.** Close every client
+  and reopen, or you will conclude the update path is broken when it is not.
