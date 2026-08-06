@@ -28,6 +28,7 @@ const TAP_SLOP_PX = 4;
 // removed — it just moved onto the thing it controls.
 const SPEED_MIN = 0.05;
 const SPEED_MAX = 2.0;
+const SPEED_DEFAULT = 0.1;     // must match DEFAULT_CONFIG.shapeDriftSpeed
 const SPEED_TRAVEL_PX = 120;   // full range top to bottom
 const SPEED_LIFT_PX = 30;      // how far the handle itself visibly moves
 
@@ -39,16 +40,23 @@ let lastSpeed = null;
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
 
-// Speed is mapped logarithmically. Linearly, the useful slow end (0.05–0.3)
-// would be squeezed into the bottom eighth of the travel and be unusable.
+// Speed is mapped logarithmically in two halves, hinged on the default so
+// that the default sits at fraction 0.5 — dead centre, which is what puts the
+// button ON the track line at rest rather than slung below it. A single
+// log ramp across 0.05–2.0 placed the 0.1 default at 19%, so the button
+// started visibly low and looked misaligned.
 function speedToFraction(speed) {
-  const lo = Math.log(SPEED_MIN), hi = Math.log(SPEED_MAX);
-  return clamp01((Math.log(Math.min(SPEED_MAX, Math.max(SPEED_MIN, speed))) - lo) / (hi - lo));
+  const s = Math.min(SPEED_MAX, Math.max(SPEED_MIN, speed));
+  return s <= SPEED_DEFAULT
+    ? 0.5 * (Math.log(s / SPEED_MIN) / Math.log(SPEED_DEFAULT / SPEED_MIN))
+    : 0.5 + 0.5 * (Math.log(s / SPEED_DEFAULT) / Math.log(SPEED_MAX / SPEED_DEFAULT));
 }
 
 function fractionToSpeed(f) {
-  const lo = Math.log(SPEED_MIN), hi = Math.log(SPEED_MAX);
-  return Math.exp(lo + clamp01(f) * (hi - lo));
+  const t = clamp01(f);
+  return t <= 0.5
+    ? SPEED_MIN * Math.pow(SPEED_DEFAULT / SPEED_MIN, t / 0.5)
+    : SPEED_DEFAULT * Math.pow(SPEED_MAX / SPEED_DEFAULT, (t - 0.5) / 0.5);
 }
 
 function fractionFromDimension(dim) {

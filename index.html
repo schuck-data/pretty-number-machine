@@ -371,28 +371,46 @@
 
   /* The tab you grab. Sits on the lens edge, so it starts at the left
      of the picture and travels with the boundary it controls. */
+  /* Left edge is `left` in px, set by the module and clamped so the whole tab
+     is always on screen. It is NOT centred on the boundary — doing that hung
+     half of it off the viewport at rest, where it was ungrabbable. */
   #lens-handle {
     position: absolute; top: 50%; left: 0; z-index: 19;
-    transform: translate(-50%, -50%);
-    width: 26px; height: 84px; border-radius: 13px;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(12, 12, 15, 0.9);
-    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.28);
-    box-shadow: 0 3px 14px rgba(0,0,0,0.5);
+    transform: translateY(-50%);
+    width: 30px; height: 92px; border-radius: 0 15px 15px 0;
+    display: flex; align-items: center; justify-content: center; gap: 3px;
+    background: rgba(16, 20, 19, 0.94);
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.5);
+    border-left: none;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.55),
+                inset 0 0 14px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.09);
     cursor: ew-resize; touch-action: none;
-    opacity: 0.55; transition: opacity 0.2s, border-color 0.2s;
+    opacity: 0.92; transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s;
   }
-  #lens-handle.open, #lens-handle.dragging { opacity: 1; }
   #lens-handle.dragging {
-    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.75);
+    opacity: 1;
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.85);
+    box-shadow: 2px 0 22px rgba(0,0,0,0.6),
+                0 0 20px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.28);
   }
+  /* Grip bars plus a chevron, so it reads as "pull me that way" rather than
+     as decoration. Drawn, never typed — see the transport icons. */
   #lens-handle-grip {
-    width: 2px; height: 30px; border-radius: 1px;
-    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.55);
-    box-shadow: -5px 0 0 -0.5px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35),
-                 5px 0 0 -0.5px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+    width: 2px; height: 34px; border-radius: 1px;
+    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.85);
+    box-shadow: -4px 0 0 -0.5px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.5);
   }
-  @media (pointer: coarse) { #lens-handle { width: 34px; height: 96px; } }
+  #lens-handle::after {
+    content: ''; width: 0; height: 0;
+    border-left: 6px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9);
+    border-top: 4.5px solid transparent;
+    border-bottom: 4.5px solid transparent;
+  }
+  #lens-handle.open::after {
+    border-left: none;
+    border-right: 6px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9);
+  }
+  @media (pointer: coarse) { #lens-handle { width: 40px; height: 104px; } }
 
   #panel::-webkit-scrollbar { width: 3px; }
 
@@ -743,7 +761,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.12.1 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.12.2 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>

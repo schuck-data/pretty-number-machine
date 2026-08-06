@@ -97,7 +97,16 @@ function applyOpen() {
   boardEl.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
   boardEl.classList.toggle('open', isOpen());
   labelsEl.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
-  handleEl.style.left = `${pct}%`;
+
+  // Positioned in pixels and clamped, not as a bare percentage. Centring the
+  // handle on the boundary put half of it outside the viewport at 0% — a
+  // 13px sliver hanging off the left edge, which is not a grabbable control.
+  // It now sits just inside the boundary and stays wholly on screen at both
+  // extremes.
+  const w = viewportRect().width;
+  const hw = handleEl.offsetWidth || 26;
+  const x = Math.min(Math.max(openFraction * w, 0), Math.max(0, w - hw));
+  handleEl.style.left = `${x}px`;
   handleEl.classList.toggle('open', isOpen());
   if (!isOpen()) hideInfo();
 }
