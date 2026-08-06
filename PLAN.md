@@ -153,11 +153,16 @@ the *idea*, not to an app listing. Watch for: return visits, shares, requests.
 Everything after this point is contingent on signal.
 
 ### Burst 6 — Google Play
+**See `PLAY-STORE-HANDOFF.md` — full briefing, drafted copy, and the traps.**
 - [ ] TWA wrapper via PWABuilder or Bubblewrap (no native code required)
 - [ ] Play Console account, $25 one-time
+- [ ] `assetlinks.json` at the **domain root** — a different repo, and Jekyll
+      drops dot-directories by default. This is the big one.
 - [ ] Store listing, screenshots, privacy policy (trivial — no data collected,
       keep it that way)
-- **Done when:** installable from Play
+- **Done when:** installable from Play, launching with no address bar
+- **Schedule risk:** new personal Play accounts may need 12 testers for 14 days
+  before production access. Verify early; it is the long pole, not the build.
 
 ### Burst 7 — Audio prototype (do any time, out of order)
 Highest-variance item. Cheap to test, potentially reshapes the product.
