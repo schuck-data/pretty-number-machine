@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Pretty Number Machine</title>
+<meta name="description" content="An interactive visualisation of prime factorisation, where a number's colour is its factorisation: 2 is red, 3 is green, 5 is blue, and 6 is yellow because 2 x 3.">
+<meta name="theme-color" content="#0c0c0f">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   /* Space Grotesk, self-hosted. Variable font — one file covers 300–700. */
   /* SIL Open Font License, see lib/fonts/OFL.txt */
@@ -410,7 +417,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.6.6 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.7.0 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
@@ -448,6 +455,16 @@
 
   // Start renderer
   init(document.getElementById('viewport'));
+
+  // Offline support. Registered last and failing silently on purpose — a
+  // service worker problem must never keep the app from starting.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch((err) => {
+        console.warn('[PNM] Service worker registration failed:', err);
+      });
+    });
+  }
 </script>
 </body>
 </html>

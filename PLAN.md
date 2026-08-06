@@ -1,8 +1,9 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.6.6 (live at betterward.com/pnm)
-**Last updated:** 2026-08-06 (rev 2 — post executive review)
+**Current version:** v0.7.0 (repo: `schuck-data/pretty-number-machine`, private)
+**Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
+**Last updated:** 2026-08-06 (rev 3 — Burst 1 shipped)
 
 ---
 
@@ -51,11 +52,19 @@ pnm/
 │   ├── positions.js     5 KB   getShapes, getMaxDim, getMinDim
 │   ├── panel.js        21 KB   UI construction + state sync
 │   └── renderer.js     34 KB   Three.js scene, buildScene, update, resolveN
-└── modules/
-    ├── physics.js      17 KB   registered
-    ├── info.js         10 KB   registered
-    └── nature.js        4 KB   NOT LOADED — absent from featureModules
+├── modules/
+│   ├── physics.js      17 KB   registered
+│   └── info.js         10 KB   registered
+├── manifest.webmanifest        PWA manifest, relative start_url/scope
+├── sw.js                       service worker — BUMP CACHE_VERSION on deploy
+├── icons/                      192, 512, 512-maskable, apple-touch
+└── lib/
+    ├── three/         1.4 MB   three@0.170.0 + 6 addon files
+    └── fonts/          22 KB   Space Grotesk variable woff2 + OFL
 ```
+
+`nature.js` was deleted in v0.7.0 — it was never registered. Recoverable from
+git history if it turns out to be wanted.
 
 **Strong:** event bus + module registry; single `DEFAULT_CONFIG`; `HOT_KEYS`
 separating live-mutable from rebuild-required params; split-channel CSS custom
@@ -91,14 +100,17 @@ with it, explain it.
 
 Each is one burst. Each ships. Order matters; scope does not creep.
 
-### Burst 1 — Offline-capable PWA
-- [ ] Vendor Three.js locally (currently jsDelivr CDN)
-- [ ] Vendor Space Grotesk locally (currently Google Fonts)
-- [ ] `manifest.webmanifest` — name, icons 192/512/maskable, theme-color,
+### Burst 1 — Offline-capable PWA ✅ SHIPPED 2026-08-06 (v0.7.0)
+- [x] Vendor Three.js locally (was jsDelivr CDN) → `lib/three/`
+- [x] Vendor Space Grotesk locally (was Google Fonts) → `lib/fonts/`
+- [x] `manifest.webmanifest` — name, icons 192/512/maskable, theme-color,
       display standalone, orientation
-- [ ] Service worker, cache-first static shell
-- [ ] `<meta name="theme-color">`, apple-touch-icon
+- [x] Service worker, cache-first static shell
+- [x] `<meta name="theme-color">`, apple-touch-icon
 - **Done when:** installs to home screen, launches with no network
+- **Outstanding:** criteria 3 and 4 (home-screen install, airplane mode) need a
+  real device and a public HTTPS URL. Verified locally: offline load with the
+  server killed, and the full update path. See §7.
 
 ### Burst 2 — Mobile interaction
 - [ ] Panel → bottom sheet under ~640px (280px fixed sidebar eats two-thirds
@@ -184,6 +196,40 @@ mode, and its credibility is worth more.
 
 ## 5. Status log
 
+**2026-08-06 rev 3** — Burst 1 shipped. v0.6.6 → v0.7.0.
+
+Charter amended by owner: **the app is the deliverable.** The Play Store
+listing is the goal, not a contingent nice-to-have. Portfolio and reach still
+matter but no longer outrank it, so the burst order stays roughly as written in
+rev 2 — offline shell first, store at the end — rather than the reach-first
+reordering that was on the table.
+
+Project moved out of the betterward.com repo into its own private repo,
+`schuck-data/pretty-number-machine`. betterward.com/pnm is frozen at v0.6.6 as
+the original prototype and is not to be modified.
+
+Shipped:
+- Three.js 0.170.0 and Space Grotesk vendored locally. Zero third-party
+  requests at runtime, verified in the network log.
+- Icons generated from the app's own colour rule — 30 = 2x3x5 as three
+  additive discs, using the exact `getPrimeRGB('rgb')` values. Legible at
+  48px in a way a node-graph screenshot would not be.
+- `manifest.webmanifest` + cache-first service worker, both using relative
+  paths so the app runs from a domain root or any subdirectory unchanged.
+
+Discovered:
+- `Line2.js` and `LineGeometry.js` transitively import `LineSegments2.js` and
+  `LineSegmentsGeometry.js`, which appear nowhere in our source. The Burst 1
+  brief said to grep for addon imports and vendor "only those" — following
+  that literally ships a broken app. Vendor addons transitively.
+- Space Grotesk is a variable font. One 22 KB woff2 covers 300–700; the four
+  weights in the old Google Fonts URL were always the same file.
+- Burst 1 acceptance criterion 6 ("reload twice serves new code") is wrong and
+  contradicts the no-`skipWaiting()` rule two sections above it. A waiting
+  worker activates when every client is **closed**, not reloaded. Verified the
+  real path: leave the app, come back, new worker activates and the old cache
+  is deleted. Behaviour is correct; the test was not.
+
 **2026-08-06 rev 2** — Executive review. Charter set: portfolio/reach primary,
 burst cadence, Android-first. Rev 1's M2 refactor deferred; three-skin scope
 cut to Phase 2. Android-first collapses PWA work and store submission into
@@ -198,6 +244,49 @@ blocker to skins. Plan drafted.
 
 ## 6. Open
 
-1. `nature.js` — wire up or delete? (Burst 5 blocker, trivial either way)
-2. Is the repo the source of truth, or has the Drive copy diverged?
-3. Device floor — oldest phone this must run on?
+1. ~~`nature.js` — wire up or delete?~~ **Decided: delete.** Not registered in
+   `featureModules`, nothing imports it, git history keeps it recoverable.
+2. ~~Is the repo the source of truth, or has the Drive copy diverged?~~
+   **Answered:** they were byte-identical (`diff -rq` clean). Moot now — the
+   new repo is the sole source of truth.
+3. ~~Device floor?~~ **Partly answered:** test device is a Pixel 9. That is a
+   fast phone, so it will flatter the app. Still unknown how this performs on
+   low-end hardware, which is what decides the N ceiling in Burst 2.
+4. **Where does the app get hosted?** A TWA needs a public HTTPS URL it can
+   verify ownership of. betterward.com is off the table. Options: GitHub Pages
+   on this repo, or a domain. Blocks Burst 6, nothing before it. All paths are
+   relative, so any choice works without code changes.
+5. **Repo is private.** Fine for now; must go public before it can serve as a
+   portfolio piece.
+6. **No update prompt.** With no `skipWaiting()`, someone who never fully
+   closes the app can sit on old code indefinitely. Correct for a store app,
+   where users close things. If it becomes a problem, the fix is an
+   "update available — reload" toast, not `skipWaiting()`.
+7. **The gate has no instrument.** §4 says no data collection, ever. The GATE
+   says watch for return visits and shares. Those are incompatible: with zero
+   analytics the only observable signal is people talking to you. Decide
+   whether the gate is explicitly qualitative or whether one privacy-preserving
+   exception is allowed.
+
+---
+
+## 7. Verification status
+
+What has actually been proven, and how — so nobody re-litigates it or assumes
+more than was tested.
+
+| Claim | Status | How |
+|---|---|---|
+| Renders identically to v0.6.6 | ✅ | Owner confirmed visually at localhost |
+| Zero third-party requests | ✅ | Network log: all 16 requests same-origin |
+| No console errors | ✅ | Console clean across reloads |
+| Works with no server at all | ✅ | Server killed; app fully loaded, 69 controls, WebGL live |
+| `CACHE_VERSION` bump ships new code | ✅ | Bumped, relaunched, old cache deleted, new HTML served |
+| Installs to Android home screen | ❌ | Needs a public HTTPS URL + device |
+| Works in airplane mode on device | ❌ | Same |
+| Lighthouse PWA checks | ❌ | Same |
+
+Automated screenshots do not work in this environment — the browser pane must
+be visible to composite frames, so the render loop is suspended and the canvas
+reports 0x0. This affects the original v0.6.6 identically, so it is a tooling
+limit, not an app bug. Visual checks need a human at a real browser.
