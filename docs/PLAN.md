@@ -60,6 +60,10 @@ pnm/
 │   ├── physics.js      17 KB   registered
 │   ├── info.js         10 KB   registered; exports showInfoAt/hideInfo
 │   └── lens.js          7 KB   chalkboard wipe, projected labels, tap-for-info
+├── docs/
+│   ├── PLAN.md                  this file — the project's memory
+│   ├── PLAY-STORE-HANDOFF.md    briefing for the Play submission
+│   └── archive/                 superseded docs, flagged as such
 ├── manifest.webmanifest        PWA manifest, relative start_url/scope
 ├── sw.js                       service worker — BUMP CACHE_VERSION on deploy
 ├── icons/                      192, 512, 512-maskable, apple-touch

@@ -1,3 +1,23 @@
+> **ARCHIVED — do not follow this document.**
+>
+> Burst 1 shipped on 2026-08-06 (v0.7.0). This brief is kept only as a record
+> of what was asked for. Two of its instructions were wrong, and following
+> them again would reintroduce the bugs:
+>
+> - **§Tasks 1** says to grep for `three/addons/` imports and vendor "every
+>   addon actually imported, and only those." That finds four files; the app
+>   needs six. `Line2.js` and `LineGeometry.js` transitively import
+>   `LineSegments2.js` and `LineSegmentsGeometry.js`, which appear nowhere in
+>   our source. Omitting them breaks the app at load.
+> - **§Acceptance criterion 6** says bumping `CACHE_VERSION` and reloading
+>   twice serves the new code. It does not, and it contradicts the
+>   no-`skipWaiting()` rule two sections above it. A waiting service worker
+>   activates when every client is *closed*, not reloaded.
+>
+> Current guidance lives in `docs/PLAN.md` — charter in §0, gotchas in §8.
+
+---
+
 # Burst 1 Brief — Offline-capable PWA
 
 **For:** Claude Code, working in the `pnm/` directory of the betterward.com repo

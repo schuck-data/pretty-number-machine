@@ -596,7 +596,7 @@ export function initPanel() {
     // Clear the out-of-range slider state too, or resetting from N > 2500
     // leaves the slider dimmed and dead. Set explicitly rather than calling
     // updateN(), which would read selectedPrimes — and reset does not
-    // currently update that (see PLAN.md §6).
+    // currently update that (see docs/PLAN.md §6).
     $('n-slider').disabled = false;
     $('n-slider').style.opacity = '';
     $('n-slider').title = '';

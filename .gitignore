@@ -1,0 +1,13 @@
+# OS and editor cruft. The repo root is the published site — anything that
+# lands here is served, so keep it clean.
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/
+.idea/
+
+# Scratch space. Working copies and prototypes belong outside the repo, not in
+# an ignored folder inside it: the whole tree is deployed to GitHub Pages.
+scratch/

@@ -1,7 +1,7 @@
 # Play Store Handoff — Pretty Number Machine
 
 **For:** whoever picks up Burst 6 (Google Play submission).
-**Read `PLAN.md` first** for the charter and history. This document covers
+**Read `PLAN.md` (alongside this file in `docs/`) first** for the charter and history. This document covers
 publishing only.
 
 **Status when written:** 2026-08-06, v0.13.0. Nothing below has been executed.

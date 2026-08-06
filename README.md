@@ -35,7 +35,9 @@ It also installs as an app and runs with no network connection.
 | `modules/` | Optional features, registered at boot and isolated from crashes |
 | `lib/` | Vendored Three.js and Space Grotesk — see THIRD-PARTY.md |
 | `sw.js` | Service worker. **Bump `CACHE_VERSION` on any deploy.** |
-| `PLAN.md` | Roadmap, decisions, and gotchas. Read before changing anything. |
+| `docs/PLAN.md` | Roadmap, decisions, and gotchas. **Read before changing anything.** |
+| `docs/PLAY-STORE-HANDOFF.md` | Briefing for the Google Play submission |
+| `docs/archive/` | Superseded documents, kept for history |
 
 ## Licence
 
