@@ -1,10 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.8.0 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.8.1 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 4 — Burst 2 shipped)
+**Last updated:** 2026-08-06 (rev 4b — device feedback)
 
 ---
 
