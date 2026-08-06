@@ -50,7 +50,10 @@ export const AUTO_N_MAX = 500;     // cap when N is derived from the primes
 export const DEFAULT_CONFIG = {
   primes: [2, 3, 5],
   N: null,
-  dimension: 0.5,
+  // 0 is the 'Line' shape — nodes in a straight row with the parastichy
+  // curves arcing off to the right. It is the clearest starting read of the
+  // structure, and the morph travels rightward from there.
+  dimension: 0,
   colorScheme: 'rgb',
   nodeSize: 1.0,
   lineWidth: 2,

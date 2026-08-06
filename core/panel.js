@@ -581,12 +581,14 @@ export function initPanel() {
   // load until you pause it.
 
   // Reset
-  $('reset-btn').addEventListener('click', () => {
+  // Named rather than inline so the panel's Reset and the corner Reset share
+  // one implementation instead of one of them quietly drifting.
+  function resetToDefaults() {
     const grid = $('prime-grid');
     grid.querySelectorAll('.prime-btn').forEach(btn => {
       btn.classList.toggle('active', [2, 3, 5].includes(+btn.dataset.prime));
     });
-    $('dimension').value = 0.5;
+    $('dimension').value = 0;
     $('color-scheme').value = 'rgb';
     $('background-style').value = 'black';
     $('auto-n').checked = true;
@@ -654,11 +656,14 @@ export function initPanel() {
 
     updateSelectedPrimes();
     updateDimLabel();
-    // Reset resumes motion — a reset that left the scene frozen would look
-    // like it had broken something.
-    update({ dimension: 0.5, shapeDrift: true, paused: false });
+    // Reset resumes motion at the default pace — a reset that left the scene
+    // frozen, or still racing, would look like it had broken something.
+    update({ dimension: 0, shapeDrift: true, paused: false, shapeDriftSpeed: 0.1 });
     scheduleRebuild();
-  });
+  }
+
+  $('reset-btn').addEventListener('click', resetToDefaults);
+  $('corner-reset')?.addEventListener('click', resetToDefaults);
 
 
   // Update N display

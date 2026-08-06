@@ -1,10 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.10.1 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.11.0 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 6 — transport bar)
+**Last updated:** 2026-08-06 (rev 7 — live; speed on the handle)
 
 ---
 
@@ -201,6 +201,40 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-06 rev 7** — v0.11.0. **The site is live.**
+
+https://schuckdata.com/pretty-number-machine/ — HTTPS enforced, service worker
+active and correctly scoped to the subdirectory, 24 files precached, manifest
+served as `application/manifest+json`, no console errors. GitHub Pages sat in a
+multi-hour Actions/Pages outage before this; the first two builds errored and
+one queued job was cancelled after 8 minutes without ever running. Nothing was
+wrong with the repo. `.nojekyll` was added along the way and is worth keeping —
+this is a static app with no Liquid, no front matter, and nothing to gain from
+the Jekyll pass.
+
+Also in this rev:
+- **Default shape is now `Line` (dimension 0)** rather than `Disk` (0.5), so
+  the app opens on a straight row of nodes with the parastichy curves arcing
+  off to the right, and the morph travels rightward from there.
+- **Morph speed came back, on the handle's vertical axis.** Lift the play
+  button to speed the morph up, drop it to slow down; the handle rests higher
+  or lower to show the current pace. Bounds are the old speed slider's
+  (0.05–2.0), mapped logarithmically — linearly, the useful slow end would be
+  crushed into the bottom eighth of the travel. Removing the speed slider in
+  rev 6 cost nothing after all; the control just moved onto the thing it
+  controls.
+- The drag **locks to one axis** on first movement. Horizontal scrubs and
+  pauses; vertical changes speed and deliberately does not pause, so you can
+  watch the pace change while it runs. Letting both run at once meant every
+  scrub nudged the speed and every speed change nudged the shape.
+- **Corner Reset**, top right, faint. Shares one `resetToDefaults()` with the
+  panel's own Reset rather than duplicating it. Icon is inline SVG.
+
+Fixed: the transport icons were **orange on Android**, reported as an
+aesthetic clash. It was not a colour choice — U+23F8 and U+25B6 carry emoji
+presentation, so Android substituted its own colour glyph and ignored `color`
+entirely. Icons are now CSS shapes. Worth remembering for any future icon.
 
 **2026-08-06 rev 6** — v0.10.1. Morph controls replaced by a transport bar.
 
@@ -416,9 +450,11 @@ more than was tested.
 | No console errors | ✅ | Console clean across reloads |
 | Works with no server at all | ✅ | Server killed; app fully loaded, 69 controls, WebGL live |
 | `CACHE_VERSION` bump ships new code | ✅ | Bumped, relaunched, old cache deleted, new HTML served |
-| Installs to Android home screen | ❌ | Needs a public HTTPS URL + device |
-| Works in airplane mode on device | ❌ | Same |
-| Lighthouse PWA checks | ❌ | Same |
+| Live over HTTPS with correct MIME types | ✅ | manifest as application/manifest+json; http 301s to https |
+| Service worker active on the real origin | ✅ | Scope /pretty-number-machine/, 24 files precached |
+| Installs to Android home screen | ⏳ | URL now exists; awaiting the owner's device |
+| Works in airplane mode on device | ⏳ | Same |
+| Lighthouse PWA checks | ❌ | Not yet run |
 | Bottom sheet geometry below 640px | ✅ | Open y=384 h=531 w=412; closed y=915 = exactly offscreen |
 | Viewport full-bleed behind sheet | ✅ | x=0, matches innerWidth/innerHeight |
 | Desktop layout unregressed | ✅ | 280px sidebar, viewport x=280, 69 controls, no errors |

@@ -285,6 +285,46 @@
                 0 0 12px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.22);
   }
   #transport-btn.dragging { cursor: grabbing; }
+  #transport-btn.speeding {
+    cursor: ns-resize;
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9);
+    box-shadow: 0 3px 14px rgba(0,0,0,0.55),
+                0 0 18px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+  }
+
+  /* Speed figure, shown only while the handle is being lifted. */
+  #transport-readout {
+    position: absolute; bottom: calc(50% + 42px);
+    transform: translateX(-50%);
+    padding: 3px 8px; border-radius: 6px;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+    background: rgba(12, 12, 15, 0.94);
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+    opacity: 0; pointer-events: none; white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  #transport-readout.visible { opacity: 1; }
+
+  /* ==========================================================
+     CORNER RESET — deliberately faint. It undoes everything, so
+     it should be findable but never invite a stray tap.
+     ========================================================== */
+  #corner-reset {
+    position: absolute; z-index: 20;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-faint);
+    cursor: pointer; padding: 0;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  #corner-reset svg { width: 16px; height: 16px; display: block; }
+  @media (pointer: coarse) { #corner-reset { width: 44px; height: 44px; } }
+
+  #panel::-webkit-scrollbar { width: 3px; }
 
   #panel::-webkit-scrollbar { width: 3px; }
   #panel::-webkit-scrollbar-track { background: transparent; }
@@ -304,6 +344,11 @@
     .toggle:hover { color: rgba(224,221,213,0.65); }
     .toggle:hover .toggle-track { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25); }
     #reset-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
+    #corner-reset:hover {
+      color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+      background: rgba(12,12,15,0.7);
+    }
     input[type=range]::-webkit-slider-thumb:hover {
       background: linear-gradient(to bottom, #666, #444);
       border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4);
@@ -461,7 +506,7 @@
     <div class="control-row">
       <div class="control-label">Dimension <span class="value" id="dim-display">Disk</span></div>
       <div class="control-line">
-        <input type="range" id="dimension" min="0" max="2.5" step="0.005" value="0.5">
+        <input type="range" id="dimension" min="0" max="2.5" step="0.005" value="0">
       </div>
     </div>
   </div>
@@ -628,10 +673,20 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.10.2 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.11.0 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
+<!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
+     across platforms and some render as colour emoji, which is exactly how
+     the transport button ended up orange on Android. -->
+<button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 1 0 3-6.7"/>
+    <path d="M3 4v5h5"/>
+  </svg>
+</button>
 <div id="viewport"></div>
 
 <script type="importmap">
