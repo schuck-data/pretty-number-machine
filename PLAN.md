@@ -1,10 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.12.1 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.13.0 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 8 — the lens)
+**Last updated:** 2026-08-06 (rev 9 — lens refinements)
 
 ---
 
@@ -202,6 +202,32 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-06 rev 9** — v0.13.0. Lens refinements, all from device feedback.
+
+- **Handle moved to the top left** and restyled to match the corner Reset:
+  transparent, faint border, `--text-faint`. It sits below the Reset's row on
+  purpose — dragged nearly fully open the handle reaches the right-hand side,
+  and at the same height the two controls would collide.
+- **Physics stands down whenever the lens is open.** Under the classroom layer
+  a tap means "explain this number", and flinging nodes out of position would
+  contradict the labels pinned beside them. Physics settles back to true
+  positions once on open, then ignores input until the lens closes. Wired
+  through a published `state.lensOpen` flag so neither module imports the
+  other.
+- **Chalkboard retextured.** The first attempt used repeating linear gradients
+  at fixed angles; those cross into a regular weave and read as stitched
+  fabric, which is what the owner saw. Grain is now fractal noise from an
+  inline SVG turbulence filter — no repeating structure, so it reads as slate
+  tooth — over broad cloudy smears and a faint vignette. Data URI, so still
+  nothing fetched and still offline-clean.
+
+Bug found while testing: the lens measured itself against the **canvas** rect.
+The canvas is sized by the renderer and can lag its own box — it reports 0x0
+until the first resize callback lands — and a zero width collapsed every
+calculation: the handle pinned to 0 while the lens reported itself fully open.
+It now measures the `#viewport` element and uses the canvas only as an event
+target.
 
 **2026-08-06 rev 8** — v0.12.1. **The lens ships.**
 

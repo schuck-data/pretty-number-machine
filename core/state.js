@@ -97,4 +97,6 @@ export const HOT_KEYS = new Set([
   'paused',
 ]);
 
-export const state = { ...DEFAULT_CONFIG, paused: false };
+// `paused` and `lensOpen` are runtime flags rather than saved config: both are
+// published here so unrelated modules can react without importing each other.
+export const state = { ...DEFAULT_CONFIG, paused: false, lensOpen: false };

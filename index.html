@@ -342,17 +342,26 @@
     position: absolute; inset: 0; z-index: 1;
     pointer-events: none;
     mix-blend-mode: lighten;
-    background-color: #1d2b23;                    /* chalkboard slate */
+    background-color: #1a2620;                    /* chalkboard slate */
+
+    /* Grain is fractal noise from an inline SVG filter, not repeating
+       gradients. Repeating gradients at fixed angles cross into a regular
+       weave and read as stitched fabric — which is exactly what the first
+       attempt looked like. Turbulence has no repeating structure, so it
+       reads as slate tooth. Inline data URI, so nothing is fetched and the
+       app still works offline. */
     background-image:
-      /* chalk dust, smeared in wide arcs like a bad wipe */
-      radial-gradient(ellipse 60% 40% at 22% 28%, rgba(220,235,225,0.07), transparent 70%),
-      radial-gradient(ellipse 70% 30% at 78% 68%, rgba(220,235,225,0.05), transparent 70%),
-      radial-gradient(ellipse 40% 50% at 55% 12%, rgba(220,235,225,0.04), transparent 70%),
-      /* fine grain */
-      repeating-linear-gradient(102deg,
-        rgba(255,255,255,0.018) 0 2px, transparent 2px 5px),
-      repeating-linear-gradient(8deg,
-        rgba(0,0,0,0.10) 0 3px, transparent 3px 7px);
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23t)' opacity='0.4'/%3E%3C/svg%3E"),
+      /* broad cloudy unevenness, like a board wiped a thousand times */
+      radial-gradient(ellipse 95% 30% at 28% 32%, rgba(228,240,232,0.06), transparent 72%),
+      radial-gradient(ellipse 85% 24% at 70% 62%, rgba(228,240,232,0.05), transparent 74%),
+      radial-gradient(ellipse 60% 34% at 46% 88%, rgba(228,240,232,0.035), transparent 76%),
+      /* faint vignette so it reads as a board rather than a flat fill */
+      radial-gradient(ellipse 130% 130% at 50% 45%, transparent 52%, rgba(0,0,0,0.4));
+    background-size: 220px 220px, cover, cover, cover, cover;
+    background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    /* Overlay lets the grain modulate the slate instead of covering it. */
+    background-blend-mode: overlay, screen, screen, screen, multiply;
   }
 
   /* Labels are HTML, projected from 3D each frame. */
@@ -374,43 +383,45 @@
   /* Left edge is `left` in px, set by the module and clamped so the whole tab
      is always on screen. It is NOT centred on the boundary — doing that hung
      half of it off the viewport at rest, where it was ungrabbable. */
+  /* Top-left, styled to match #corner-reset: transparent, faint, unobtrusive.
+     Sits below the corner Reset's row on purpose — when the lens is dragged
+     nearly fully open the handle reaches the right-hand side, and at the same
+     height the two controls would land on top of each other. */
   #lens-handle {
-    position: absolute; top: 50%; left: 0; z-index: 19;
-    transform: translateY(-50%);
-    width: 30px; height: 92px; border-radius: 0 15px 15px 0;
-    display: flex; align-items: center; justify-content: center; gap: 3px;
-    background: rgba(16, 20, 19, 0.94);
-    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.5);
-    border-left: none;
-    box-shadow: 2px 0 16px rgba(0,0,0,0.55),
-                inset 0 0 14px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.09);
+    position: absolute; z-index: 19;
+    top: calc(62px + env(safe-area-inset-top)); left: 0;
+    width: 34px; height: 46px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-faint);
     cursor: ew-resize; touch-action: none;
-    opacity: 0.92; transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
   }
-  #lens-handle.dragging {
-    opacity: 1;
-    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.85);
-    box-shadow: 2px 0 22px rgba(0,0,0,0.6),
-                0 0 20px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.28);
+  #lens-handle.dragging, #lens-handle.open {
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+    background: rgba(12,12,15,0.7);
   }
-  /* Grip bars plus a chevron, so it reads as "pull me that way" rather than
-     as decoration. Drawn, never typed — see the transport icons. */
+  /* Grip bar plus a chevron, so it reads as "pull me that way" rather than as
+     decoration. Both drawn in currentColor, never typed — see the transport
+     icons for why characters are avoided. */
   #lens-handle-grip {
-    width: 2px; height: 34px; border-radius: 1px;
-    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.85);
-    box-shadow: -4px 0 0 -0.5px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.5);
+    width: 2px; height: 18px; border-radius: 1px;
+    background: currentColor;
+    box-shadow: -4px 0 0 -0.5px currentColor;
   }
   #lens-handle::after {
     content: ''; width: 0; height: 0;
-    border-left: 6px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9);
-    border-top: 4.5px solid transparent;
-    border-bottom: 4.5px solid transparent;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
   }
   #lens-handle.open::after {
     border-left: none;
-    border-right: 6px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9);
+    border-right: 5px solid currentColor;
   }
-  @media (pointer: coarse) { #lens-handle { width: 40px; height: 104px; } }
+  @media (pointer: coarse) { #lens-handle { width: 44px; height: 52px; } }
 
   #panel::-webkit-scrollbar { width: 3px; }
 
@@ -761,7 +772,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.12.2 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.13.0 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>

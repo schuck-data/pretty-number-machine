@@ -46,7 +46,8 @@ let handleEl = null;
 let labelPool = [];
 
 let cameraRef = null;
-let rendererEl = null;
+let rendererEl = null;   // the canvas — event target only
+let hostEl = null;       // #viewport — the box everything is measured against
 let nodesRef = [];
 
 const projected = new THREE.Vector3();
@@ -57,7 +58,12 @@ const isOpen = () => openFraction > 0.001;
 // The lens lives inside the viewport box, not the window. On desktop the
 // viewport starts at the sidebar's right edge, so a window-relative handle
 // would be parked underneath the panel and ungrabbable.
-const viewportRect = () => rendererEl.getBoundingClientRect();
+//
+// Measured from the viewport element, NOT from the canvas. The canvas is
+// sized by the renderer and can lag its own box — it reports 0x0 until the
+// first resize callback lands — and a zero width collapses every calculation
+// here: the handle pins to 0 while the lens reports itself fully open.
+const viewportRect = () => (hostEl || rendererEl).getBoundingClientRect();
 const edgeLocalPx = () => openFraction * viewportRect().width;
 
 // === DOM ===
@@ -83,10 +89,9 @@ function buildDom() {
 
   // Inside the viewport so all three inherit its box automatically and stay
   // correct whether the panel is a sidebar, a sheet, or dismissed.
-  const host = rendererEl.parentNode;
-  host.appendChild(boardEl);
-  host.appendChild(labelsEl);
-  host.appendChild(handleEl);
+  hostEl.appendChild(boardEl);
+  hostEl.appendChild(labelsEl);
+  hostEl.appendChild(handleEl);
   applyOpen();
 }
 
@@ -108,6 +113,13 @@ function applyOpen() {
   const x = Math.min(Math.max(openFraction * w, 0), Math.max(0, w - hw));
   handleEl.style.left = `${x}px`;
   handleEl.classList.toggle('open', isOpen());
+
+  // Published on state rather than reached for directly, so physics can stand
+  // itself down without this module knowing physics exists. Under the
+  // classroom layer a tap means "explain this number", and flinging nodes out
+  // of position would contradict the labels pinned beside them.
+  state.lensOpen = isOpen();
+
   if (!isOpen()) hideInfo();
 }
 
@@ -216,6 +228,7 @@ const mod = {
   init(ctx) {
     cameraRef = ctx.camera;
     rendererEl = ctx.renderer.domElement;
+    hostEl = rendererEl.parentNode;
     buildDom();
     rendererEl.removeEventListener('pointerdown', onCanvasDown, { capture: true });
     rendererEl.addEventListener('pointerdown', onCanvasDown, { capture: true });

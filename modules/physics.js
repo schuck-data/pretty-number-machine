@@ -14,6 +14,9 @@ const MAX_FORCE = 0.5;
 const DRAG_MAX_N = 1000;
 
 // === MODULE STATE ===
+// Latches so the settle-back on lens-open runs once, not every frame.
+let lensSuppressed = false;
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const dragPlane = new THREE.Plane();
@@ -58,6 +61,10 @@ function onPointerDown(e) {
   if (!mod.enabled || !touchEnabled) return;
   if (e.button !== 0) return; // only left-click triggers drag
   if (state.paused) return;
+  // The lens turns this off entirely. Under the classroom layer a tap means
+  // "tell me about this number", and a drag that flings nodes out of position
+  // would contradict the labels sitting next to them.
+  if (state.lensOpen) return;
   if (resolveN() > DRAG_MAX_N) return;
 
   getMouseNDC(e);
@@ -383,6 +390,15 @@ const mod = {
   animate(ctx) {
     if (!mod.enabled) return;
     if (ctx.N > DRAG_MAX_N) return;
+
+    // Settle back to true positions once when the lens opens, then stand
+    // down until it closes. A frozen half-displaced figure under a layer of
+    // labels would be teaching the wrong thing.
+    if (state.lensOpen) {
+      if (!lensSuppressed) { resetPhysics(); lensSuppressed = true; }
+      return;
+    }
+    lensSuppressed = false;
 
     if (!draggedNode && !physicsActive) return;
 
