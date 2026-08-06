@@ -71,7 +71,10 @@ export const DEFAULT_CONFIG = {
   pulse: false,
   linePulse: false,
   pulseSpeed: 1.0,
-  shapeDrift: false,
+  // Morphing is now the app's resting state rather than an opt-in toggle —
+  // the transport's play/pause governs motion via `paused`. Kept as a key
+  // because the render loop still gates on it.
+  shapeDrift: true,
   shapeDriftSpeed: 0.1,
   colorDrift: false,
   colorDriftSpeed: 1.0,
@@ -85,6 +88,10 @@ export const DEFAULT_CONFIG = {
 // Hot properties: can be changed without full rebuild
 export const HOT_KEYS = new Set([
   'dimension', 'shapeDrift', 'shapeDriftSpeed', 'autoRotate', 'driftSpeed', 'lineWidth', 'pulse', 'linePulse', 'pulseSpeed', 'colorDrift', 'colorDriftSpeed',
+  // The transport's play/pause. The render loop reads it every frame; nothing
+  // about the geometry changes, so rebuilding the scene on it would be an
+  // expensive no-op.
+  'paused',
 ]);
 
 export const state = { ...DEFAULT_CONFIG, paused: false };

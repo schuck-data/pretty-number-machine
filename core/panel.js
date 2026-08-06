@@ -481,11 +481,10 @@ export function initPanel() {
   const shapeKeyframes = getShapes().map(s => s[0]);
 
   dimSlider.addEventListener('input', () => {
-    // Manual dimension change disables shape drift
-    if ($('shape-drift').checked) {
-      $('shape-drift').checked = false;
-      state.shapeDrift = false;
-    }
+    // Setting the dimension by hand means you want it to stay there, so hold
+    // the animation rather than let the morph immediately drag it away. The
+    // transport's play button resumes it.
+    if (!state.paused) update({ paused: true });
     let val = +dimSlider.value;
     // Stickiness: snap to nearest keyframe if within 0.02
     for (const key of shapeKeyframes) {
@@ -546,15 +545,6 @@ export function initPanel() {
     scheduleRebuild();
   });
 
-  // Shape drift (morph)
-  $('shape-drift').addEventListener('change', () => {
-    update({ shapeDrift: $('shape-drift').checked });
-  });
-  $('shape-drift-speed').addEventListener('input', () => {
-    $('shape-drift-speed-display').textContent = $('shape-drift-speed').value;
-    update({ shapeDriftSpeed: +$('shape-drift-speed').value });
-  });
-
   // Drift speed + auto-rotate
   $('auto-rotate').addEventListener('change', () => {
     update({ autoRotate: $('auto-rotate').checked });
@@ -585,19 +575,10 @@ export function initPanel() {
     update({ colorDriftSpeed: +$('color-drift-speed').value });
   });
 
-  // Auto-enable morph after 3s of no interaction
-  function enableMorphIdle() {
-    if (!state.shapeDrift) {
-      state.shapeDrift = true;
-      $('shape-drift').checked = true;
-      update({ shapeDrift: true });
-    }
-    idleTimer = null;
-  }
-  function resetIdleTimer() {
-    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
-  }
-  let idleTimer = setTimeout(enableMorphIdle, 3000);
+  // The idle timer that used to switch morphing on after 3s of quiet is gone.
+  // It existed because morphing had no visible control and had to start
+  // itself; the transport bar is that control now, and the shape morphs from
+  // load until you pause it.
 
   // Reset
   $('reset-btn').addEventListener('click', () => {
@@ -625,9 +606,6 @@ export function initPanel() {
     $('line-width').value = 2;
     $('line-width-display').textContent = '2';
     $('show-labels').checked = false;
-    $('shape-drift').checked = false;
-    $('shape-drift-speed').value = 0.1;
-    $('shape-drift-speed-display').textContent = '0.1';
     $('auto-rotate').checked = true;
     $('prime-glow').checked = true;
     $('prime-glow-intensity').value = 0.3;
@@ -676,12 +654,10 @@ export function initPanel() {
 
     updateSelectedPrimes();
     updateDimLabel();
-    update({ dimension: 0.5, shapeDrift: false });
+    // Reset resumes motion — a reset that left the scene frozen would look
+    // like it had broken something.
+    update({ dimension: 0.5, shapeDrift: true, paused: false });
     scheduleRebuild();
-
-    // Restart idle morph timer (same as boot)
-    resetIdleTimer();
-    idleTimer = setTimeout(enableMorphIdle, 3000);
   });
 
 
@@ -694,14 +670,4 @@ export function initPanel() {
 
   emit('panelReady', { panelEl: $('panel') });
 
-  // Any interaction cancels the idle timer
-  const panel = $('panel');
-  const viewport = document.getElementById('viewport');
-  for (const el of [panel, viewport]) {
-    if (!el) continue;
-    for (const evt of ['pointerdown', 'mousedown', 'touchstart', 'wheel']) {
-      el.addEventListener(evt, resetIdleTimer, { once: true });
-    }
-  }
-  document.addEventListener('keydown', resetIdleTimer, { once: true });
 }

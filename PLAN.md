@@ -1,10 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.9.0 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.10.1 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 5 — device feedback round 2)
+**Last updated:** 2026-08-06 (rev 6 — transport bar)
 
 ---
 
@@ -54,7 +54,8 @@ pnm/
 │   ├── positions.js     5 KB   getShapes, getMaxDim, getMinDim
 │   ├── panel.js        21 KB   UI construction + state sync
 │   ├── renderer.js     34 KB   Three.js scene, buildScene, update, resolveN
-│   └── sheet.js         4 KB   phone bottom-sheet state + drag-to-resize
+│   ├── sheet.js         4 KB   phone bottom-sheet state + drag-to-resize
+│   └── transport.js     5 KB   play/pause playhead, scrubs the shape morph
 ├── modules/
 │   ├── physics.js      17 KB   registered
 │   └── info.js         10 KB   registered
@@ -200,6 +201,42 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-06 rev 6** — v0.10.1. Morph controls replaced by a transport bar.
+
+The Morph toggle and its speed slider are gone. In their place, a bar along
+the bottom whose play/pause button **is** the slider handle: it rides the
+track as the shape morphs, and dragging it scrubs the shape by hand. On a
+phone it shares the bottom row with the drawer button, which moved right to
+make room.
+
+State model changed to suit:
+- `shapeDrift` now defaults **true** and is effectively constant — morphing is
+  the app's resting state rather than an opt-in. `paused` is what the button
+  controls, and it freezes everything: morph, rotation, pulse, colour drift.
+- `paused` added to `HOT_KEYS`. It was reachable through `update()` but absent
+  from that set, so toggling it would have triggered a full scene rebuild for
+  a flag the render loop reads every frame anyway.
+- Manual dimension changes now set `paused` instead of clearing `shapeDrift`.
+  Under the old model, scrubbing disabled morphing outright and Play afterwards
+  did nothing.
+- The idle timer that switched morphing on after 3s of quiet is deleted. It
+  existed because morphing had no visible control; it has one now.
+
+Costs, accepted deliberately:
+- Morph **speed** is no longer adjustable — fixed at the old default of 0.1.
+  That is the price of removing the slider.
+
+Notes:
+- `state.paused` had existed since before this session with no UI attached to
+  it. This is the first thing that switches it on.
+- Scrubbing writes to the existing `#dimension` slider and dispatches its
+  `input` event rather than reimplementing the logic, so keyframe stickiness,
+  the shape label, and the pause-on-manual-change rule all still live in one
+  place in `panel.js`.
+- The handle's position is polled from `state.dimension` each frame. While
+  morphing, the renderer mutates that value directly without going through
+  `update()`, so there is no event to subscribe to.
 
 **2026-08-06 rev 5** — v0.9.0. Second round of device feedback, five requests.
 

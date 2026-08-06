@@ -219,6 +219,56 @@
   .node-row input[type=range] { flex: 1; }
   .node-row .value { font-size: 0.65rem; color: rgba(224,221,213,0.6); font-weight: 600; min-width: 24px; text-align: right; }
 
+  /* ==========================================================
+     TRANSPORT BAR — play/pause as the shape's playhead.
+     The button is the slider handle: it rides the track as the
+     shape morphs, and dragging it scrubs by hand.
+     ========================================================== */
+  #transport {
+    position: absolute; z-index: 20;
+    left: 296px; right: 16px; bottom: 16px;
+    height: 44px; display: flex; align-items: center;
+    transition: left 0.3s ease;
+    pointer-events: none;              /* only the track and handle are live */
+  }
+  #panel.collapsed ~ #transport { left: 16px; }
+
+  #transport-track {
+    position: relative; flex: 1; height: 44px;
+    margin: 0 22px;                    /* room for the handle at 0% and 100% */
+    pointer-events: auto; cursor: pointer;
+    display: flex; align-items: center;
+    touch-action: none;
+  }
+  #transport-track::before {
+    content: ''; position: absolute; left: 0; right: 0; height: 4px;
+    background: var(--track-bg); border-radius: 2px;
+    box-shadow: inset 0 0 0 1px rgba(180,200,210,0.06);
+  }
+
+  #transport-btn {
+    position: absolute; top: 50%; left: 0;
+    transform: translate(-50%, -50%);
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit; font-size: 15px; line-height: 1;
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+    background: rgba(12, 12, 15, 0.94);
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
+    box-shadow: 0 3px 14px rgba(0,0,0,0.55);
+    cursor: grab; touch-action: none; padding: 0;
+    /* No transition on `left` — it has to track the pointer exactly while
+       dragging, and the morph moves it every frame anyway. */
+    transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  }
+  #transport-btn.paused {
+    padding-left: 3px;                 /* optically centre the play triangle */
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.7);
+    box-shadow: 0 3px 14px rgba(0,0,0,0.55),
+                0 0 12px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.22);
+  }
+  #transport-btn.dragging { cursor: grabbing; }
+
   #panel::-webkit-scrollbar { width: 3px; }
   #panel::-webkit-scrollbar-track { background: transparent; }
   #panel::-webkit-scrollbar-thumb { background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.15); border-radius: 2px; }
@@ -308,8 +358,8 @@
        the desktop layout have to be beaten. */
     #panel-toggle,
     #panel:not(.collapsed) ~ #panel-toggle {
-      left: 50%; right: auto; top: auto;
-      transform: translateX(-50%);
+      left: auto; right: 12px; top: auto;
+      transform: none;
       bottom: calc(var(--sheet-h) + 16px);
       width: 76px; height: 44px; border-radius: 22px;
       background: rgba(12, 12, 15, 0.94);
@@ -328,6 +378,20 @@
     #panel-toggle { font-size: 0; }
     #panel-toggle::before { content: '\25BE'; font-size: 20px; line-height: 1; }
     #panel.collapsed ~ #panel-toggle::before { content: '\25B4'; }
+
+    /* Transport shares the bottom row with the drawer button, which has moved
+       to the right to make room. Both ride the sheet's top edge, so they stay
+       on one line whether the sheet is up or away. The right inset clears the
+       76px drawer button plus a gap. */
+    #transport,
+    #panel.collapsed ~ #transport {
+      left: 4px; right: 100px;
+      top: auto; bottom: calc(var(--sheet-h) + 16px);
+      transition: bottom 0.3s ease;
+    }
+    #panel.collapsed ~ #transport {
+      bottom: calc(18px + env(safe-area-inset-bottom));
+    }
 
     /* Drag handle sitting exactly on the sheet's top edge. Hidden when the
        sheet is away — there is no edge to grab. */
@@ -353,7 +417,8 @@
     :root.sheet-resizing #panel,
     :root.sheet-resizing #viewport,
     :root.sheet-resizing #panel-toggle,
-    :root.sheet-resizing #sheet-grip { transition: none !important; }
+    :root.sheet-resizing #sheet-grip,
+    :root.sheet-resizing #transport { transition: none !important; }
   }
 
   /* The grip is a phone affordance only; the desktop panel is a fixed
@@ -381,15 +446,6 @@
       <div class="control-line">
         <input type="range" id="dimension" min="0" max="2.5" step="0.005" value="0.5">
       </div>
-    </div>
-    <div class="effect-row">
-      <label class="toggle" for="shape-drift" style="margin:0">
-        <input type="checkbox" id="shape-drift">
-        <span class="toggle-track"></span>
-        Morph
-      </label>
-      <input type="range" id="shape-drift-speed" min="0.05" max="2.0" step="0.05" value="0.1">
-      <span class="value" id="shape-drift-speed-display">0.1</span>
     </div>
   </div>
 
@@ -555,7 +611,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.9.0 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.10.1 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
@@ -573,6 +629,7 @@
   import { init } from './core/renderer.js';
   import { initPanel } from './core/panel.js';
   import { initSheet } from './core/sheet.js';
+  import { initTransport } from './core/transport.js';
 
   // First: sets the sheet's initial state, so everything below sizes against
   // the layout the user will actually see.
@@ -598,6 +655,10 @@
 
   // Start renderer
   init(document.getElementById('viewport'));
+
+  // After the renderer, so the playhead reads a live dimension on its first
+  // frame rather than the default.
+  initTransport();
 
   // Offline support. Registered last and failing silently on purpose — a
   // service worker problem must never keep the app from starting.

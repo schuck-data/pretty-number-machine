@@ -8,7 +8,7 @@
 // BUMP CACHE_VERSION on every deploy that changes any precached file.
 // Without a bump, returning visitors keep the old code forever.
 
-const CACHE_VERSION = 'pnm-v0.9.0';
+const CACHE_VERSION = 'pnm-v0.10.1';
 
 const PRECACHE = [
   './',
@@ -21,6 +21,7 @@ const PRECACHE = [
   './core/panel.js',
   './core/renderer.js',
   './core/sheet.js',
+  './core/transport.js',
 
   './modules/physics.js',
   './modules/info.js',
