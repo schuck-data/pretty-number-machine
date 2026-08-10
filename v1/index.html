@@ -744,17 +744,6 @@
         <span class="toggle-track"></span>
         One node
       </label>
-      <label class="toggle" for="show-curves">
-        <input type="checkbox" id="show-curves" checked>
-        <span class="toggle-track"></span>
-        Parastichy Lines
-      </label>
-      <div class="control-row">
-        <div class="control-label">Thickness <span class="value" id="line-width-display">2</span></div>
-        <div class="control-line">
-          <input type="range" id="line-width" min="1" max="8" step="0.5" value="2">
-        </div>
-      </div>
     </div>
   </div>
 
@@ -785,6 +774,24 @@
       <div class="control-label">Size <span class="value" id="node-size-display">1.0</span></div>
       <div class="control-line">
         <input type="range" id="node-size" min="0.1" max="2" step="0.1" value="1.0">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-header">Parastichy Lines</h2>
+  <div class="section-content">
+    <label class="toggle" for="show-curves">
+      <input type="checkbox" id="show-curves" checked>
+      <span class="toggle-track"></span>
+      Show lines
+    </label>
+    <div class="control-row">
+      <!-- One slider, two regimes. 0 is very nearly black; thickness grows to a
+           ceiling and then stops; past that the same slider drives brightness
+           and glow instead. See LINE_* in core/renderer.js for the mapping. -->
+      <div class="control-label">Visibility <span class="value" id="line-width-display">2.0</span></div>
+      <div class="control-line">
+        <input type="range" id="line-width" min="0" max="12" step="0.5" value="2">
       </div>
     </div>
   </div>
@@ -882,7 +889,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.5 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.6 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>

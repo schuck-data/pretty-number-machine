@@ -546,7 +546,9 @@ export function initPanel() {
 
   // Line width slider (hot — no rebuild needed)
   $('line-width').addEventListener('input', () => {
-    $('line-width-display').textContent = $('line-width').value;
+    // One decimal, so 0 and 12 do not read as a different kind of value from
+    // the halves in between.
+    $('line-width-display').textContent = (+$('line-width').value).toFixed(1);
     update({ lineWidth: +$('line-width').value });
   });
 
@@ -640,7 +642,7 @@ export function initPanel() {
     $('show-one').checked = true;
     $('show-curves').checked = true;
     $('line-width').value = 2;
-    $('line-width-display').textContent = '2';
+    $('line-width-display').textContent = '2.0';
     // Read from DEFAULT_CONFIG, not a literal `true`. Under reduced motion
     // these two default to off (core/state.js), and a Reset that hardcoded them
     // on would hand the motion straight back to someone who asked the OS not to

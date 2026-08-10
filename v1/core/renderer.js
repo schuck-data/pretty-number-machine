@@ -30,13 +30,57 @@ import {
 // line brighter on a near-black field, not fainter, and a desaturated 2-line
 // stops reading as red — the colour is the factorisation, so hue is the one
 // thing that must survive.
-const LINE_FADE_FLOOR = 0.3;    // brightness retained at thickness 1
-const LINE_FADE_UNTIL = 3;      // full brightness at and above this thickness
+// ONE SLIDER, TWO REGIMES.
+//
+// `state.lineWidth` is no longer a thickness in pixels — it is a 0..12
+// "visibility" dial, and thickness is one of the things it drives. The old
+// slider ran 1..8 and meant pixels directly, with brightness fading in
+// underneath it.
+//
+// Regime 1 — thickness. Grows from a hairline at 0 to a ceiling of 4, which is
+// where the old slider's useful range topped out. Past that, more is not
+// thicker: a fatter line stops reading as structure and starts reading as a
+// blob, so the ceiling is deliberate rather than a limitation.
+//
+// Regime 2 — glow. Above the ceiling the same slider keeps going and pushes
+// brightness past full instead, so the lines light up rather than fatten.
+//
+// The anchors are chosen so the new default of 2 reproduces exactly what the
+// old slider produced at 1.5 — thickness 1.5, brightness 0.475 — which is the
+// look this was tuned to. At 0 the lines are still drawn but nearly black:
+// present in the geometry, all but invisible, so turning them down reads as
+// dimming rather than as the toggle being flipped.
+const LINE_MIN_THICKNESS = 0.5;   // hairline at slider 0 — never zero, or the line vanishes
+const LINE_MAX_THICKNESS = 4;     // the ceiling; slider 7 and above
+const LINE_THICKNESS_PER_STEP = 0.5;
 
-function lineFadeAmount(width) {
-  if (width >= LINE_FADE_UNTIL) return 1;
-  const t = (width - 1) / (LINE_FADE_UNTIL - 1);
-  return LINE_FADE_FLOOR + Math.max(0, Math.min(1, t)) * (1 - LINE_FADE_FLOOR);
+const LINE_MIN_BRIGHTNESS = 0.05; // "nearly black" at slider 0
+const LINE_FULL_BRIGHT_AT = 4.5;  // brightness saturates here, before thickness does
+const LINE_GLOW_FROM = 7;         // where thickness caps and glow takes over
+const LINE_GLOW_TO = 12;          // slider maximum
+const LINE_GLOW_STRENGTH = 1.6;   // extra brightness multiplier at full glow
+
+// Thickness in device pixels for a given slider value.
+function lineThickness(v) {
+  return Math.min(LINE_MIN_THICKNESS + v * LINE_THICKNESS_PER_STEP, LINE_MAX_THICKNESS);
+}
+
+// Colour multiplier. Below LINE_FULL_BRIGHT_AT it ramps up from nearly black;
+// above LINE_GLOW_FROM it exceeds 1, which drives the prime hues past their
+// normal intensity. Hue is never touched — the colour IS the factorisation, so
+// washing toward white would be a lie about the mathematics.
+function lineFadeAmount(v) {
+  const base = Math.min(
+    LINE_MIN_BRIGHTNESS + (Math.max(0, v) / LINE_FULL_BRIGHT_AT) * (1 - LINE_MIN_BRIGHTNESS),
+    1
+  );
+  return base + lineGlowAmount(v) * LINE_GLOW_STRENGTH;
+}
+
+// 0 below the ceiling, ramping to 1 at the slider's maximum.
+function lineGlowAmount(v) {
+  if (v <= LINE_GLOW_FROM) return 0;
+  return Math.min((v - LINE_GLOW_FROM) / (LINE_GLOW_TO - LINE_GLOW_FROM), 1);
 }
 
 // The camera's home. Named rather than written inline at construction, because
@@ -650,7 +694,7 @@ export function buildScene() {
       const baseColor = new THREE.Color(c[0], c[1], c[2]);
       const mat = new LineMaterial({
         color: baseColor.getHex(),
-        linewidth: state.lineWidth,
+        linewidth: lineThickness(state.lineWidth),
         worldUnits: false,
         resolution: new THREE.Vector2(W, H),
       });
@@ -739,11 +783,17 @@ export function buildScene() {
         threeRenderer.domElement.width,
         threeRenderer.domElement.height
       );
-      let lw = state.lineWidth;
+      // The slider is a visibility dial, not a pixel count, so thickness comes
+      // through the mapping. The pulse then swings around whatever that is —
+      // scaled by the mapped thickness rather than the raw slider value, or a
+      // slider of 12 (which is glow, not girth) would pulse to a fifty-pixel
+      // band.
+      const base = lineThickness(state.lineWidth);
+      let lw = base;
       if (state.linePulse && !state.paused) {
         const p = line.userData.prime;
         const pulse = 0.5 + 0.5 * Math.sin(t * state.pulseSpeed * Math.PI / p); // 0..1
-        lw = state.lineWidth + pulse * state.lineWidth * 4;
+        lw = base + pulse * base * 4;
       }
       line.material.linewidth = lw;
     }
@@ -926,9 +976,30 @@ export function buildScene() {
     // lerping material.color in place — lerping the live value would compound
     // frame over frame and walk every line into the background.
     const fade = lineFadeAmount(state.lineWidth);
+    const glow = lineGlowAmount(state.lineWidth);
+    const blending = glow > 0 ? THREE.AdditiveBlending : THREE.NormalBlending;
+
     for (const line of curveLines) {
       line.material.color.copy(line.userData.liveColor);
-      if (fade < 1) line.material.color.lerp(fadeTarget, 1 - fade);
+      if (fade < 1) {
+        line.material.color.lerp(fadeTarget, 1 - fade);
+      } else if (fade > 1) {
+        // Past full brightness the hue is scaled up rather than blended toward
+        // white. Multiplying keeps the ratios between channels — a red 2-line
+        // stays red as it gets hot — where lerping to white would desaturate it
+        // into the same colour as everything else at the top of the slider.
+        line.material.color.multiplyScalar(fade);
+      }
+
+      // Additive blending makes crossings bloom, which is what actually reads
+      // as "glow"; brightness alone just looks like a paler line. Guarded on an
+      // actual change because needsUpdate recompiles the shader, and doing that
+      // every frame would cost far more than the effect is worth.
+      if (line.material.blending !== blending) {
+        line.material.blending = blending;
+        line.material.transparent = glow > 0;
+        line.material.needsUpdate = true;
+      }
     }
 
     // Earth rotation
