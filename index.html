@@ -785,8 +785,8 @@
         <span class="toggle-track"></span>
         Zero glow
       </label>
-      <input type="range" id="zero-glow-intensity" min="0.1" max="3" step="0.1" value="1.5">
-      <span class="value" id="zero-glow-display">1.5</span>
+      <input type="range" id="zero-glow-intensity" min="0.1" max="3" step="0.1" value="1.1">
+      <span class="value" id="zero-glow-display">1.1</span>
     </div>
 
     <div class="effect-row">
@@ -823,8 +823,8 @@
         <span class="toggle-track"></span>
         Rotation
       </label>
-      <input type="range" id="drift-speed" min="0.1" max="5" step="0.1" value="0.5">
-      <span class="value" id="drift-speed-display">0.5</span>
+      <input type="range" id="drift-speed" min="0.1" max="5" step="0.1" value="0.3">
+      <span class="value" id="drift-speed-display">0.3</span>
     </div>
   </div>
 
@@ -844,23 +844,17 @@
     <path d="M3 4v5h5"/>
   </svg>
 </button>
-<!-- Eight petals around a centre, drawn rather than typed. The 🌼 character
-     would arrive as a platform colour glyph and ignore `color` — the same trap
-     that made the transport buttons orange on Android. -->
+<!-- A sparkle: two four-pointed stars with concave sides, drawn rather than
+     typed. The first attempt was a daisy of eight radial petals and read as a
+     gear — at 18px, anything with that many evenly spaced lobes does. Concave
+     sides are what separate a sparkle from a star or a cog.
+     Not the ✨ character: emoji carry colour presentation, so Android
+     substitutes its own glyph and ignores `color` — the trap that made the
+     transport buttons orange on Android. -->
 <button id="dazzle-btn" type="button" title="Dazzle" aria-label="Dazzle">
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <g>
-      <ellipse cx="12" cy="6" rx="2" ry="4"/>
-      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(45 12 12)"/>
-      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(90 12 12)"/>
-      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(135 12 12)"/>
-      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(180 12 12)"/>
-      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(225 12 12)"/>
-      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(270 12 12)"/>
-      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(315 12 12)"/>
-    </g>
-    <circle cx="12" cy="12" r="2.6" fill="var(--bg)"/>
-    <circle cx="12" cy="12" r="1.5"/>
+    <path d="M10 3 Q11 12 17 13 Q11 14 10 23 Q9 14 3 13 Q9 12 10 3 Z"/>
+    <path d="M18.5 2 Q19 5.5 22.5 6 Q19 6.5 18.5 10 Q18 6.5 14.5 6 Q18 5.5 18.5 2 Z"/>
   </svg>
 </button>
 <div id="viewport"></div>

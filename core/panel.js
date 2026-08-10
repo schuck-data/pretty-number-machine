@@ -635,8 +635,8 @@ export function initPanel() {
     $('prime-glow-intensity').value = 0.3;
     $('prime-glow-display').textContent = '0.3';
     $('zero-glow').checked = true;
-    $('zero-glow-intensity').value = 1.5;
-    $('zero-glow-display').textContent = '1.5';
+    $('zero-glow-intensity').value = 1.1;
+    $('zero-glow-display').textContent = '1.1';
     $('pulse').checked = false;
     $('line-pulse').checked = false;
     $('pulse-speed').value = 1.0;
@@ -654,8 +654,8 @@ export function initPanel() {
     applyPrimeTier();
     $('node-size').value = 1.0;
     $('node-size-display').textContent = '1.0';
-    $('drift-speed').value = 0.5;
-    $('drift-speed-display').textContent = '0.5';
+    $('drift-speed').value = 0.3;
+    $('drift-speed-display').textContent = '0.3';
 
     // Reset module controls to defaults
     for (const [name, mod] of getModules()) {
@@ -738,6 +738,13 @@ export function initPanel() {
 
     updateSelectedPrimes();          // → updateN(), which now respects the size
 
+    // Every integer in range, and no parastichy lines. Seen from overhead the
+    // curves read as clutter across the face of the disk rather than as
+    // structure, and filling in the gaps between the selected multiples is
+    // what makes it a solid field of colour instead of a lattice.
+    $('show-all-integers').checked = true;
+    $('show-curves').checked = false;
+
     $('pulse').checked = true;
     $('pulse-speed').value = 2;
     $('pulse-speed-display').textContent = '2.0';
@@ -746,12 +753,16 @@ export function initPanel() {
     $('color-drift-speed').value = 2.5;
     $('color-drift-speed-display').textContent = '2.5';
     $('auto-rotate').checked = true;
-    $('drift-speed').value = 0.5;
-    $('drift-speed-display').textContent = '0.5';
+    $('drift-speed').value = 0.3;
+    $('drift-speed-display').textContent = '0.3';
     $('shape-drift').checked = false;
 
     update({
-      dimension: 0.5,        // Disk
+      // A fifth of the way from Disk (0.5) toward Sphere (1.0), so the field
+      // domes gently instead of lying perfectly flat. Straight down onto a
+      // true plane there is no depth cue at all and the rotation reads as a
+      // spinning image rather than an object.
+      dimension: 0.6,
       shapeDrift: false,     // the shape holds; everything else moves
       paused: false,
       pulse: true,
@@ -760,7 +771,7 @@ export function initPanel() {
       colorDrift: true,
       colorDriftSpeed: 2.5,
       autoRotate: true,
-      driftSpeed: 0.5,
+      driftSpeed: 0.3,
     });
 
     // Last, so it frames the shape the settings above just chose. With the

@@ -311,10 +311,18 @@ everything except the shape. No speed slider; morph speed lives on the
 transport handle. Also renamed Pulse → Node Pulse to pair with Line Pulse.
 
 **Dazzle** — a second corner button below Reset, opening on the disk seen from
-overhead with every prime lit, N=1000, node size 2, morph off and everything
-else running. It is Reset with a different normal, and it is implemented that
-way: `applyDazzle()` calls `resetToDefaults()` and then states only its
-differences. A second exhaustive list of control writes would drift out of step
+overhead with every prime lit, N=1000, node size 2, every integer in range
+filled in, no parastichy lines, morph off and everything else running. It is
+Reset with a different normal, and it is implemented that way: `applyDazzle()`
+calls `resetToDefaults()` and then states only its differences.
+
+Dimension is **0.6, not 0.5** — a fifth of the way from Disk toward Sphere.
+Looking straight down at a true plane there is no depth cue at all and the
+rotation reads as a spinning image rather than an object; a gentle dome fixes
+it. Curves are off because from overhead they cross the face of the disk and
+read as clutter rather than structure, and All Integers is on because filling
+the gaps between selected multiples is what makes it a solid field of colour
+instead of a lattice. 1001 nodes, verified. A second exhaustive list of control writes would drift out of step
 with the first the moment either changed, and Reset is the one function here
 that cannot afford to be almost right. `scheduleRebuild()` being debounced
 means the reset's queued rebuild is replaced rather than run twice.
@@ -334,12 +342,23 @@ distance framing the disk on a desktop crops it badly. Position is
 vector is degenerate, and OrbitControls' azimuth goes undefined so the first
 drag snaps the camera somewhere arbitrary.
 
-**The daisy is drawn, not typed.** The request was for a daisy emoji styled to
-match the Reset. Those two cannot both hold: 🌼 carries emoji presentation, so
-Android substitutes its own colour glyph and ignores `color` outright — exactly
-how the transport buttons ended up orange in rev 7. It is eight inline-SVG
-petals in `currentColor`, which gets the daisy *and* the subtlety. Third time
-this trap has come up in this project; the rule is simply never to type an icon.
+**The Dazzle icon is a drawn sparkle.** Two four-pointed stars with concave
+sides, inline SVG in `currentColor`. It was a daisy first — eight radial
+petals — and the owner read it immediately as a **gear**, which at 18px it is:
+anything with that many evenly spaced lobes around a hub is a cog. Concave
+sides are what distinguish a sparkle from both a star and a gear, so the shape
+carries the meaning rather than the petal count.
+
+Either way it is drawn and not typed. Emoji carry colour presentation, so
+Android substitutes its own glyph and ignores `color` outright — exactly how
+the transport buttons ended up orange in rev 7. Third time this trap has come
+up here; the rule is simply never to type an icon.
+
+**Two defaults dialled back**, both modes. Rotation 0.5 → **0.3** and zero-node
+glow 1.5 → **1.1** (25% down, snapped to the slider's 0.1 step — the sun was
+washing out the low-numbered nodes nearest it). Changed in `DEFAULT_CONFIG`,
+the markup's slider value and readout, and `resetToDefaults()`; Dazzle inherits
+the glow from the reset it is built on and states rotation itself.
 
 Corner Reset brightened 20%, `--text-faint` 0.25 → a new `--text-corner` 0.3.
 Its own variable rather than a bump to `--text-faint`, which also dresses the

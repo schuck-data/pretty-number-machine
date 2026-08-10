@@ -68,7 +68,9 @@ export const DEFAULT_CONFIG = {
   primeGlow: true,
   primeGlowIntensity: 0.3,
   zeroGlow: true,
-  zeroGlowIntensity: 1.5,
+  // 25% down from the original 1.5, snapped to the slider's 0.1 step. The sun
+  // was washing out the low-numbered nodes sitting nearest to it.
+  zeroGlowIntensity: 1.1,
   pulse: false,
   linePulse: false,
   pulseSpeed: 1.0,
@@ -85,7 +87,7 @@ export const DEFAULT_CONFIG = {
   colorDrift: false,
   colorDriftSpeed: 1.0,
   autoRotate: true,
-  driftSpeed: 0.5,
+  driftSpeed: 0.3,
   sceneBackground: 0x0c0c0f,
   backgroundStyle: 'black',
   onStateChange: null,
