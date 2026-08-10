@@ -155,14 +155,15 @@ does. Google also has a tester at
 The file currently served is a **placeholder that authorises nothing**. Both
 values in it are deliberately fake and both must be replaced:
 
-| Field | Placeholder | Real value comes from |
+| Field | Status | Value / source |
 |---|---|---|
-| `package_name` | `com.schuckdata.pnm.PLACEHOLDER` | §4 step 6 — the permanent package name, not yet decided |
-| `sha256_cert_fingerprints[0]` | thirty-two zero bytes | Play Console, after §4 step 11 — the **app signing** certificate, not the local upload key |
+| `package_name` | ✅ **Real** | `com.schuckdata.pnm`, decided 2026-08-10 (§4 step 6) |
+| `sha256_cert_fingerprints[0]` | ⚠️ **Placeholder** | Thirty-two zero bytes. Replace with the fingerprint Play Console shows for the **app signing** certificate — *not* the local upload key. Available only after §4 step 11 |
 
-Neither could be filled in yet, which is exactly why a placeholder was used: the
-failure this section exists to prevent is Jekyll eating the directory, and that
-is now disproven independently of the contents.
+**One field left.** The file still authorises nothing, because the fingerprint
+cannot match anything, which is why it is safe to serve a real package name
+beside a fake certificate. Do not read the real package name as "this section is
+finished" — the zero fingerprint is the tell.
 
 **Also still outstanding in that repo, deliberately not done:** nothing on
 `schuckdata.com` links to the app — PNM is reachable only by knowing the URL. A
@@ -319,8 +320,14 @@ new or reordered in this revision; they exist because of §3.
    identity (`ds89holdco@gmail.com`) is the wrong one (§3d).
 4. **Add a second Admin user** (§3d).
 5. **Merchant / payments profile**, tax interview, payout bank account (§3c).
-6. **Decide the package name**, e.g. `com.schuckdata.pnm`. **This is permanent.**
-   It cannot be changed after publishing, ever.
+6. ✅ **Decide the package name.** **Decided 2026-08-10: `com.schuckdata.pnm`.**
+   Reverse-DNS of the owned domain, which is the convention, and a valid Android
+   application ID. **This is permanent** — it cannot be changed after publishing,
+   ever, and changing it means a new listing with no reviews, no installs and no
+   history. It is now written into the asset links file (§2d), and it must be
+   entered identically when the bundle is generated (step 10). A mismatch
+   between the two is the second most common cause of a TWA that runs but never
+   loses its address bar, after §2 itself.
 7. **Set the app to Paid at $0.99 — before any production release** (§3c).
 8. **Build the update prompt** (§7). Small, self-contained, and much easier
    before submission than after.
@@ -567,8 +574,11 @@ scene is the problem that rule exists to prevent.
   minutes, were cancelled, and errored, with nothing wrong in the repo. Check
   `githubstatus.com` before debugging a deploy.
 
-- **Two permanent decisions, neither reversible.** The package name, and
-  free-versus-paid (§3c). Both are decided once and live with the listing.
+- **Two permanent decisions, neither reversible — both now made.** The package
+  name is `com.schuckdata.pnm` (§4 step 6) and the app ships paid at $0.99
+  (§3c). Both were decided on 2026-08-10 and both outlive any later change of
+  mind: the first cannot be edited at all, and the second only ever relaxes
+  towards free. Nothing downstream should treat either as still open.
 
 - **The free web version is deliberate, not an oversight.** §3c records the
   reasoning. If a future reader wonders why a paid app is also free on the web,
