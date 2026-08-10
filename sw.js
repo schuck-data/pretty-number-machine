@@ -8,7 +8,7 @@
 // BUMP CACHE_VERSION on every deploy that changes any precached file.
 // Without a bump, returning visitors keep the old code forever.
 
-const CACHE_VERSION = 'pnm-v0.14.1';
+const CACHE_VERSION = 'pnm-v0.14.2';
 
 const PRECACHE = [
   './',
@@ -82,13 +82,33 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (new URL(request.url).origin !== self.location.origin) return;
 
-  // Navigations: serve the shell offline rather than the browser error page.
+  // Navigations: cache-first, from the SAME versioned cache as everything
+  // else. This is load-bearing, not a performance choice.
+  //
+  // It used to be network-first, which quietly guaranteed the app could run
+  // two versions of itself at once: the HTML came fresh off the network while
+  // core/ and modules/ came cache-first from whatever generation the active
+  // worker owned. Merely stale for most of this project's life — until v0.14.0
+  // deleted the #dimension slider, at which point the new HTML met the old
+  // panel.js and threw `Cannot set properties of null (setting 'min')` before
+  // the renderer ever started. Menu and buttons, no figure. Every returning
+  // visitor saw it.
+  //
+  // The worker's generation now defines the WHOLE app. A client runs entirely
+  // v0.14.1 or entirely v0.14.2, never a mixture. Stale-but-working beats
+  // fresh-and-broken, and with no skipWaiting() the swap happens on relaunch,
+  // when nothing is half-rendered.
+  //
+  // Cost, accepted: an update is invisible until every copy of the app is
+  // closed. That was already true of the JavaScript; it is now also true of
+  // the markup, so the two can no longer disagree. See PLAN.md section 6
+  // item 6 — an "update available" toast is the right next step, and is now
+  // the only way a long-lived client learns there is something newer.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() =>
-        caches.match('./index.html', { ignoreSearch: true })
-          .then((hit) => hit || caches.match('./'))
-      )
+      caches.match('./index.html', { ignoreSearch: true })
+        .then((hit) => hit || caches.match('./'))
+        .then((hit) => hit || fetch(request))
     );
     return;
   }

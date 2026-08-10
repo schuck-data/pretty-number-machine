@@ -1,7 +1,7 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.14.1 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.14.2 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
 **Last updated:** 2026-08-06 (rev 10 — pre-release control cleanup)
@@ -211,6 +211,64 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-10 rev 12** — v0.14.2. **The service worker could run two versions
+of the app at once, and v0.14.0 turned that from stale into fatal.**
+
+Reported from a phone: the live site showed the menu and the buttons but no
+figure, while the same build over LAN was fine. Reproduced immediately against
+the live origin.
+
+```
+caches: ["pnm-v0.13.0", "pnm-v0.14.1"]
+TypeError: Cannot set properties of null (setting 'min')
+```
+
+Navigations were **network-first** while `core/` and `modules/` were
+**cache-first**. So a returning visitor got the new `index.html` off the
+network and the old JavaScript out of whatever cache the active worker owned —
+and the v0.13.0 worker stays in control until every client closes, because
+there is no `skipWaiting()`. v0.14.0 deleted the `#dimension` slider, so the
+old `panel.js` hit `$('dimension').min` on markup that no longer had it,
+`initPanel()` threw, and the bootstrap died before `init(viewport)` ever ran.
+Static markup rendered; the renderer never started. No Physics or Lens sections
+either — those are injected by the code that died.
+
+The LAN build was fine precisely *because* it is plain HTTP: no secure context,
+no service worker, no cache, always coherent. The thing that made local testing
+trustworthy is the thing that hid this.
+
+**Fix: navigations are cache-first, from the same versioned cache as
+everything else.** The worker's generation now defines the whole app. A client
+runs entirely v0.14.1 or entirely v0.14.2, never a mixture. Stale-but-working
+beats fresh-and-broken, and with no `skipWaiting()` the swap lands on relaunch
+when nothing is half-rendered.
+
+This was latent from the day the service worker shipped (v0.7.0). §8 already
+warned that the worker "will serve you stale JavaScript", but framed it as a
+*development* nuisance. It was a production defect the whole time, and only a
+release that removed DOM could expose it. **Any deploy that changes markup the
+JS reaches for would have done the same** — which, per §7, is the exact hazard
+an installed TWA multiplies across every user at once.
+
+Rejected: a bootstrap watchdog that clears caches and reloads when boot fails.
+It would rescue clients already broken by this transition, but the structural
+fix prevents recurrence, the audience today is one person who can close the
+app, and a false positive on a slow phone would wipe the cache for no reason.
+
+**Consequence to accept, and it is now sharper.** An update is invisible until
+every copy is closed — previously true of the JavaScript, now also of the
+markup. §6 item 6 records an "update available — reload" toast as the answer if
+that ever bit; it is now the *only* way a long-lived client learns something
+newer exists. **Recommend building it before the store submission**, since a
+TWA user may keep the app open for weeks.
+
+**Verified**: fresh install lands on a single `pnm-v0.14.2` cache and boots
+with a canvas; a reload with the worker in control boots clean with all eight
+sections; and with the server killed and network confirmed unreachable by an
+uncached probe, the app still loads complete — canvas, eight sections, WebGL
+live, v0.14.2. Offline was the thing this change most risked breaking and it
+did not break.
 
 **2026-08-10 rev 11** — v0.14.1. Dazzle tuning against the live build, after
 the owner saw v0.14.0 in motion on a real screen — the two things rev 10 flagged
@@ -760,9 +818,15 @@ limit, not an app bug. Visual checks need a human at a real browser.
 - **A waiting service worker does not activate on reload.** Close every client
   and reopen, or you will conclude the update path is broken when it is not.
 - **The service worker will serve you stale JavaScript while you develop.**
-  Navigations are network-first so `index.html` looks fresh, but everything
-  under `core/` and `modules/` is cache-first. Bump `CACHE_VERSION` before
-  testing a change or you will debug code that is not running.
+  Everything is cache-first, including the navigation as of v0.14.2. Bump
+  `CACHE_VERSION` before testing a change, or you will debug code that is not
+  running. Navigations used to be network-first, which was worse than stale —
+  it let the new HTML meet the old JS and take the app down. See rev 12.
+- **A LAN-served build cannot reproduce a service-worker bug.** Plain HTTP to
+  an IP is not a secure context, so no worker registers and every load is
+  coherent by construction. That makes LAN excellent for testing app code and
+  useless for testing the update path. Anything about caching or versions has
+  to be checked against the real HTTPS origin.
 - **CSS transitions freeze in a non-compositing browser pane.** A transitioned
   property reports its *start* value forever, so `transform` reads as identity
   and a working slide-out looks broken. Set `transition: none` before
