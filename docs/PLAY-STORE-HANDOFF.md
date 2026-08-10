@@ -7,8 +7,9 @@ document covers publishing only.
 **Status:** 2026-08-10, **v0.14.2**. **Execution has started.** §4 steps 1–2 are
 done: the address is decided, and the D-U-N-S number was requested and **issued
 the same day** — it was expected to take up to 30 business days and did not
-(§3a). Step 3 is unblocked and next. Everything from step 3 onward is still a
-briefing. No Play Console account exists. No TWA has been built.
+(§3a). **Step 3 is done: the Play Console organisation account exists and its
+identity verification is in progress**, expected to take a few days. Everything
+from step 4 onward is still a briefing. No TWA has been built.
 
 *Third revision of 2026-08-10; git history has the earlier two. The route (§1)
 and the trap (§2) are otherwise unchanged. What moved in this one: §4 steps 1–2
@@ -269,8 +270,13 @@ new or reordered in this revision; they exist because of §3.
 2. ✅ **Request the D-U-N-S number** (§3a). **Issued 2026-08-10, same day.**
    The request form never offered a trade style, so the DBA still has to be
    added afterwards through D-U-N-S Manager (§3b).
-3. **Play Console organisation account.** $25 one time, plus identity and
-   business verification against the D-U-N-S record. **Unblocked 2026-08-10.**
+3. 🕐 **Play Console organisation account.** $25 one time, plus identity and
+   business verification against the D-U-N-S record. **Created 2026-08-10;
+   identity verification in progress.** The console shows an amber "Verify your
+   identity — your identity verification is in progress, please allow a few
+   days" alert. Verification required **uploading supporting documents**, not
+   just typing the D-U-N-S number, so have entity paperwork to hand before
+   starting rather than mid-form.
    *Recorded because it cost a wrong turn: the organisation signup form takes
    the D-U-N-S number as a required input, so this genuinely cannot be started
    before step 2 completes — tested, not assumed. An earlier draft claimed the
@@ -600,9 +606,15 @@ Stated plainly so nobody inherits a false certainty:
   The whole schedule hangs off this number, so find out early (§4 step 2).
 - **Low-end device performance**, for the app generally and Dazzle in
   particular. Never measured on anything but a Pixel 9.
-- **Only §4 steps 1–2 have been executed.** Everything from step 3 onward is
-  written from knowledge, not from having done it. Expect the console UI to have
-  moved.
+- **Only §4 steps 1–3 have been executed**, and step 3 only as far as
+  submission — verification has not yet come back. Everything from step 4 onward
+  is written from knowledge, not from having done it. Expect the console UI to
+  have moved.
+- **What can be done while verification is pending.** Unknown. Whether the
+  merchant/payments profile (step 5) or the price (step 7) can be set before
+  identity verification clears has not been tested. Do not assume it
+  parallelises — that assumption was already wrong once, at step 3. Look in the
+  console and record the answer here.
 
 Resolved since the previous revision, all verified 2026-08-10 and now stated as
 fact above: the 12-tester rule and why it does not bind (§5a); the target API
