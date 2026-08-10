@@ -6,6 +6,7 @@ import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { state, emit, getModules, HOT_KEYS } from './state.js';
+import { initDebugHud, sampleDebugHud } from './debug-hud.js';
 import {
   getVisibleNodes, getPrimeRGB, nodeColor, shouldShowNode,
   isPrimeNumber, primeFactorsOf, hueToRGB, SPHERE_R, SPACING_2D,
@@ -19,17 +20,18 @@ import {
   springPos,
 } from './positions.js';
 
-// === PARASTICHY LINE FADE ===
-// linewidth is in device pixels (worldUnits: false, resolution = the drawing
-// buffer), so 1 is already the thinnest a line can physically be — on a 3x DPR
-// phone that is a third of a CSS pixel. There is nothing below it. But a line
-// that thin still draws at full prime-colour brightness and reads as a bright
-// stroke rather than a fine one, so the thin end fades instead.
+// === PARASTICHY LINE VISIBILITY ===
 //
-// It fades toward the BACKGROUND, not toward grey. Desaturating would make the
-// line brighter on a near-black field, not fainter, and a desaturated 2-line
-// stops reading as red — the colour is the factorisation, so hue is the one
-// thing that must survive.
+// linewidth is in device pixels (worldUnits: false, resolution = the drawing
+// buffer). A very thin line still draws at full prime-colour brightness and
+// reads as a bright stroke rather than a fine one, so the thin end fades as
+// well as narrowing.
+//
+// It fades toward the BACKGROUND, not toward grey, and it brightens by scaling
+// the hue rather than blending toward white. Both for the same reason: the
+// colour IS the factorisation, so hue is the one thing that must survive at
+// either end of the range.
+//
 // ONE SLIDER, TWO REGIMES.
 //
 // `state.lineWidth` is no longer a thickness in pixels — it is a 0..12
@@ -83,6 +85,11 @@ function lineGlowAmount(v) {
   return Math.min((v - LINE_GLOW_FROM) / (LINE_GLOW_TO - LINE_GLOW_FROM), 1);
 }
 
+// Reused by the per-node position update in the animation loop. Module scope
+// rather than per-frame so it is allocated exactly once for the life of the
+// app. Never escapes that loop — see the comment at its use site.
+const _posScratch = new THREE.Vector3();
+
 // The camera's home. Named rather than written inline at construction, because
 // Reset now returns to it as well — two literals would have drifted apart the
 // first time either moved.
@@ -90,11 +97,6 @@ function lineGlowAmount(v) {
 // Was (8, 6, 10). Pushed out ~10% along the same view direction: the angle was
 // right, the figure just sat too large in the frame at load, with the outermost
 // nodes crowding the edge before the morph had even started travelling.
-// Reused by the per-node position update in the animation loop. Module scope
-// rather than per-frame so it is allocated exactly once for the life of the
-// app. Never escapes that loop — see the comment at its use site.
-const _posScratch = new THREE.Vector3();
-
 const HOME_CAM_POS = new THREE.Vector3(8.8, 6.6, 11);
 const HOME_CAM_TARGET = new THREE.Vector3(0, 0, 0);
 
@@ -520,11 +522,31 @@ export function buildScene() {
       });
       mesh = new THREE.Mesh(earthGeo, earthMat);
     } else {
-      // Normal node
-      const mat = new THREE.MeshStandardMaterial({
+      // Normal node.
+      //
+      // Lambert, not Standard. This is the ONLY material in the scene that gets
+      // instantiated a thousand times, so it is the only one where shader cost
+      // is worth thinking about at all.
+      //
+      // MeshStandardMaterial runs a full physically-based lighting model —
+      // roughness, metalness, an energy-conserving BRDF, image-based lighting
+      // paths. All of that exists to make surfaces read as a *material*: metal
+      // against ceramic against skin. These are flat coloured spheres two pixels
+      // across. None of that machinery is doing visible work, and every fragment
+      // pays for it.
+      //
+      // Lambert keeps what actually matters here: it responds to the ambient and
+      // directional lights so the spheres still read as round rather than as
+      // flat discs, and it supports `emissive`, which is what the prime glow is
+      // built on. What is lost is the specular highlight, so the nodes are a
+      // touch more matte. That is a deliberate, visible trade — see
+      // docs/V1-PLAN.md item 3.
+      //
+      // The sun and the earth above stay Standard on purpose. There are two of
+      // them, they are large enough for the shading to be seen, and two draw
+      // calls of anything cost nothing.
+      const mat = new THREE.MeshLambertMaterial({
         color: baseColor.clone(),
-        roughness: 0.4,
-        metalness: 0.1,
         emissive: (isPrime && state.primeGlow) ? baseColor.clone().multiplyScalar(0.3) : new THREE.Color(0, 0, 0),
         emissiveIntensity: (isPrime && state.primeGlow) ? state.primeGlowIntensity : 0,
       });
@@ -568,10 +590,18 @@ export function buildScene() {
       // Math primes not in selection get prime-sized, light grey
       const geo = mathPrime ? primeGeo : bgGeo;
       const bgColor = mathPrime ? new THREE.Color(0.16, 0.16, 0.19) : new THREE.Color(0.15, 0.15, 0.18);
-      const mat = new THREE.MeshStandardMaterial({
+      // Lambert for the same reason as the selected nodes below — and this loop
+      // matters MORE, not less. It runs once per integer in range, so "All
+      // Integers" at N=1000 builds a thousand of these, and Dazzle switches it
+      // on. Roughness varied by 0.2 between two shades of near-black grey,
+      // which is not a difference anybody has ever seen.
+      //
+      // These cannot share a material despite coming in only two colours: the
+      // colour-drift pass recolours every node in nodeData individually, and
+      // background nodes are in nodeData. Sharing would make the whole field
+      // change as one. Checked rather than assumed.
+      const mat = new THREE.MeshLambertMaterial({
         color: bgColor,
-        roughness: mathPrime ? 0.6 : 0.8,
-        metalness: 0.0,
         emissive: (mathPrime && state.primeGlow) ? bgColor.clone().multiplyScalar(0.3) : new THREE.Color(0, 0, 0),
         emissiveIntensity: (mathPrime && state.primeGlow) ? state.primeGlowIntensity : 0,
       });
@@ -1031,6 +1061,11 @@ export function buildScene() {
     }
 
     threeRenderer.render(threeScene, threeCamera);
+
+    // After render(), never before: renderer.info is populated BY the draw, so
+    // sampling first would report the previous frame's counts and quietly be
+    // off by one every time.
+    sampleDebugHud(threeRenderer, { nodes: nodeData.length, N: resolveN() });
   }
   animate();
 
@@ -1130,6 +1165,9 @@ export function init(el) {
   threeRenderer = renderer;
 
   installContextLossHandlers(renderer.domElement);
+
+  // No-op unless ?debug is in the URL.
+  initDebugHud();
 
   // Camera
   const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 500);
