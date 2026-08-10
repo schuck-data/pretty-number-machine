@@ -11,8 +11,9 @@ account exists. No TWA has been built.
 
 *Third revision of 2026-08-10; git history has the earlier two. The route (§1)
 and the trap (§2) are otherwise unchanged. What moved in this one: §4 steps 1–2
-are marked done and step 3 now says account creation need not wait on D&B,
-because the verification deadline is self-chosen and extendable. The trade-style
+are marked done, and step 3 is now marked hard-blocked on the D-U-N-S number —
+tested, not assumed, after a wrong claim to the contrary in an earlier draft of
+this same revision. The D&B wait is the entire critical path. The trade-style
 item slipped to later and is tracked in §10 so it does not vanish. The home
 address is recorded as knowingly public (§3c). And the build tool flipped from
 PWABuilder to Bubblewrap on evidence (§1, §5b) — that was an open question in
@@ -262,11 +263,17 @@ new or reordered in this revision; they exist because of §3.
    added afterwards through D-U-N-S Manager (§3b).
 3. **Play Console organisation account.** $25 one time, plus identity and
    business verification against the D-U-N-S record.
-   **This does not have to wait for the number.** You choose your own
-   verification deadline at signup, get a 60-day window before it in which to
-   verify, and can extend by 90 days if the D&B wait runs long. Set it
-   generously and let the two waits overlap rather than run end to end.
-   Sign in as `dakota@schuckdata.com` *before* starting — the account binds
+   ⛔ **This is hard-blocked on step 2 and cannot be started early.** *Tested
+   2026-08-10 by attempting it: the organisation signup form requires the
+   D-U-N-S number as an input, so there is no account to create until D&B
+   issues one.* An earlier draft of this revision claimed the two waits could
+   overlap, on the strength of a Google help page about self-chosen, extendable
+   verification deadlines. That page describes accounts that **already exist**
+   — the pre-September-2023 cohort being retro-verified — not new organisation
+   signup. It does not apply here. **The D-U-N-S wait is the whole critical
+   path; nothing account-side parallelises with it.**
+   When the number does arrive: sign in as `dakota@schuckdata.com` *before*
+   starting — the account binds
    permanently to whichever identity creates it, and the Workspace admin
    identity (`ds89holdco@gmail.com`) is the wrong one (§3d).
 4. **Add a second Admin user** (§3d).
@@ -595,8 +602,9 @@ Stated plainly so nobody inherits a false certainty:
 Resolved since the previous revision, all verified 2026-08-10 and now stated as
 fact above: the 12-tester rule and why it does not bind (§5a); the target API
 level requirement (§5b); that the developer name may differ from the verified
-legal name (§3b); that free → paid is a one-way door (§3c); that the Play
-Console verification deadline is self-chosen and extendable, so account creation
-need not wait on D&B (§4 step 3); that the manifest declares `orientation: any`
+legal name (§3b); that free → paid is a one-way door (§3c); that organisation
+signup is hard-blocked on the D-U-N-S number and cannot be started in parallel,
+tested rather than assumed (§4 step 3); that the manifest declares
+`orientation: any`
 and is therefore unaffected by the API 36 orientation change (§0); and that the
 build tool is Bubblewrap rather than PWABuilder (§1, §5b).
