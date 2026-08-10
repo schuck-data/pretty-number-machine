@@ -4,15 +4,17 @@
 **Read `PLAN.md` (alongside this file) first** for the charter and history. This
 document covers publishing only.
 
-**Status when written:** 2026-08-10, **v0.14.2**. Nothing in §§3–8 has been
-executed. No Play Console account exists. No TWA has been built. This is a
-briefing, not a progress report.
+**Status when written:** 2026-08-10, **v0.14.2**. Nothing in §§4–9 has been
+executed. No Play Console account exists. No D-U-N-S number has been requested.
+No TWA has been built. This is a briefing, not a progress report.
 
-*Supersedes the 2026-08-06 / v0.13.0 revision; git history has that version. The
-route and the trap are unchanged. What moved: two open questions are now
-answered with dates, one hazard was factually wrong, the store copy and
-screenshot plan changed with the Dazzle feature, and there is a new performance
-risk and a new pre-submission item.*
+*Supersedes the earlier 2026-08-10 / v0.14.2 revision; git history has that
+version. The route (§1) and the trap (§2) are unchanged. What moved: three
+account-level decisions were made and are recorded in the new §3 — organisation
+account, DBA as the developer name, and a $0.99 price. All three change the
+order of work, so §4 was rewritten and everything after it renumbered by one.
+§5a now says the tester requirement does not apply, and explains what would
+bring it back.*
 
 ---
 
@@ -57,7 +59,7 @@ Two tools do the wrapping:
 - **Bubblewrap** (`@bubblewrap/cli`) — command line, needs Node, a JDK, and the
   Android SDK. More control, more setup.
 
-**Recommendation: PWABuilder**, but see §4 — the target API requirement may
+**Recommendation: PWABuilder**, but see §5 — the target API requirement may
 decide this for you.
 
 ---
@@ -129,58 +131,178 @@ tester at
 
 ---
 
-## 3. Sequence
+## 3. The account: organisation, the DBA, and the paid-app trap
 
-Order matters — later steps consume outputs from earlier ones.
+**Decided 2026-08-10.** This section is new. It changes the order of work in
+§4 and it contains a one-way door. Read it before opening Play Console.
 
-1. **Play Console account.** $25 one time, plus identity verification. See §4
-   for the schedule risk hiding in this step.
-2. **Decide the package name**, e.g. `com.schuckdata.pnm`. **This is permanent.**
-   It cannot be changed after publishing, ever.
-3. **Build the update prompt** (§6). Small, self-contained, and much easier
-   before submission than after.
-4. **Low-end device check** (§7). Also easier before than after.
-5. **Generate the bundle** targeting **API 36** — see §4. Start URL
-   `https://schuckdata.com/pretty-number-machine/`.
-6. **Enrol in Play App Signing** (the default). Google holds the app signing
-   key; you hold an upload key.
-7. **Write `assetlinks.json`** using the **SHA-256 fingerprint of the app
-   signing certificate that Play Console shows you** — not the local upload
-   key, unless you deliberately declined Play App Signing. This is the second
-   most common failure after §2. Include both if unsure; the file takes an array.
-8. **Publish that file** to the user-site repo per §2, and verify with curl.
-9. **Store listing** — assets and copy, §5.
-10. **Data Safety form** — declare no collection, no sharing. True today.
-11. **Content rating questionnaire** — a mathematics visualiser; expect the
-    lowest rating everywhere.
-12. **Internal test → closed test → production**, subject to §4.
+### 3a. Organisation account, not personal
+
+The account will be an **organisation** account for Schuck Data, created under
+`dakota@schuckdata.com` — a Google Workspace identity on the `schuckdata.com`
+domain, administered from `ds89holdco@gmail.com`.
+
+The previous revision recommended a personal account, on the grounds that
+D-U-N-S paperwork costs more time than the testing route. That trade was
+reweighed and reversed: an organisation account is **exempt from the
+12-tester / 14-day rule** (§5a), and it is the correct long-term home for
+anything Schuck Data publishes.
+
+**Consequence: a D-U-N-S number is required, and it is now the long pole.**
+Free requests can take up to **30 business days**; expedited is about eight, for
+a fee. Look the entity up first — it may already have one — then request.
+
+**The legal name and address in the Google payments profile must match the Dun
+& Bradstreet record.** Mismatch is the standard verification rejection. Decide
+the address once and use it identically in both places.
+
+### 3b. The DBA is the developer name, the legal name is not
+
+The business trades under a **Pennsylvania fictitious name (DBA)** that differs
+from its registered legal name. The store should show the DBA. That is
+supported, and it needs no workaround — these are four separate fields:
+
+| Field | Value | Public? |
+|---|---|---|
+| Play Console **developer name** | the DBA | **Yes** — shown under the app title |
+| Payments profile **legal name + address** | registered legal name | Address yes, see §3c |
+| D&B record **legal name** | registered legal name | No |
+| D&B record **trade style** | the DBA | No |
+
+Google's documentation states the developer name "can differ from legal
+organization name." The D-U-N-S ↔ legal-name match therefore happens entirely
+inside verification and never reaches the store page.
+
+Adding the DBA as a **trade style** on the D&B record is free for US non-public
+companies through D-U-N-S Manager. Google does not require it. Do it anyway —
+it puts the DBA and the legal entity on one record, which is cheap insurance if
+a reviewer ever asks why the store name differs from the verified name. Do it
+while requesting the number, not after.
+
+Before committing to the name: **developer names cannot be identical across
+accounts.** Search Google Play for the DBA first.
+
+### 3c. Charging 99¢ — and the door that only opens one way
+
+**Decided: the app ships paid at $0.99. The web version at
+`schuckdata.com/pretty-number-machine/` stays free and public.**
+
+> ⚠️ **Once an app has been offered for free, it can never be changed to paid.**
+> Paid → free works. Free → paid does not. The only remedy is a new listing with
+> a **new package name** — and the package name is permanent (§8). A mistake
+> here does not cost a setting, it costs the listing.
+
+So the price must be set **before the first production release**, and a price
+cannot be set at all until a **merchant account exists**. Merchant setup is
+therefore on the critical path, not a late detail — this is the main reason §4
+was reordered. Test tracks distribute free to testers regardless of price, so
+internal and closed testing do not trip the lock; set the price early anyway,
+because there is no upside to waiting.
+
+Three further consequences of charging:
+
+- **The legal address becomes public.** Merchant accounts selling paid apps
+  display the legal address on the store listing. Free apps do not. If the
+  fictitious-name registration uses a home address, that address goes on Google
+  Play. Changing it after verification is a re-verification, not an edit — so
+  decide it before step 1 of §4, not after.
+- **A tax interview is required** before payouts release: a W-9 against the
+  entity's EIN, plus a payout bank account.
+- **The economics.** Google's fee structure changed on **2026-06-30**; service
+  fee and billing fee are now charged separately in the US, UK and EEA.
+
+  | | |
+  |---|---|
+  | List price | $0.99 |
+  | Service fee, first $1M/year | 10% |
+  | Billing fee, Google Play billing | 5% |
+  | **Net per sale** | **~$0.84** |
+
+  Sales tax and VAT are collected and remitted by Google in most jurisdictions.
+
+**The accepted trade, recorded so nobody re-litigates it.** A buyer can reach
+the identical app free in a browser, and Play's two-hour automatic refund makes
+acting on that discovery frictionless. This is a refund-rate and review-score
+risk, not a policy violation — paid wrappers are permitted. It was weighed on
+2026-08-10 and accepted, deliberately: **the free web version stays up.** Do not
+quietly take it down, gate it, or degrade it to protect the paid listing. That
+was not the decision.
+
+### 3d. Do not lock yourself out
+
+Play Console binds permanently to the account that creates it, and owner
+transfer is a Google support process rather than a settings change. Create it as
+`dakota@schuckdata.com`, then **immediately add a second user with Admin
+permissions** as a recovery path, so a Workspace lapse or a domain problem does
+not take the listing with it.
 
 ---
 
-## 4. Two dated deadlines — both verified 2026-08-10
+## 4. Sequence
 
-### 4a. The tester requirement
+Order matters — later steps consume outputs from earlier ones. Steps 1–7 are
+new or reordered in this revision; they exist because of §3.
+
+1. **Decide the public-facing address** (§3c). It propagates to D&B, the
+   payments profile, and the public store listing. Cheapest to get right first.
+2. **Request the D-U-N-S number** (§3a). The long pole — up to 30 business days.
+   Look up the entity first in case it already has one. Add the DBA as a trade
+   style in the same visit (§3b).
+3. **Play Console organisation account.** $25 one time, plus identity and
+   business verification against the D-U-N-S record.
+4. **Add a second Admin user** (§3d).
+5. **Merchant / payments profile**, tax interview, payout bank account (§3c).
+6. **Decide the package name**, e.g. `com.schuckdata.pnm`. **This is permanent.**
+   It cannot be changed after publishing, ever.
+7. **Set the app to Paid at $0.99 — before any production release** (§3c).
+8. **Build the update prompt** (§7). Small, self-contained, and much easier
+   before submission than after.
+9. **Low-end device check** (§8). Also easier before than after.
+10. **Generate the bundle** targeting **API 36** — see §5b. Start URL
+    `https://schuckdata.com/pretty-number-machine/`.
+11. **Enrol in Play App Signing** (the default). Google holds the app signing
+    key; you hold an upload key.
+12. **Write `assetlinks.json`** using the **SHA-256 fingerprint of the app
+    signing certificate that Play Console shows you** — not the local upload
+    key, unless you deliberately declined Play App Signing. This is the second
+    most common failure after §2. Include both if unsure; the file takes an array.
+13. **Publish that file** to the user-site repo per §2, and verify with curl.
+14. **Store listing** — assets and copy, §6.
+15. **Data Safety form** — declare no collection, no sharing. True today.
+16. **Content rating questionnaire** — a mathematics visualiser; expect the
+    lowest rating everywhere.
+17. **Internal test → closed test → production**, subject to §5.
+
+---
+
+## 5. Two dated deadlines — both verified 2026-08-10
+
+### 5a. The tester requirement — does not apply, but know why
 
 **Confirmed still current.** New **personal** developer accounts created after
 **2023-11-13** must run a closed test with at least **12 testers who stay opted
 in for 14 continuous days** before applying for production access.
 
-So the gap between "app is ready" and "app is public" is **two weeks plus
-twelve real humans**, not an afternoon. If it applies, recruiting testers is the
-long pole and should start *before* the build work.
+**Organisation accounts are exempt**, and §3a chose an organisation account
+partly for this reason. The two-weeks-plus-twelve-humans gap therefore does
+*not* apply here.
 
-Organisation accounts are exempt but need a D-U-N-S number, which costs more in
-time and paperwork than the testing route for a project this size.
+It applies again the moment the organisation route fails. If verification
+cannot be completed — no D-U-N-S, a name mismatch, an entity problem — and the
+account falls back to personal, this requirement returns and becomes the long
+pole. Do not plan as though it is impossible; plan as though it is contingent.
 
-### 4b. Target API level — this one has a date on it
+### 5b. Target API level — this one has a date on it
 
 From **2026-08-31**, new submissions must target **Android 16 (API 36)**. An
 extension to 2026-11-01 can be requested via a form in Play Console.
 
-**This almost certainly binds you.** Work the timeline backwards: account
-setup takes days, then 14 days of closed testing, then production review. A
-submission started now lands *after* 31 August. **Target API 36 from the very
-first upload** rather than shipping 35 and re-cutting.
+**This almost certainly binds you.** Work the timeline backwards: the D-U-N-S
+request alone can take up to 30 business days (§3a), then account verification,
+then merchant setup, then production review. A submission begun on 2026-08-10
+lands well *after* 31 August. **Target API 36 from the very first upload**
+rather than shipping 35 and re-cutting. The 2026-11-01 extension is the
+realistic fallback if the D-U-N-S wait runs long.
 
 **This may decide the tool.** If PWABuilder's output cannot be set to API 36,
 Bubblewrap takes an explicit `targetSdkVersion` in `twa-manifest.json`. Check
@@ -188,7 +310,7 @@ before committing to PWABuilder.
 
 ---
 
-## 5. Assets and copy
+## 6. Assets and copy
 
 ### Have
 
@@ -246,6 +368,9 @@ patterns you can see.
 
 ### Draft privacy policy
 
+Unaffected by the move to a paid app: purchases are handled entirely by Google
+Play, and the app itself never sees a transaction.
+
 ```
 Privacy Policy — Pretty Number Machine
 
@@ -268,10 +393,9 @@ Last updated: [DATE]
 
 ---
 
-## 6. Build the update prompt before submitting
+## 7. Build the update prompt before submitting
 
-This is new in this revision, and it is the one code change worth making before
-the store.
+This is the one code change worth making before the store.
 
 As of v0.14.2 the service worker serves **everything** cache-first, including
 the navigation. That was a bug fix, not a preference — navigations used to be
@@ -295,7 +419,7 @@ scene is the problem that rule exists to prevent.
 
 ---
 
-## 7. Hazards specific to this app
+## 8. Hazards specific to this app
 
 - **Dazzle is a one-tap path to the heaviest scene the app can draw.** 1001
   individual meshes at node size 2, with node pulse, line pulse, and colour
@@ -305,20 +429,19 @@ scene is the problem that rule exists to prevent.
   item 3 records that low-end Android performance is still unknown and that the
   Pixel 9 flatters the app. **Test Dazzle on something slow before submitting.**
   If it struggles, the cheap levers are a lower N or gating colour drift above
-  a node count.
+  a node count. Charging money raises the stakes: a paying buyer who sees it
+  stutter has a refund button two taps away (§3c).
 
 - **The TWA points at the live site.** Publishing the app does not freeze the
   web app. There is no staging environment. Treat `main` as production from the
   day the app ships.
 
 - **A bad deploy no longer breaks installed copies instantly — but only by
-  about one relaunch.** *(Corrected in this revision; the previous draft said
-  "immediately", which was true only while navigations were network-first.)*
-  Since v0.14.2 an installed copy keeps running its cached generation until the
-  new worker activates, which needs every copy closed. So a bad push reaches
-  users roughly one app-lifecycle later. That is a small revert window you did
-  not previously have. The inverse also holds: **a fix does not reach them
-  immediately either.**
+  about one relaunch.** Since v0.14.2 an installed copy keeps running its cached
+  generation until the new worker activates, which needs every copy closed. So a
+  bad push reaches users roughly one app-lifecycle later. That is a small revert
+  window you did not previously have. The inverse also holds: **a fix does not
+  reach them immediately either.**
 
 - **`CACHE_VERSION` matters more after launch, not less.** Bump it in `sw.js`
   on every deploy that changes any precached file. Skipping it does not merely
@@ -341,35 +464,58 @@ scene is the problem that rule exists to prevent.
   minutes, were cancelled, and errored, with nothing wrong in the repo. Check
   `githubstatus.com` before debugging a deploy.
 
-- **Package name is permanent.** Decide deliberately.
+- **Two permanent decisions, neither reversible.** The package name, and
+  free-versus-paid (§3c). Both are decided once and live with the listing.
+
+- **The free web version is deliberate, not an oversight.** §3c records the
+  reasoning. If a future reader wonders why a paid app is also free on the web,
+  the answer is that it was weighed and accepted — do not "fix" it.
 
 - **Do not add analytics to satisfy a curiosity about usage.** It converts the
   privacy policy and Data Safety form from "we collect nothing" into a
   maintained claim. `PLAN.md` §6 item 8 records this tension honestly — the
-  reach gate has no instrument, and that is a known, accepted trade.
+  reach gate has no instrument, and that is a known, accepted trade. Sales
+  figures in Play Console are now a partial instrument, and they arrive without
+  costing anything on the privacy side. Use those instead.
 
 ---
 
-## 8. What only Dakota can do
+## 9. What only Dakota can do
 
 Do not attempt these on his behalf:
 
+- Requesting the D-U-N-S number and anything else involving Dun & Bradstreet
 - Creating and paying for the Play Console account
-- Identity verification
+- Identity and business verification
+- The merchant/payments profile, the tax interview (W-9), and the payout bank
+  account
+- Setting the price
 - Accepting Play policies and the developer agreement
 - Anything involving credentials, keys, or payment details
 - Taking device screenshots
-- Recruiting testers if §4a applies
+- Recruiting testers, in the contingency where §5a comes back into play
 
 ---
 
-## 9. Definition of done
+## 10. Definition of done
+
+**Account and money**
+
+- [ ] D-U-N-S number issued, with the DBA recorded as a trade style (§3b)
+- [ ] Payments profile legal name and address match the D&B record exactly
+- [ ] Organisation account verified — not fallen back to personal (§5a)
+- [ ] Second user added with Admin permissions (§3d)
+- [ ] Merchant account live, tax interview complete, payout bank account attached
+- [ ] **App set to Paid at $0.99 before any production release** (§3c)
+- [ ] Developer name on the listing shows the DBA, not the legal name
+
+**Build and listing**
 
 - [ ] `https://schuckdata.com/.well-known/assetlinks.json` returns 200 with the
       correct package name and SHA-256 fingerprint
-- [ ] Bundle targets API 36 (§4b)
-- [ ] Update prompt shipped (§6)
-- [ ] Dazzle checked on a low-end device (§7)
+- [ ] Bundle targets API 36 (§5b)
+- [ ] Update prompt shipped (§7)
+- [ ] Dazzle checked on a low-end device (§8)
 - [ ] App installs from an internal test track
 - [ ] App launches **with no address bar** — this is the proof §2 worked
 - [ ] App works in airplane mode after first launch
@@ -377,23 +523,31 @@ Do not attempt these on his behalf:
       descriptions, privacy policy URL
 - [ ] Data Safety form submitted declaring no collection
 - [ ] Content rating received
-- [ ] Production release live, or closed testing under way per §4a
+- [ ] Production release live
 
 ---
 
-## 10. Things this document is not sure about
+## 11. Things this document is not sure about
 
 Stated plainly so nobody inherits a false certainty:
 
 - **Whether PWABuilder can target API 36.** Not tested. If it cannot,
-  Bubblewrap can. Verify before choosing the tool (§4b).
+  Bubblewrap can. Verify before choosing the tool (§5b).
 - **Whether PWABuilder's generated manifest matches ours.** It reads the live
   manifest, but confirm `start_url`, `scope` and orientation survive into the
   Android manifest before publishing.
+- **Whether a paid TWA behaves identically to a free one.** No reason to expect
+  otherwise — the purchase gates the install, not the content — but it has not
+  been observed. Confirm on the internal test track before production.
+- **How long the D-U-N-S request actually takes for this entity.** "Up to 30
+  business days" is the published range, not a prediction. It may be instant.
+  The whole schedule hangs off this number, so find out early (§4 step 2).
 - **Low-end device performance**, for the app generally and Dazzle in
   particular. Never measured on anything but a Pixel 9.
-- **Nothing in §§3–9 has been executed.** Every step is written from knowledge,
+- **Nothing in §§4–10 has been executed.** Every step is written from knowledge,
   not from having done it. Expect the console UI to have moved.
 
-Resolved since the previous revision, both verified 2026-08-10 and now stated
-as fact in §4: the 12-tester rule, and the target API level requirement.
+Resolved since the previous revision, all verified 2026-08-10 and now stated as
+fact above: the 12-tester rule and why it does not bind (§5a); the target API
+level requirement (§5b); that the developer name may differ from the verified
+legal name (§3b); and that free → paid is a one-way door (§3c).
