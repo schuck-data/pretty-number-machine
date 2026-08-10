@@ -57,10 +57,8 @@ export const DEFAULT_CONFIG = {
   colorScheme: 'rgb',
   nodeSize: 1.0,
   lineWidth: 2,
-  labelSize: 0.6,
   showNodes: true,
   showCurves: true,
-  showLabels: false,
   showAllIntegers: false,
   showZero: true,
   showOne: true,
@@ -78,7 +76,12 @@ export const DEFAULT_CONFIG = {
   // the transport's play/pause governs motion via `paused`. Kept as a key
   // because the render loop still gates on it.
   shapeDrift: true,
-  shapeDriftSpeed: 0.1,
+  // 20% above the original 0.1. The dwell at each keyframe is a fixed 2s timer
+  // in the render loop, independent of this, so the morph travels faster
+  // between shapes while still lingering on each one for the same beat.
+  // `SPEED_DEFAULT` in core/transport.js must match — it is the hinge the
+  // handle's speed mapping is centred on.
+  shapeDriftSpeed: 0.12,
   colorDrift: false,
   colorDriftSpeed: 1.0,
   autoRotate: true,

@@ -60,7 +60,17 @@ function getMouseNDC(e) {
 function onPointerDown(e) {
   if (!mod.enabled || !touchEnabled) return;
   if (e.button !== 0) return; // only left-click triggers drag
-  if (state.paused) return;
+  // Pause deliberately does NOT block dragging. It holds the figure still —
+  // the morph, the rotation, the pulse — and a held-still figure is the one
+  // you most want to take hold of and pull about. The simulation loop below
+  // was never pause-gated; only starting a drag was, so pausing left the
+  // nodes looking grabbable and inert.
+  //
+  // Nothing else needs to change for this to work: while paused the dimension
+  // is fixed, so interpolatedPos() returns stable rest positions and the
+  // renderer's `dim !== lastDim` guard skips its own position writes. Physics
+  // owns the meshes outright — more cleanly than when the morph is running.
+  //
   // The lens turns this off entirely. Under the classroom layer a tap means
   // "tell me about this number", and a drag that flings nodes out of position
   // would contradict the labels sitting next to them.

@@ -24,6 +24,12 @@ const mouse = new THREE.Vector2();
 
 let tooltipEl = null;
 let tooltipVisible = false;
+// What `paused` was before the tooltip forced it on. The tooltip used to clear
+// paused on hide no matter what, so pausing deliberately and then right-clicking
+// a node to read it resumed the animation the moment you let go — the pause was
+// silently spent by the act of inspecting something. Harmless when nothing else
+// happened while paused; not harmless now that physics is draggable there.
+let pausedBeforeTooltip = false;
 let cameraRef = null;
 let rendererEl = null;
 let nodesRef = [];
@@ -76,6 +82,10 @@ function showTooltip(html, x, y) {
   tooltipEl.style.left = tx + 'px';
   tooltipEl.style.top = ty + 'px';
   tooltipEl.style.opacity = '1';
+  // Captured only on the transition into visible. Re-showing over an already
+  // open tooltip — dragging from node to node — would otherwise record the
+  // forced `true` and lose the original state.
+  if (!tooltipVisible) pausedBeforeTooltip = state.paused;
   tooltipVisible = true;
   state.paused = true;
 }
@@ -84,7 +94,7 @@ function hideTooltip() {
   if (tooltipEl) tooltipEl.style.opacity = '0';
   if (tooltipVisible) {
     tooltipVisible = false;
-    state.paused = false;
+    state.paused = pausedBeforeTooltip;
   }
 }
 
@@ -333,8 +343,11 @@ const mod = {
   name: 'info',
   label: 'Info',
   enabled: true,
-  insertBefore: 'section-appearance',
-  hint: 'Right-click a node or line for mathematical info',
+  // No panel section. The module has no controls — its section was a header
+  // over one line of hint text — and both of its doors are on the canvas:
+  // right-click here, and tap-inside-the-lens via showInfoAt(). The module
+  // itself stays registered and fully live; only the UI section is gone.
+  hidden: true,
   controls: [],
 
   init(ctx) {

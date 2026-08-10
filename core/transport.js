@@ -17,6 +17,7 @@
 
 import { state } from './state.js';
 import { update } from './renderer.js';
+import { setDimension } from './panel.js';
 import { getMinDim, getMaxDim } from './positions.js';
 
 // Pointer slop below which a press counts as a tap rather than a drag. Without
@@ -28,7 +29,7 @@ const TAP_SLOP_PX = 4;
 // removed — it just moved onto the thing it controls.
 const SPEED_MIN = 0.05;
 const SPEED_MAX = 2.0;
-const SPEED_DEFAULT = 0.1;     // must match DEFAULT_CONFIG.shapeDriftSpeed
+const SPEED_DEFAULT = 0.12;    // must match DEFAULT_CONFIG.shapeDriftSpeed
 const SPEED_TRAVEL_PX = 120;   // full range top to bottom
 const SPEED_LIFT_PX = 30;      // how far the handle itself visibly moves
 
@@ -98,13 +99,13 @@ function showSpeedReadout(show) {
   }
 }
 
-// Route every scrub through the real dimension slider so panel.js stays the
-// single owner of what a dimension change means.
+// Route every scrub through panel.js so it stays the single owner of what a
+// dimension change means — keyframe stickiness, the pause-on-manual-change
+// rule, and the state write all live there. This used to go via the #dimension
+// slider's input event; the slider is gone with the Shape section, the rule is
+// now a plain exported function, and the DOM is out of the middle of it.
 function scrubTo(clientX) {
-  const slider = document.getElementById('dimension');
-  if (!slider) return;
-  slider.value = dimensionFromClientX(clientX);
-  slider.dispatchEvent(new Event('input', { bubbles: true }));
+  setDimension(dimensionFromClientX(clientX));
 }
 
 function onPointerDown(e) {
@@ -135,8 +136,7 @@ function onPointerDown(e) {
     }
 
     if (axis === 'x') {
-      if (!state.paused) update({ paused: true });   // scrubbing implies holding
-      scrubTo(ev.clientX);
+      scrubTo(ev.clientX);      // setDimension() pauses — scrubbing implies holding
     } else {
       // Vertical only adjusts speed, and deliberately does not pause: the
       // point is to watch the morph change pace while it is still running.
@@ -164,8 +164,7 @@ function onPointerDown(e) {
 function onTrackDown(e) {
   if (e.target === button) return;
   e.preventDefault();
-  if (!state.paused) update({ paused: true });
-  scrubTo(e.clientX);
+  scrubTo(e.clientX);           // setDimension() pauses
   renderPosition();
   renderButtonState();
 }

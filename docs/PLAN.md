@@ -1,10 +1,10 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.13.0 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.14.0 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
-**Last updated:** 2026-08-06 (rev 9 — lens refinements)
+**Last updated:** 2026-08-06 (rev 10 — pre-release control cleanup)
 
 ---
 
@@ -52,10 +52,10 @@ pnm/
 │   ├── state.js         2 KB   event bus, module registry, DEFAULT_CONFIG, HOT_KEYS
 │   ├── math.js          8 KB   FIRST_PRIMES, getPrimeRGB
 │   ├── positions.js     5 KB   getShapes, getMaxDim, getMinDim
-│   ├── panel.js        21 KB   UI construction + state sync
-│   ├── renderer.js     34 KB   Three.js scene, buildScene, update, resolveN
+│   ├── panel.js        21 KB   UI construction + state sync; exports setDimension
+│   ├── renderer.js     34 KB   Three.js scene, buildScene, update, resetMorph
 │   ├── sheet.js         4 KB   phone bottom-sheet state + drag-to-resize
-│   └── transport.js     5 KB   play/pause playhead, scrubs the shape morph
+│   └── transport.js     5 KB   play/pause playhead, scrubs via panel.setDimension
 ├── modules/
 │   ├── physics.js      17 KB   registered
 │   ├── info.js         10 KB   registered; exports showInfoAt/hideInfo
@@ -211,6 +211,116 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-06 rev 10** — v0.14.0. Thirteen owner-requested edits ahead of the
+Play submission. Mostly small, but three were bugs wearing feature requests.
+
+**The bugs.**
+
+1. **Reset did not reset the hot keys.** `resetToDefaults()` repaints every
+   control then calls `scheduleRebuild()`, which by design reads only the
+   *cold* keys — the ones needing a scene rebuild. So every hot control was
+   corrected in the UI and never written to state. `colorDrift`,
+   `colorDriftSpeed`, `pulse`, `pulseSpeed`, `linePulse`, `autoRotate` and
+   `driftSpeed` all survived a Reset: the toggle went off and the effect kept
+   running. Fixed by pushing one `update()` built from `HOT_KEYS` ∩
+   `DEFAULT_CONFIG`, so a hot key added later is covered for free rather than
+   needing a new literal in a list of thirty.
+2. **Reset did not return the shape.** It always set `dimension` to 0, but the
+   morph keeps `morphPos` in renderer module scope and only re-seeds it when
+   `morphActive` is false. It was still true, so the next frame overwrote
+   `state.dimension` from the stale position and the figure snapped back to
+   wherever it had drifted. New exported `resetMorph()`. Reset was working; the
+   morph was undoing it one frame later.
+3. **Physics never came back.** Crossing N > 1000 unchecks Touch and Collision
+   *and dispatches change*, which sets the module's own `touchEnabled` /
+   `collisionEnabled` false. Coming back under the cap re-enabled the module and
+   the inputs but never re-checked the boxes or re-ran `onChange`, so both flags
+   stayed false and the springs were never rebuilt — physics returned dead and
+   stayed dead until a manual toggle. Now restored on the capped→uncapped
+   transition only, so it cannot overwrite a deliberate choice on every rebuild.
+
+**Parastichy lines fade instead of thinning.** The request was for less
+presence at the thinnest setting. Thickness 1 is already the floor —
+`LineMaterial` with `worldUnits: false` measures in *device* pixels against the
+drawing buffer, so at 3× DPR it is a third of a CSS pixel and there is nothing
+below it. The lines now fade toward the **background** below thickness 3.
+Deliberately not desaturation, which was the first instinct: on a near-black
+field desaturating moves a colour toward grey, which is *brighter*, and a
+desaturated 2-line stops reading as red. Hue is the content here. Composition
+is handled by a per-line `liveColor` that colour drift writes to, with the fade
+applied once at the end of the frame — lerping `material.color` in place would
+compound and walk every line into the background.
+
+**Lens labels no longer have a cliff.** The old rule blanked every label above
+150 nodes. Labels now show at every N and are thinned by screen-space
+occupancy: a 46×14 px grid, first label into a cell wins, ascending `n` so the
+smaller number survives a collision. Single-cell occupancy rather than a radius
+scan — one Set lookup per node instead of a scan over everything already
+placed. Measured at N=10000 / 7336 nodes: **1.93 ms per label pass, no
+colliding pairs at any N tested.** Also switched from `getWorldPosition()` to
+reading `mesh.position` directly; nodes are added straight to the scene with no
+parent transform, so the values are identical but the getter forces a matrix
+update per node, thousands of times a frame.
+
+**Everything else.** Default morph speed 0.1 → 0.12, the keyframe dwell being a
+fixed 2s timer and so unaffected. Colour drift no longer stops on pause — pause
+holds the figure, but the colour cycle is what you are looking at when you stop
+to look. Shape section removed (the transport replaced it) and the shape name
+went with it. The Labels toggle and the renderer's whole 3D sprite-label path
+are gone; the lens owns labelling. Primes' toggles moved into a collapsed
+`Visibility` sub-section with Zero node and One node relocated above Parastichy
+Lines, and Thickness under the lines it thickens. Info's panel section removed
+via a new `hidden` flag on the module — it had to be an explicit opt-out rather
+than "skip modules with no controls", because Lens is also controls-free and
+earns its section from the hint. "Drift" relabelled "Rotation"; the internal
+`autoRotate` / `driftSpeed` names are untouched.
+
+**Physics works while paused** (added late, same batch). `onPointerDown` had a
+`if (state.paused) return;` guard; the simulation loop never had one. So pause
+left the nodes inert but still looking grabbable. Guard removed, and nothing
+else needed to change: while paused the dimension is fixed, so
+`interpolatedPos()` returns stable rest positions and the renderer's
+`dim !== lastDim` guard skips its own writes — physics owns the meshes more
+cleanly paused than running.
+
+That exposed a second bug directly in its way. **`info.js` cleared `paused`
+unconditionally when its tooltip closed.** It set `paused = true` on show and
+`false` on hide, so pausing deliberately and then right-clicking a node to read
+it resumed the animation the instant you let go — the pause was spent by the act
+of inspecting something. Invisible while nothing else happened during a pause;
+not invisible now that the figure is draggable there. It now records `paused`
+on the transition into visible and restores that value on hide.
+
+**A testing note, because it cost time.** Driving synthetic `PointerEvent`s at
+the canvas has two traps. OrbitControls is constructed before the modules, so
+its listener runs first and throws `NotFoundError` from `setPointerCapture` on a
+`pointerId` that was never real — noise, not a fault, and it does not stop the
+module handlers. Worse, reusing the same node across trials silently
+invalidates the second one: the first drag leaves the node displaced and, with
+the render loop suspended, it never springs back, so the next trial projects a
+stale screen position and the raycast misses. Use a fresh node per trial and a
+reloaded page, or the result is a false negative.
+
+**One structural change worth knowing.** Removing the Shape section removed the
+`#dimension` slider, which the transport had been scrubbing by writing to and
+firing its `input` event. Rather than leave a hidden input behind as a message
+bus nobody could find, the keyframe-stickiness rule is now
+`panel.setDimension()` and the transport calls it directly. Still one
+implementation of "the dimension changed"; the DOM is no longer in the middle
+of it. `transport.js` now imports `panel.js` — no cycle, panel does not import
+transport.
+
+**Verified** at localhost against a clean `pnm-v0.14.0` cache: no console
+errors, all eight panel sections correct, Reset clears all five previously
+surviving hot keys, dimension returns 1.4 → 0, keyframe stickiness snaps
+0.4915 → 0.5, physics re-checks and re-enables on the way back under the cap,
+node drag grabs while paused, and a deliberate pause survives a right-click
+tooltip while a running scene still resumes after one.
+**Not verified:** anything needing the render loop. The browser pane must be
+visible to composite frames, so `requestAnimationFrame` is suspended and the
+morph, the line fade, and colour-drift-while-paused cannot be observed here —
+same tooling limit as §7. Those four need a real browser.
 
 **2026-08-06 rev 9** — v0.13.0. Lens refinements, all from device feedback.
 
@@ -511,11 +621,11 @@ blocker to skins. Plan drafted.
    closes the app can sit on old code indefinitely. Correct for a store app,
    where users close things. If it becomes a problem, the fix is an
    "update available — reload" toast, not `skipWaiting()`.
-7. **Reset does not update `selectedPrimes`.** `reset-btn` re-paints the prime
-   buttons to show 2/3/5 active but never touches the `selectedPrimes` array
-   backing them, so after changing primes a reset leaves the UI and the state
-   disagreeing. Pre-existing, found during Burst 2, deliberately not fixed
-   there — it is a state bug, not a mobile one.
+7. ~~**Reset does not update `selectedPrimes`.**~~ **Stale — already fixed.**
+   `resetToDefaults()` calls `updateSelectedPrimes()`, which rebuilds the array
+   from the repainted grid. Confirmed in rev 10 while chasing the *real* Reset
+   bug, which was a different thing entirely: the hot keys were never written
+   to state at all. See rev 10.
 8. **The gate has no instrument.** §4 says no data collection, ever. The GATE
    says watch for return visits and shares. Those are incompatible: with zero
    analytics the only observable signal is people talking to you. Decide

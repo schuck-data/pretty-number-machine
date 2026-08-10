@@ -13,11 +13,31 @@ import {
   GOLDEN_ANGLE,
 } from './math.js';
 import {
-  interpolatedPos, getMaxDim, getMinDim, getShapes,
+  interpolatedPos, getMaxDim, getMinDim,
   flatPolar, flatFromPolar, spherePolar, sphereFromPolar, lineNodePos,
   chordPos, chordPolar, chordFromPolar, chordRadius,
   springPos,
 } from './positions.js';
+
+// === PARASTICHY LINE FADE ===
+// linewidth is in device pixels (worldUnits: false, resolution = the drawing
+// buffer), so 1 is already the thinnest a line can physically be — on a 3x DPR
+// phone that is a third of a CSS pixel. There is nothing below it. But a line
+// that thin still draws at full prime-colour brightness and reads as a bright
+// stroke rather than a fine one, so the thin end fades instead.
+//
+// It fades toward the BACKGROUND, not toward grey. Desaturating would make the
+// line brighter on a near-black field, not fainter, and a desaturated 2-line
+// stops reading as red — the colour is the factorisation, so hue is the one
+// thing that must survive.
+const LINE_FADE_FLOOR = 0.3;    // brightness retained at thickness 1
+const LINE_FADE_UNTIL = 3;      // full brightness at and above this thickness
+
+function lineFadeAmount(width) {
+  if (width >= LINE_FADE_UNTIL) return 1;
+  const t = (width - 1) / (LINE_FADE_UNTIL - 1);
+  return LINE_FADE_FLOOR + Math.max(0, Math.min(1, t)) * (1 - LINE_FADE_FLOOR);
+}
 
 // Three.js refs
 let threeScene = null, threeCamera = null, threeRenderer = null, threeControls = null;
@@ -29,9 +49,10 @@ let resizeObserver = null;
 let nodeData = [];
 let nodeByN = new Map();
 
-// Curves, labels, glow sprites
+// Curves and glow sprites. The 3D sprite labels are gone — the lens owns
+// labelling now, and it projects HTML instead, which stays crisp and can be
+// decluttered. See modules/lens.js.
 let curveLines = [];
-let sprites = [];
 let glowSprites = [];
 
 // Shape morph state
@@ -97,15 +118,12 @@ function cleanup() {
   for (const nd of nodeData) disposeMesh(nd.mesh);
   // Dispose curves
   for (const c of curveLines) { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }
-  // Dispose sprites
-  for (const s of sprites) disposeMesh(s);
   // Dispose glow sprites
   for (const g of glowSprites) disposeMesh(g);
 
   nodeData = [];
   nodeByN.clear();
   curveLines = [];
-  sprites = [];
   glowSprites = [];
   lastDim = -1;
 }
@@ -579,6 +597,10 @@ export function buildScene() {
       line.frustumCulled = false;
       line.userData = {
         baseColor: baseColor.clone(), primeIdx: ci, prime: p,
+        // The colour this line wants to be, before the thickness fade. Colour
+        // drift writes here rather than to material.color so the two effects
+        // compose instead of overwriting each other every frame.
+        liveColor: baseColor.clone(),
         linePts, diskPts, spherePts, chordPts, springPts, stringPts, numPts,
         lerpBuf: new Float32Array(numPts * 3),
       };
@@ -587,41 +609,9 @@ export function buildScene() {
     }
   }
 
-  // === LABELS ===
-  sprites = [];
-  if (state.showLabels) {
-    const labelSizeMult = state.labelSize;
-    for (const nd of nodeData) {
-      if (nd.isBackground) continue;
-      if (baseR < 0.04) continue;
-
-      const cnv = document.createElement('canvas');
-      const ctx = cnv.getContext('2d');
-      cnv.width = 128; cnv.height = 64;
-      ctx.font = 'bold 48px monospace';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.strokeStyle = 'black'; ctx.lineWidth = 8;
-      ctx.strokeText(String(nd.n), 64, 32);
-      ctx.fillStyle = 'white';
-      ctx.fillText(String(nd.n), 64, 32);
-      const tex = new THREE.CanvasTexture(cnv);
-      tex.minFilter = THREE.LinearFilter;
-      const sMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
-      const sprite = new THREE.Sprite(sMat);
-      const ls = nd.baseScale * 4 * labelSizeMult;
-      sprite.scale.set(ls * 2, ls, 1);
-
-      // Position above node
-      const sDir = nd.mesh.position.clone().normalize();
-      sprite.position.copy(nd.mesh.position).addScaledVector(
-        sDir.length() > 0.01 ? sDir : new THREE.Vector3(0, 1, 0),
-        nd.baseScale + ls * 0.4
-      );
-      sprite.userData = { nodeRef: nd, baseScale: ls };
-      scene.add(sprite);
-      sprites.push(sprite);
-    }
-  }
+  // The colour thin lines fade toward. Read from the scene rather than
+  // hardcoded so the white-background option fades the right way too.
+  const fadeTarget = scene.background.clone();
 
   // Notify modules to build
   const buildCtx = { scene, nodes: nodeData, nodeByN, N, state, baseR, flatScale };
@@ -705,26 +695,9 @@ export function buildScene() {
         }
       }
 
+      // Nothing to mirror into the DOM any more: the Shape section is gone and
+      // the transport polls state.dimension directly on its own frame loop.
       state.dimension = morphPos;
-      const dimSlider = document.getElementById('dimension');
-      if (dimSlider) dimSlider.value = morphPos;
-      const dimLabel = document.getElementById('dim-display');
-      if (dimLabel) {
-        const shapes = getShapes();
-        let label = '';
-        for (let i = 0; i < shapes.length; i++) {
-          const [val, shape] = shapes[i];
-          if (Math.abs(morphPos - val) < 0.1) { label = shape.name; break; }
-          if (i < shapes.length - 1) {
-            const [nextVal, nextShape] = shapes[i + 1];
-            if (morphPos > val + 0.1 && morphPos < nextVal - 0.1) {
-              label = `${shape.name} / ${nextShape.name}`; break;
-            }
-          }
-        }
-        if (!label) label = shapes[shapes.length - 1][1].name;
-        dimLabel.textContent = label;
-      }
     } else {
       morphActive = false;
     }
@@ -746,15 +719,6 @@ export function buildScene() {
         } else {
           gs.position.copy(interpolatedPos(0, N, dim));
         }
-      }
-      // Update label positions
-      for (const sprite of sprites) {
-        const nd = sprite.userData.nodeRef;
-        const sDir = nd.mesh.position.clone().normalize();
-        sprite.position.copy(nd.mesh.position).addScaledVector(
-          sDir.length() > 0.01 ? sDir : new THREE.Vector3(0, 1, 0),
-          nd.baseScale + sprite.userData.baseScale * 0.4
-        );
       }
       // Update curve positions
       for (const line of curveLines) {
@@ -791,8 +755,13 @@ export function buildScene() {
       }
     }
 
-    // Color drift — sine-based hue cycling for ALL primes (not just selected)
-    if (state.colorDrift && !state.paused) {
+    // Color drift — sine-based hue cycling for ALL primes (not just selected).
+    //
+    // Deliberately NOT gated on `paused`. Pause holds the figure still — the
+    // morph, the rotation, the pulse — but the colour cycle is what you are
+    // looking at when you stop to look, and freezing it made pausing feel like
+    // the app had died rather than settled.
+    if (state.colorDrift) {
       const speed = state.colorDriftSpeed;
 
       // Compute drifting hue for every prime in the scene
@@ -823,7 +792,7 @@ export function buildScene() {
         const h = driftHue[p];
         if (h != null) {
           const c = hueToRGB(h);
-          line.material.color.setRGB(c[0], c[1], c[2]);
+          line.userData.liveColor.setRGB(c[0], c[1], c[2]);
         }
       }
 
@@ -847,7 +816,7 @@ export function buildScene() {
         }
       }
       for (const line of curveLines) {
-        line.material.color.copy(line.userData.baseColor);
+        line.userData.liveColor.copy(line.userData.baseColor);
       }
       for (const gs of glowSprites) {
         const nd = gs.userData.nodeRef;
@@ -855,6 +824,16 @@ export function buildScene() {
         gs.material.color.copy(nd.baseColor);
       }
       colorDriftWasOn = false;
+    }
+
+    // Thickness fade, applied last so it composes with whichever branch above
+    // set the colour this frame. Always derived from liveColor rather than
+    // lerping material.color in place — lerping the live value would compound
+    // frame over frame and walk every line into the background.
+    const fade = lineFadeAmount(state.lineWidth);
+    for (const line of curveLines) {
+      line.material.color.copy(line.userData.liveColor);
+      if (fade < 1) line.material.color.lerp(fadeTarget, 1 - fade);
     }
 
     // Earth rotation
@@ -965,6 +944,25 @@ export function update(partial) {
 export function rebuild(full) {
   if (full) Object.assign(state, full);
   buildScene();
+}
+
+// Send the morph back to the start of its travel.
+//
+// Reset always did set state.dimension to 0, but the morph keeps its own
+// position in module scope and the animation loop only re-seeds it when
+// morphActive is false. It was still true, so the next frame overwrote
+// state.dimension from the stale morphPos and the figure snapped straight back
+// to wherever it had drifted to. Reset looked like it did nothing to the shape.
+//
+// Direction is set explicitly rather than left to the loop's random pick:
+// 0 is the bottom of the range, so a -1 would just bounce, spending a second
+// dwell at Line before setting off.
+export function resetMorph() {
+  morphPos = 0;
+  morphDir = 1;
+  morphPauseTimer = 2;
+  morphActive = true;
+  lastDim = -1;          // force a position recompute on the next frame
 }
 
 export function destroy() {

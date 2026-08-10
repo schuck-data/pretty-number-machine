@@ -82,6 +82,17 @@
   .section-content { display: none; padding: 6px 0 0 10px; border-left: 2px solid var(--border); margin-left: 4px; }
   .section-header.open + .section-content { display: block; }
 
+  /* A collapsible nested inside a section. Reuses .section-header so it picks
+     up the existing open/close binding in panel.js rather than needing its own,
+     and is toned down so it reads as subordinate to its parent rather than as a
+     peer of Primes and Nodes. */
+  .section-header.sub {
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
+    color: rgba(224,221,213,0.38);
+    border-top: none; margin: 4px 0 0; padding-top: 4px;
+  }
+  .section-content.sub { padding-left: 8px; margin-left: 2px; }
+
   .prime-grid { display: flex; flex-wrap: wrap; gap: 4px; }
   .prime-btn, .prime-grid .grid-btn {
     width: 38px; height: 28px; border: 1px solid var(--border-ctrl); background: var(--field-bg);
@@ -600,53 +611,60 @@
 <div id="panel">
   <h1>Pretty Number Machine</h1>
 
-  <h2 class="section-header">Shape</h2>
-  <div class="section-content">
-    <div class="control-row">
-      <div class="control-label">Dimension <span class="value" id="dim-display">Disk</span></div>
-      <div class="control-line">
-        <input type="range" id="dimension" min="0" max="2.5" step="0.005" value="0">
-      </div>
-    </div>
-  </div>
+  <!-- The Shape section is gone. Its only control was the dimension slider,
+       and the transport bar replaced it: the play button IS the playhead. The
+       shape name went with it — the picture says which shape it is. -->
 
   <h2 class="section-header open">Primes</h2>
   <div class="section-content">
     <div class="prime-grid" id="prime-grid"></div>
-    <label class="toggle" for="filter-primes" style="margin-top:6px">
-      <input type="checkbox" id="filter-primes" checked>
-      <span class="toggle-track"></span>
-      Selected Primes
-    </label>
-    <label class="toggle" for="filter-powers">
-      <input type="checkbox" id="filter-powers" checked>
-      <span class="toggle-track"></span>
-      Powers of Selected Primes
-    </label>
-    <label class="toggle" for="filter-composites">
-      <input type="checkbox" id="filter-composites" checked>
-      <span class="toggle-track"></span>
-      Composites of Selected Primes
-    </label>
-    <label class="toggle" for="show-all-integers">
-      <input type="checkbox" id="show-all-integers">
-      <span class="toggle-track"></span>
-      All Integers in Range
-    </label>
-    <label class="toggle" for="show-labels">
-      <input type="checkbox" id="show-labels">
-      <span class="toggle-track"></span>
-      Labels
-    </label>
-    <label class="toggle" for="show-curves">
-      <input type="checkbox" id="show-curves" checked>
-      <span class="toggle-track"></span>
-      Parastichy Lines
-    </label>
-    <div class="control-row">
-      <div class="control-label">Thickness <span class="value" id="line-width-display">2</span></div>
-      <div class="control-line">
-        <input type="range" id="line-width" min="1" max="8" step="0.5" value="2">
+
+    <!-- Collapsed by default. These decide what is drawn rather than what the
+         app is about, and a wall of seven toggles under the grid buried the
+         primes themselves. Thickness lives here too, directly under the lines
+         it thickens. -->
+    <h2 class="section-header sub">Visibility</h2>
+    <div class="section-content sub">
+      <label class="toggle" for="filter-primes">
+        <input type="checkbox" id="filter-primes" checked>
+        <span class="toggle-track"></span>
+        Selected Primes
+      </label>
+      <label class="toggle" for="filter-powers">
+        <input type="checkbox" id="filter-powers" checked>
+        <span class="toggle-track"></span>
+        Powers of Selected Primes
+      </label>
+      <label class="toggle" for="filter-composites">
+        <input type="checkbox" id="filter-composites" checked>
+        <span class="toggle-track"></span>
+        Composites of Selected Primes
+      </label>
+      <label class="toggle" for="show-all-integers">
+        <input type="checkbox" id="show-all-integers">
+        <span class="toggle-track"></span>
+        All Integers in Range
+      </label>
+      <label class="toggle" for="show-zero">
+        <input type="checkbox" id="show-zero" checked>
+        <span class="toggle-track"></span>
+        Zero node
+      </label>
+      <label class="toggle" for="show-one">
+        <input type="checkbox" id="show-one" checked>
+        <span class="toggle-track"></span>
+        One node
+      </label>
+      <label class="toggle" for="show-curves">
+        <input type="checkbox" id="show-curves" checked>
+        <span class="toggle-track"></span>
+        Parastichy Lines
+      </label>
+      <div class="control-row">
+        <div class="control-label">Thickness <span class="value" id="line-width-display">2</span></div>
+        <div class="control-line">
+          <input type="range" id="line-width" min="1" max="8" step="0.5" value="2">
+        </div>
       </div>
     </div>
   </div>
@@ -680,16 +698,6 @@
         <input type="range" id="node-size" min="0.1" max="2" step="0.1" value="1.0">
       </div>
     </div>
-    <label class="toggle" for="show-zero">
-      <input type="checkbox" id="show-zero" checked>
-      <span class="toggle-track"></span>
-      Zero node
-    </label>
-    <label class="toggle" for="show-one">
-      <input type="checkbox" id="show-one" checked>
-      <span class="toggle-track"></span>
-      One node
-    </label>
   </div>
 
   <h2 class="section-header" id="section-appearance">Appearance</h2>
@@ -763,7 +771,7 @@
       <label class="toggle" for="auto-rotate" style="margin:0">
         <input type="checkbox" id="auto-rotate" checked>
         <span class="toggle-track"></span>
-        Drift
+        Rotation
       </label>
       <input type="range" id="drift-speed" min="0.1" max="5" step="0.1" value="0.5">
       <span class="value" id="drift-speed-display">0.5</span>
@@ -772,7 +780,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.13.0 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.14.0 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>

@@ -17,8 +17,10 @@
 //     renderer. Nothing is re-rendered; the morph keeps running underneath.
 //
 //  2. LABELS are HTML, positioned by projecting each node to screen space each
-//     frame. The existing showLabels flag is not in HOT_KEYS, so toggling it
-//     would rebuild the entire scene — precisely the disturbance being avoided.
+//     frame. The renderer used to have its own 3D sprite labels behind a
+//     showLabels toggle; that toggle was not in HOT_KEYS, so using it rebuilt
+//     the entire scene — precisely the disturbance being avoided — and both it
+//     and the sprite path were removed in v0.14.0 once this replaced them.
 //     Projection also makes clipping at the lens edge trivial and keeps the
 //     text crisp instead of resampled 3D sprites.
 //
@@ -31,10 +33,24 @@ import * as THREE from 'three';
 import { registerModule, state } from '../core/state.js';
 import { showInfoAt, hideInfo } from './info.js';
 
-// Above this many labels the view is unreadable mush and the DOM cost stops
-// being worth paying. The lens degrades to chalkboard + tap-for-info, which is
-// still the useful part at high N.
-const MAX_LABELS = 150;
+// Labels used to be all-or-nothing: above 150 nodes every one of them vanished
+// and the lens degraded to bare chalkboard. That cliff is gone. Labels now show
+// at every N, and what keeps them readable is decluttering rather than a count.
+//
+// Each candidate claims a cell in a screen-space grid, and a label whose cell
+// is already taken is skipped. The cell is wide and short because that is the
+// shape of a number — four digits is roughly 46x14 px — so this thins out
+// horizontally crowded labels hard and vertically stacked ones gently, which is
+// how they actually collide. Single-cell occupancy rather than a true radius
+// check: it is one Set lookup per node instead of a scan over everything
+// already placed, and at N=10000 that difference is the whole frame budget.
+const CELL_W = 46;
+const CELL_H = 14;
+
+// A ceiling on live label elements, not on N. The grid already bounds the count
+// by screen area, so this only bites on a very large display; it exists so a
+// pathological case cannot grow the DOM without limit.
+const LABEL_BUDGET = 400;
 
 // Fraction of viewport width. 0 parks the handle at the left edge, closed.
 const CLOSED = 0;
@@ -51,6 +67,10 @@ let hostEl = null;       // #viewport — the box everything is measured against
 let nodesRef = [];
 
 const projected = new THREE.Vector3();
+
+// Screen-space cells claimed by a label this frame. Reused rather than
+// reallocated — this is touched every frame the lens is open.
+const occupied = new Set();
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
 const isOpen = () => openFraction > 0.001;
@@ -188,31 +208,42 @@ function updateLabels() {
 
   const rect = viewportRect();
   const edge = edgeLocalPx();
-  const tooMany = nodesRef.length > MAX_LABELS;
   let used = 0;
 
-  if (!tooMany) {
-    for (const nd of nodesRef) {
-      if (!nd.mesh || !nd.mesh.visible) continue;
-      nd.mesh.getWorldPosition(projected);
-      projected.project(cameraRef);
-      if (projected.z > 1) continue;                    // behind the camera
-      // Local to the viewport box, because the labels live inside it.
-      const x = (projected.x * 0.5 + 0.5) * rect.width;
-      const y = (-projected.y * 0.5 + 0.5) * rect.height;
-      if (x > edge) continue;                           // right of the lens
-      if (y < 0 || y > rect.height) continue;
+  occupied.clear();
 
-      const el = labelAt(used++);
-      el.textContent = nd.n;
-      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-      el.style.display = '';
-      if (used >= MAX_LABELS) break;
-    }
+  for (const nd of nodesRef) {
+    if (!nd.mesh || !nd.mesh.visible) continue;
+
+    // mesh.position, not getWorldPosition(). Nodes are added straight to the
+    // scene with no parent transform, so the two are identical — but the
+    // getter forces a matrix update per node, and at high N that is thousands
+    // of them every frame for a value already sitting there.
+    projected.copy(nd.mesh.position);
+    projected.project(cameraRef);
+    if (projected.z > 1) continue;                    // behind the camera
+
+    // Local to the viewport box, because the labels live inside it.
+    const x = (projected.x * 0.5 + 0.5) * rect.width;
+    const y = (-projected.y * 0.5 + 0.5) * rect.height;
+    if (x > edge) continue;                           // right of the lens
+    if (y < 0 || y > rect.height) continue;
+
+    // Declutter: first label into a cell wins. Iteration runs in ascending n,
+    // so where numbers crowd together it is the smaller one that survives —
+    // which is the one a reader is more likely to be looking for.
+    const cell = (Math.floor(x / CELL_W) << 16) ^ Math.floor(y / CELL_H);
+    if (occupied.has(cell)) continue;
+    occupied.add(cell);
+
+    const el = labelAt(used++);
+    el.textContent = nd.n;
+    el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    el.style.display = '';
+    if (used >= LABEL_BUDGET) break;
   }
 
   for (let i = used; i < labelPool.length; i++) labelPool[i].style.display = 'none';
-  labelsEl.classList.toggle('suppressed', tooMany);
 }
 
 // === MODULE DEFINITION ===

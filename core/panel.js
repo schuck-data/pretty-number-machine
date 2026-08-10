@@ -1,8 +1,11 @@
 // PNM V5 — Side Panel UI
-import { state, emit, getModules, MAX_N, SLIDER_MAX_N, AUTO_N_MAX } from './state.js';
+import {
+  state, emit, getModules, MAX_N, SLIDER_MAX_N, AUTO_N_MAX,
+  HOT_KEYS, DEFAULT_CONFIG,
+} from './state.js';
 import { FIRST_PRIMES, getPrimeRGB } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
-import { update, resolveN, getInfo, buildScene } from './renderer.js';
+import { update, resolveN, getInfo, buildScene, resetMorph } from './renderer.js';
 
 const $ = id => document.getElementById(id);
 
@@ -44,7 +47,6 @@ function scheduleRebuild() {
     state.showPowers = $('filter-powers').checked;
     state.showComposites = $('filter-composites').checked;
     state.showCurves = $('show-curves').checked;
-    state.showLabels = $('show-labels').checked;
     state.primeGlow = $('prime-glow').checked;
     state.primeGlowIntensity = +$('prime-glow-intensity').value;
     state.zeroGlow = $('zero-glow').checked;
@@ -249,32 +251,29 @@ function applyAutoNodeSize(n) {
 }
 
 // ============================================================
-// DIMENSION LABEL + STICKINESS
+// DIMENSION — keyframe stickiness
 // ============================================================
-function updateDimLabel() {
-  const dim = +$('dimension').value;
-  const shapes = getShapes();
+// The transport used to scrub by writing to a #dimension slider and firing its
+// input event, so that this file stayed the single owner of what a dimension
+// change means. Removing the Shape section took that slider away, and leaving
+// a hidden input behind purely as a message bus would have been a phantom
+// control nobody could find. The rule moved here instead; the transport calls
+// it directly. Still one implementation, no DOM in the middle of it.
+let shapeKeyframes = null;
 
-  let label = '';
-  for (let i = 0; i < shapes.length; i++) {
-    const [val, shape] = shapes[i];
-    const margin = 0.1;
-    if (Math.abs(dim - val) < margin) {
-      label = shape.name;
-      break;
-    }
-    if (i < shapes.length - 1) {
-      const [nextVal, nextShape] = shapes[i + 1];
-      if (dim > val + margin && dim < nextVal - margin) {
-        label = `${shape.name} / ${nextShape.name}`;
-        break;
-      }
-    }
+export function setDimension(val) {
+  shapeKeyframes ??= getShapes().map(s => s[0]);
+
+  // Setting the dimension by hand means you want it to stay there, so hold the
+  // animation rather than let the morph immediately drag it away. The
+  // transport's play button resumes it.
+  if (!state.paused) update({ paused: true });
+
+  let v = Math.min(getMaxDim(), Math.max(getMinDim(), val));
+  for (const key of shapeKeyframes) {
+    if (Math.abs(v - key) < 0.02) { v = key; break; }
   }
-  if (!label && shapes.length > 0) {
-    label = shapes[shapes.length - 1][1].name;
-  }
-  $('dim-display').textContent = label;
+  update({ dimension: v });
 }
 
 // ============================================================
@@ -294,6 +293,15 @@ function buildModuleSections() {
   moduleRows.clear();
 
   for (const [name, mod] of getModules()) {
+    // Modules can opt out of having a panel section at all. Info does: its
+    // whole interface is right-click on the canvas and tap-through-the-lens,
+    // so the section was a header over a single line of hint text.
+    //
+    // This has to be an explicit flag rather than "skip modules with no
+    // controls" — Lens is also controls-only-a-hint, and it earns its section
+    // because the hint is the only place the handle is explained.
+    if (mod.hidden) continue;
+
     // Create a proper collapsible section like the built-in ones
     const header = document.createElement('h2');
     header.className = 'section-header';
@@ -416,6 +424,9 @@ function updateModuleStates() {
     const refs = moduleRows.get(name);
     if (!refs) continue;
     const capped = mod.maxN && N > mod.maxN;
+    const wasCapped = refs.wasCapped === true;
+    refs.wasCapped = capped;
+
     refs.header.style.opacity = capped ? '0.4' : '';
     refs.content.style.opacity = capped ? '0.4' : '';
     refs.capMsg.style.display = capped ? '' : 'none';
@@ -432,6 +443,35 @@ function updateModuleStates() {
         // Fire onChange so the module internal flag updates
         el.dispatchEvent(new Event('change'));
       }
+    }
+
+    // Coming back down into range, put the module back the way it was found.
+    //
+    // Going over the cap unchecks the toggles AND dispatches change, which
+    // sets the module's own internal flags false — physics' touchEnabled and
+    // collisionEnabled. Re-enabling the module and re-enabling the inputs did
+    // not undo any of that: the boxes stayed unchecked, the flags stayed
+    // false, and the springs were never rebuilt, so physics came back dead and
+    // stayed dead until a manual toggle. Restore on the transition only, or
+    // this would overwrite the user's choices on every rebuild.
+    if (!capped && wasCapped) {
+      let i = 0;
+      for (const ctrl of (mod.controls || [])) {
+        const el = refs.controlEls[i++];
+        if (!el) continue;
+        if (ctrl.type === 'toggle' && el.type === 'checkbox') {
+          el.checked = !!ctrl.default;
+          el.dispatchEvent(new Event('change'));
+        } else if (ctrl.type === 'slider') {
+          el.value = ctrl.default;
+          const display = el.closest('.control-row')?.querySelector('.value');
+          if (display) display.textContent = ctrl.default;
+          el.dispatchEvent(new Event('input'));
+        }
+      }
+      // buildScene() already ran with mod.enabled still false, so build() bailed
+      // before wiring the spring network. enable() is what puts it back.
+      try { mod.enable?.(); } catch (e) { console.error(`[PNM] Module "${name}" enable error:`, e); }
     }
   }
 }
@@ -474,31 +514,6 @@ export function initPanel() {
     scheduleRebuild();
   });
 
-  // Dimension slider with stickiness at keyframes
-  const dimSlider = $('dimension');
-  dimSlider.min = getMinDim();
-  dimSlider.max = getMaxDim();
-  const shapeKeyframes = getShapes().map(s => s[0]);
-
-  dimSlider.addEventListener('input', () => {
-    // Setting the dimension by hand means you want it to stay there, so hold
-    // the animation rather than let the morph immediately drag it away. The
-    // transport's play button resumes it.
-    if (!state.paused) update({ paused: true });
-    let val = +dimSlider.value;
-    // Stickiness: snap to nearest keyframe if within 0.02
-    for (const key of shapeKeyframes) {
-      if (Math.abs(val - key) < 0.02) {
-        val = key;
-        dimSlider.value = val;
-        break;
-      }
-    }
-    updateDimLabel();
-    update({ dimension: val });
-  });
-  updateDimLabel();
-
   // Node size slider (real-time rebuild on drag)
   $('node-size').addEventListener('input', () => {
     nodeSizeUserSet = true;   // hands off from here — this is their value now
@@ -510,7 +525,7 @@ export function initPanel() {
   for (const id of [
     'color-scheme', 'background-style',
     'show-nodes', 'show-all-integers', 'show-zero', 'show-one',
-    'show-curves', 'show-labels',
+    'show-curves',
     'prime-glow', 'zero-glow', 'pulse',
   ]) {
     $(id).addEventListener('change', () => { updateN(); scheduleRebuild(); });
@@ -588,7 +603,6 @@ export function initPanel() {
     grid.querySelectorAll('.prime-btn').forEach(btn => {
       btn.classList.toggle('active', [2, 3, 5].includes(+btn.dataset.prime));
     });
-    $('dimension').value = 0;
     $('color-scheme').value = 'rgb';
     $('background-style').value = 'black';
     $('auto-n').checked = true;
@@ -607,7 +621,6 @@ export function initPanel() {
     $('show-curves').checked = true;
     $('line-width').value = 2;
     $('line-width-display').textContent = '2';
-    $('show-labels').checked = false;
     $('auto-rotate').checked = true;
     $('prime-glow').checked = true;
     $('prime-glow-intensity').value = 0.3;
@@ -655,10 +668,30 @@ export function initPanel() {
     }
 
     updateSelectedPrimes();
-    updateDimLabel();
-    // Reset resumes motion at the default pace — a reset that left the scene
-    // frozen, or still racing, would look like it had broken something.
-    update({ dimension: 0, shapeDrift: true, paused: false, shapeDriftSpeed: 0.1 });
+
+    // Put the morph itself back to the start of its travel. Without this the
+    // dimension below is overwritten from the morph's own stale position on the
+    // very next frame and the figure never returns to Line — see resetMorph().
+    resetMorph();
+
+    // Every hot key, in one call, read straight from DEFAULT_CONFIG.
+    //
+    // This is the fix for "Reset does not reset everything". scheduleRebuild()
+    // reads only the COLD keys — the ones that need a scene rebuild — which is
+    // correct for what it is for, but it meant every hot control was repainted
+    // in the UI and never written to state. Colour drift, both pulses, rotation
+    // and all four of their speeds survived a Reset: the toggle went off and
+    // the effect kept running. Driving it from DEFAULT_CONFIG rather than a
+    // list of literals means a hot key added later is covered here for free.
+    const hotDefaults = {};
+    for (const key of HOT_KEYS) {
+      if (key in DEFAULT_CONFIG) hotDefaults[key] = DEFAULT_CONFIG[key];
+    }
+    // `paused` is a runtime flag, not saved config, so it has no default to
+    // read. A reset that left the scene frozen would look like a breakage.
+    hotDefaults.paused = false;
+    update(hotDefaults);
+
     scheduleRebuild();
   }
 
