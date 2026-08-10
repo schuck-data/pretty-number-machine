@@ -5,7 +5,9 @@ import {
 } from './state.js';
 import { FIRST_PRIMES, getPrimeRGB } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
-import { update, resolveN, getInfo, buildScene, resetMorph } from './renderer.js';
+import {
+  update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown,
+} from './renderer.js';
 
 const $ = id => document.getElementById(id);
 
@@ -569,6 +571,13 @@ export function initPanel() {
     update({ driftSpeed: +$('drift-speed').value });
   });
 
+  // Morph. Governs whether the transport's Play animates the shape; every
+  // other motion it resumes is gated on `paused` alone, so this leaves the
+  // figure still while pulses, colour drift and rotation carry on.
+  $('shape-drift').addEventListener('change', () => {
+    update({ shapeDrift: $('shape-drift').checked });
+  });
+
   // Pulse (hot key — updates without rebuild)
   $('pulse').addEventListener('change', () => {
     update({ pulse: $('pulse').checked });
@@ -635,6 +644,7 @@ export function initPanel() {
     $('color-drift').checked = false;
     $('color-drift-speed').value = 1.0;
     $('color-drift-speed-display').textContent = '1.0';
+    $('shape-drift').checked = true;
     $('filter-primes').checked = true;
     $('filter-powers').checked = true;
     $('filter-composites').checked = true;
@@ -695,8 +705,73 @@ export function initPanel() {
     scheduleRebuild();
   }
 
+  // Dazzle — Reset with a different normal.
+  //
+  // Built ON TOP of resetToDefaults() rather than beside it. A second list of
+  // forty control writes would drift out of step with the first the moment
+  // either changed, and Reset is the one thing in this file that has to stay
+  // exhaustive. This way Dazzle states only where it differs from a clean
+  // slate. scheduleRebuild() is debounced, so the reset's queued rebuild is
+  // replaced by ours rather than running twice.
+  function applyDazzle() {
+    resetToDefaults();
+
+    // Every prime, with the grid expanded to show them. A prime switched on
+    // but hidden would colour the figure with no way to see or unset it —
+    // the same rule the All button follows.
+    $('prime-grid').querySelectorAll('.prime-btn').forEach(b => b.classList.add('active'));
+    primeTier = PRIME_TIERS.length - 1;
+    applyPrimeTier();
+
+    // N by hand, so Auto stops deriving it from the primes — with all 32
+    // selected their product is astronomical and would just clamp.
+    $('auto-n').checked = false;
+    $('n-input').disabled = false;
+    $('n-input').value = 1000;
+
+    // Claim the node size BEFORE updateN() runs. Otherwise the auto curve
+    // owns it and picks 0.4 for N=1000, and the figure comes out sparse
+    // rather than dense.
+    nodeSizeUserSet = true;
+    $('node-size').value = 2;
+    $('node-size-display').textContent = '2.0';
+
+    updateSelectedPrimes();          // → updateN(), which now respects the size
+
+    $('pulse').checked = true;
+    $('pulse-speed').value = 2;
+    $('pulse-speed-display').textContent = '2.0';
+    $('line-pulse').checked = true;
+    $('color-drift').checked = true;
+    $('color-drift-speed').value = 2.5;
+    $('color-drift-speed-display').textContent = '2.5';
+    $('auto-rotate').checked = true;
+    $('drift-speed').value = 0.5;
+    $('drift-speed-display').textContent = '0.5';
+    $('shape-drift').checked = false;
+
+    update({
+      dimension: 0.5,        // Disk
+      shapeDrift: false,     // the shape holds; everything else moves
+      paused: false,
+      pulse: true,
+      pulseSpeed: 2,
+      linePulse: true,
+      colorDrift: true,
+      colorDriftSpeed: 2.5,
+      autoRotate: true,
+      driftSpeed: 0.5,
+    });
+
+    // Last, so it frames the shape the settings above just chose. With the
+    // camera overhead, autoRotate spins the disk in its own plane.
+    setCameraTopDown();
+    scheduleRebuild();
+  }
+
   $('reset-btn').addEventListener('click', resetToDefaults);
   $('corner-reset')?.addEventListener('click', resetToDefaults);
+  $('dazzle-btn')?.addEventListener('click', applyDazzle);
 
 
   // Update N display

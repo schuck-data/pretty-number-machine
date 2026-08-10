@@ -957,6 +957,32 @@ export function rebuild(full) {
 // Direction is set explicitly rather than left to the loop's random pick:
 // 0 is the bottom of the range, so a -1 would just bounce, spending a second
 // dwell at Line before setting off.
+// Look straight down at the figure, framed to fit.
+//
+// The Disk lies in the XZ plane, so overhead is the one angle that shows its
+// phyllotaxis spiral whole rather than as a foreshortened ellipse. Distance is
+// derived from the aspect rather than fixed: the vertical FOV is what the
+// camera declares, so on a portrait phone the horizontal is the tighter
+// constraint and a distance that frames the disk on a desktop crops it badly.
+export function setCameraTopDown() {
+  if (!threeCamera || !threeControls) return;
+  const fitR = SPHERE_R * 1.15;                       // a little air around it
+  const halfFov = (threeCamera.fov * Math.PI / 180) / 2;
+  const distV = fitR / Math.tan(halfFov);
+  const distH = distV / Math.max(0.0001, threeCamera.aspect);
+  const d = Math.max(distV, distH);
+
+  threeControls.target.set(0, 0, 0);
+  // Not exactly (0, d, 0). A view direction parallel to the up vector is
+  // degenerate — OrbitControls' azimuth becomes undefined and the first drag
+  // snaps the camera somewhere arbitrary. A hair of z is invisible and keeps
+  // the spherical coordinates well defined.
+  threeCamera.position.set(0, d, d * 0.0015);
+  threeCamera.up.set(0, 1, 0);
+  threeCamera.lookAt(threeControls.target);
+  threeControls.update();
+}
+
 export function resetMorph() {
   morphPos = 0;
   morphDir = 1;

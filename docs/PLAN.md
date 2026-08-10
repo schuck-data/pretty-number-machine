@@ -302,6 +302,52 @@ the render loop suspended, it never springs back, so the next trial projects a
 stale screen position and the raycast misses. Use a fresh node per trial and a
 reloaded page, or the result is a false negative.
 
+**Morph is a control again**, in Effects, default on. `shapeDrift` has existed
+since v0.10.1 with no UI — rev 6 removed the Morph toggle and declared the flag
+"effectively constant". Nothing else had to change for the requested behaviour:
+the morph is the only motion gated on `shapeDrift`, and pulses, colour drift
+and rotation are gated on `paused` alone, so Play with Morph off animates
+everything except the shape. No speed slider; morph speed lives on the
+transport handle. Also renamed Pulse → Node Pulse to pair with Line Pulse.
+
+**Dazzle** — a second corner button below Reset, opening on the disk seen from
+overhead with every prime lit, N=1000, node size 2, morph off and everything
+else running. It is Reset with a different normal, and it is implemented that
+way: `applyDazzle()` calls `resetToDefaults()` and then states only its
+differences. A second exhaustive list of control writes would drift out of step
+with the first the moment either changed, and Reset is the one function here
+that cannot afford to be almost right. `scheduleRebuild()` being debounced
+means the reset's queued rebuild is replaced rather than run twice.
+
+Two things it has to do that are easy to miss: expand the prime grid, because a
+prime selected but hidden colours the figure with no way to see or unset it
+(the same rule the All button follows); and set `nodeSizeUserSet` *before*
+`updateN()`, or the auto-size curve claims the value back and picks 0.4 for
+N=1000.
+
+New `setCameraTopDown()` in the renderer. The Disk lies in the XZ plane, so
+overhead is the one angle showing the phyllotaxis spiral whole. Distance is
+derived from the aspect rather than fixed — the camera declares a *vertical*
+FOV, so on a portrait phone the horizontal is the tighter constraint and a
+distance framing the disk on a desktop crops it badly. Position is
+`(0, d, d*0.0015)` rather than `(0, d, 0)`: a view direction parallel to the up
+vector is degenerate, and OrbitControls' azimuth goes undefined so the first
+drag snaps the camera somewhere arbitrary.
+
+**The daisy is drawn, not typed.** The request was for a daisy emoji styled to
+match the Reset. Those two cannot both hold: 🌼 carries emoji presentation, so
+Android substitutes its own colour glyph and ignores `color` outright — exactly
+how the transport buttons ended up orange in rev 7. It is eight inline-SVG
+petals in `currentColor`, which gets the daisy *and* the subtlety. Third time
+this trap has come up in this project; the rule is simply never to type an icon.
+
+Corner Reset brightened 20%, `--text-faint` 0.25 → a new `--text-corner` 0.3.
+Its own variable rather than a bump to `--text-faint`, which also dresses the
+panel's Reset and the module buttons — those sit on the panel's solid backdrop
+and are legible already. **Note:** `#lens-handle` was deliberately matched to
+`#corner-reset` and still reads `--text-faint`, so the two now differ slightly.
+Left as-is because only the Reset was reported as hard to see.
+
 **One structural change worth knowing.** Removing the Shape section removed the
 `#dimension` slider, which the transport had been scrubbing by writing to and
 firing its `input` event. Rather than leave a hidden input behind as a message

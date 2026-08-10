@@ -32,6 +32,13 @@
     --text: #e0ddd5;
     --text-dim: rgba(224, 221, 213, 0.45);
     --text-faint: rgba(224, 221, 213, 0.25);
+    /* The floating corner controls, 20% up from --text-faint. At 0.25 the
+       Reset was genuinely hard to find against the scene. Its own value rather
+       than a bump to --text-faint, which also dresses the panel's Reset and the
+       module buttons — those sit on the panel's solid backdrop and are legible
+       already. NOTE: #lens-handle was deliberately matched to #corner-reset and
+       still uses --text-faint, so the two now differ slightly. */
+    --text-corner: rgba(224, 221, 213, 0.3);
     --border: rgba(180, 200, 210, 0.08);
     --border-lite: rgba(180, 200, 210, 0.12);
     --border-ctrl: rgba(180, 200, 210, 0.15);
@@ -328,12 +335,42 @@
     width: 34px; height: 34px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     background: transparent; border: 1px solid var(--border);
-    color: var(--text-faint);
+    color: var(--text-corner);
     cursor: pointer; padding: 0;
     transition: color 0.2s, border-color 0.2s, background 0.2s;
   }
   #corner-reset svg { width: 16px; height: 16px; display: block; }
   @media (pointer: coarse) { #corner-reset { width: 44px; height: 44px; } }
+
+  /* ==========================================================
+     DAZZLE — Reset with a different normal. Sits directly under
+     the corner Reset and is styled identically, because it is
+     the same kind of control: one tap, everything changes.
+
+     The daisy is inline SVG in currentColor, NOT the 🌼
+     character. Emoji carry colour presentation, so Android
+     substitutes its own glyph and ignores `color` outright —
+     which is exactly how the transport buttons ended up orange
+     (see PLAN.md rev 7). A drawn daisy stays as faint as the
+     Reset beside it and follows the theme.
+     ========================================================== */
+  #dazzle-btn {
+    position: absolute; z-index: 20;
+    /* 12 top inset + the Reset's 34 + an 8 gap. */
+    top: calc(54px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-corner);
+    cursor: pointer; padding: 0;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  #dazzle-btn svg { width: 18px; height: 18px; display: block; }
+  @media (pointer: coarse) {
+    /* Reset grows to 44, so the gap below it has to move down with it. */
+    #dazzle-btn { width: 44px; height: 44px; top: calc(64px + env(safe-area-inset-top)); }
+  }
 
   /* ==========================================================
      LENS — the classroom layer, dragged across the figure.
@@ -454,7 +491,7 @@
     .toggle:hover { color: rgba(224,221,213,0.65); }
     .toggle:hover .toggle-track { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25); }
     #reset-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
-    #corner-reset:hover {
+    #corner-reset:hover, #dazzle-btn:hover {
       color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
       border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
       background: rgba(12,12,15,0.7);
@@ -719,6 +756,19 @@
 
   <h2 class="section-header">Effects</h2>
   <div class="section-content">
+    <!-- Governs whether Play animates the SHAPE. Everything else the transport
+         resumes — pulses, colour drift, rotation — is gated on `paused` alone,
+         so turning this off leaves the figure still while the rest keeps
+         moving. No speed slider: morph speed lives on the transport handle's
+         vertical axis. -->
+    <div class="effect-row">
+      <label class="toggle" for="shape-drift" style="margin:0">
+        <input type="checkbox" id="shape-drift" checked>
+        <span class="toggle-track"></span>
+        Morph
+      </label>
+    </div>
+
     <div class="effect-row">
       <label class="toggle" for="prime-glow" style="margin:0">
         <input type="checkbox" id="prime-glow" checked>
@@ -743,7 +793,7 @@
       <label class="toggle" for="pulse" style="margin:0">
         <input type="checkbox" id="pulse">
         <span class="toggle-track"></span>
-        Pulse
+        Node Pulse
       </label>
       <input type="range" id="pulse-speed" min="0.2" max="3" step="0.1" value="1.0">
       <span class="value" id="pulse-speed-display">1.0</span>
@@ -792,6 +842,25 @@
        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M3 12a9 9 0 1 0 3-6.7"/>
     <path d="M3 4v5h5"/>
+  </svg>
+</button>
+<!-- Eight petals around a centre, drawn rather than typed. The 🌼 character
+     would arrive as a platform colour glyph and ignore `color` — the same trap
+     that made the transport buttons orange on Android. -->
+<button id="dazzle-btn" type="button" title="Dazzle" aria-label="Dazzle">
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <g>
+      <ellipse cx="12" cy="6" rx="2" ry="4"/>
+      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(45 12 12)"/>
+      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(90 12 12)"/>
+      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(135 12 12)"/>
+      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(180 12 12)"/>
+      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(225 12 12)"/>
+      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(270 12 12)"/>
+      <ellipse cx="12" cy="6" rx="2" ry="4" transform="rotate(315 12 12)"/>
+    </g>
+    <circle cx="12" cy="12" r="2.6" fill="var(--bg)"/>
+    <circle cx="12" cy="12" r="1.5"/>
   </svg>
 </button>
 <div id="viewport"></div>
