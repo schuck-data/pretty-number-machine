@@ -6,7 +6,7 @@ import {
 import { FIRST_PRIMES, getPrimeRGB } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
 import {
-  update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown,
+  update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown, resetCamera,
 } from './renderer.js';
 
 const $ = id => document.getElementById(id);
@@ -703,6 +703,21 @@ export function initPanel() {
     update(hotDefaults);
 
     scheduleRebuild();
+
+    // The view goes home too. Reset restored every setting but left the camera
+    // wherever it had been dragged, so resetting from an odd angle produced a
+    // correct figure that still looked wrong — the one part of the state a
+    // person can change without touching a control was the one part Reset did
+    // not undo.
+    //
+    // Ordering against scheduleRebuild() is not delicate, but it is worth
+    // stating so nobody "fixes" it later. buildScene() snapshots the camera at
+    // the TOP of its run and restores it at the bottom, so it preserves
+    // whatever the camera is when it actually executes — and scheduleRebuild()
+    // is debounced, so it has not executed yet here. The rebuild therefore
+    // picks up the reset position and puts it back. Dazzle's setCameraTopDown()
+    // call sits in exactly the same relationship and works for the same reason.
+    resetCamera();
   }
 
   // Dazzle — Reset with a different normal.
@@ -732,9 +747,12 @@ export function initPanel() {
     // Claim the node size BEFORE updateN() runs. Otherwise the auto curve
     // owns it and picks 0.4 for N=1000, and the figure comes out sparse
     // rather than dense.
+    // Was 2.0. At 1.6 the individual nodes stay distinct instead of fusing into
+    // a single sheet of colour — the point of Dazzle is a thousand numbers, and
+    // at 2.0 you could no longer see that they were separate ones.
     nodeSizeUserSet = true;
-    $('node-size').value = 2;
-    $('node-size-display').textContent = '2.0';
+    $('node-size').value = 1.6;
+    $('node-size-display').textContent = '1.6';
 
     updateSelectedPrimes();          // → updateN(), which now respects the size
 

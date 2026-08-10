@@ -29,7 +29,7 @@ const TAP_SLOP_PX = 4;
 // removed — it just moved onto the thing it controls.
 const SPEED_MIN = 0.05;
 const SPEED_MAX = 2.0;
-const SPEED_DEFAULT = 0.12;    // must match DEFAULT_CONFIG.shapeDriftSpeed
+const SPEED_DEFAULT = 0.138;   // must match DEFAULT_CONFIG.shapeDriftSpeed
 const SPEED_TRAVEL_PX = 120;   // full range top to bottom
 const SPEED_LIFT_PX = 30;      // how far the handle itself visibly moves
 

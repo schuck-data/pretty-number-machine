@@ -78,12 +78,15 @@ export const DEFAULT_CONFIG = {
   // the transport's play/pause governs motion via `paused`. Kept as a key
   // because the render loop still gates on it.
   shapeDrift: true,
-  // 20% above the original 0.1. The dwell at each keyframe is a fixed 2s timer
-  // in the render loop, independent of this, so the morph travels faster
-  // between shapes while still lingering on each one for the same beat.
+  // 0.1 originally, then 0.12, now 15% above that again. The dwell at each
+  // keyframe is a fixed timer in the render loop (`DWELL_SECONDS`, currently
+  // 3s), independent of this, so the morph travels faster between shapes while
+  // still lingering on each one for the same beat. The two knobs are separate
+  // on purpose: speed is how it moves, dwell is how long you get to read it.
   // `SPEED_DEFAULT` in core/transport.js must match — it is the hinge the
-  // handle's speed mapping is centred on.
-  shapeDriftSpeed: 0.12,
+  // handle's speed mapping is centred on, so a mismatch puts the handle at the
+  // wrong height for the speed actually in force.
+  shapeDriftSpeed: 0.138,
   colorDrift: false,
   colorDriftSpeed: 1.0,
   autoRotate: true,

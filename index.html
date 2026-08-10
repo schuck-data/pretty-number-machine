@@ -220,6 +220,13 @@
   #status { font-size: 0.6rem; color: rgba(224,221,213,0.2); margin-top: 6px; letter-spacing: 0.03em; }
   #viewport { position: absolute; top: 0; left: 280px; right: 0; bottom: 0; transition: left 0.3s ease; }
   #panel.collapsed ~ #viewport { left: 0; }
+  /* The WebGL canvas is transparent and #viewport paints the background behind
+     it, so the lens chalkboard can be layered between the two (#lens-board,
+     z-index 0). The canvas has to be POSITIONED to sit above it: a positioned
+     element with z-index 0 still paints over a static sibling, so leaving the
+     canvas unpositioned would put the chalkboard back on top — the exact bug
+     this arrangement replaced. Labels stay above at z-index 2. */
+  #viewport > canvas { position: relative; z-index: 1; }
 
   /* Fix dropdown colors for dark theme */
   select option { background: #1a1a1f; color: var(--text); }
@@ -386,10 +393,20 @@
      Texture is drawn in CSS. No image is loaded; the app still
      makes zero external requests and still works offline.
      ========================================================== */
+  /* Sits BEHIND the canvas, not over it. The canvas is transparent (see the
+     scene setup in core/renderer.js) and #viewport carries the page colour, so
+     this slots between them: a background the figure is drawn on rather than a
+     wash applied to it.
+
+     It used to be z-index 1 with mix-blend-mode: lighten, over the canvas.
+     Lighten is a per-channel max, so the slate did not merely replace the
+     background — it lifted the green and blue of every node darker than
+     #1a2620, turning deep reds muddy and tinting the whole figure. In an app
+     where the colour IS the factorisation, that was wrong about the maths, not
+     just about the look. */
   #lens-board {
-    position: absolute; inset: 0; z-index: 1;
+    position: absolute; inset: 0; z-index: 0;
     pointer-events: none;
-    mix-blend-mode: lighten;
     background-color: #1a2620;                    /* chalkboard slate */
 
     /* Grain is fractal noise from an inline SVG filter, not repeating
@@ -830,7 +847,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.14.2 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.14.3 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>

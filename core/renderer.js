@@ -39,6 +39,29 @@ function lineFadeAmount(width) {
   return LINE_FADE_FLOOR + Math.max(0, Math.min(1, t)) * (1 - LINE_FADE_FLOOR);
 }
 
+// The camera's home. Named rather than written inline at construction, because
+// Reset now returns to it as well — two literals would have drifted apart the
+// first time either moved.
+//
+// Was (8, 6, 10). Pushed out ~10% along the same view direction: the angle was
+// right, the figure just sat too large in the frame at load, with the outermost
+// nodes crowding the edge before the morph had even started travelling.
+const HOME_CAM_POS = new THREE.Vector3(8.8, 6.6, 11);
+const HOME_CAM_TARGET = new THREE.Vector3(0, 0, 0);
+
+// How long the morph holds still at each stable shape, in seconds.
+//
+// Was a bare `2` repeated at six call sites — the two bounce ends, the two
+// keyframe crossings, the loop's first-frame seed, and resetMorph(). Raised to
+// 3 and named, because six literals that all had to agree is exactly the shape
+// of a bug waiting to happen: change five and the figure hesitates for a
+// different beat depending on which way it happened to be travelling.
+//
+// This is independent of shapeDriftSpeed, which governs travel BETWEEN shapes.
+// The dwell is what makes each arrangement legible, so it wants to stay a fixed
+// wall-clock beat rather than scaling with speed.
+const DWELL_SECONDS = 3;
+
 // Three.js refs
 let threeScene = null, threeCamera = null, threeRenderer = null, threeControls = null;
 let animId = null;
@@ -306,12 +329,28 @@ export function buildScene() {
   cleanup();
 
   // Scene
+  //
+  // The background is painted by CSS on #viewport, not by Three, and the canvas
+  // is transparent. This exists so the lens chalkboard can sit BEHIND the
+  // figure instead of on top of it.
+  //
+  // It used to be a DOM layer over the canvas using mix-blend-mode: lighten,
+  // which was ingenious and wrong. Lighten is per-channel max, so a chalkboard
+  // of #1a2620 did not merely replace the background — it raised the green and
+  // blue of every node darker than itself. Deep reds came out muddy teal and
+  // the whole figure shifted while the lens was open. The colour IS the
+  // factorisation in this app, so a blend mode that edits colour is not a
+  // presentation detail, it is a lie about the mathematics.
+  //
+  // An opaque canvas cannot have anything behind it, so the fix is a
+  // transparent one. Non-lens areas look identical because #viewport carries
+  // the same colour the scene used to clear to.
   const scene = new THREE.Scene();
-  if (state.backgroundStyle === 'white') {
-    scene.background = new THREE.Color(0xf5f5f0);
-  } else {
-    scene.background = new THREE.Color(state.sceneBackground);
-  }
+  const bgColor = new THREE.Color(
+    state.backgroundStyle === 'white' ? 0xf5f5f0 : state.sceneBackground
+  );
+  scene.background = null;
+  if (viewport) viewport.style.backgroundColor = `#${bgColor.getHexString()}`;
   threeScene = scene;
 
   // Restore camera
@@ -609,9 +648,11 @@ export function buildScene() {
     }
   }
 
-  // The colour thin lines fade toward. Read from the scene rather than
-  // hardcoded so the white-background option fades the right way too.
-  const fadeTarget = scene.background.clone();
+  // The colour thin lines fade toward. Read from the background colour rather
+  // than hardcoded so the white-background option fades the right way too.
+  // (Was `scene.background.clone()`; scene.background is null now that the
+  // canvas is transparent, so it reads the same value from its new home.)
+  const fadeTarget = bgColor.clone();
 
   // Notify modules to build
   const buildCtx = { scene, nodes: nodeData, nodeByN, N, state, baseR, flatScale };
@@ -665,7 +706,7 @@ export function buildScene() {
       if (!morphActive) {
         morphPos = state.dimension;
         morphDir = Math.random() < 0.5 ? 1 : -1;
-        morphPauseTimer = 2;
+        morphPauseTimer = DWELL_SECONDS;
         morphActive = true;
       }
 
@@ -681,16 +722,16 @@ export function buildScene() {
         morphPos += morphDir * speed * dt;
 
         // Bounce at boundaries
-        if (morphPos >= maxDim) { morphPos = maxDim; morphDir = -1; morphPauseTimer = 2; }
-        if (morphPos <= 0.0) { morphPos = 0.0; morphDir = 1; morphPauseTimer = 2; }
+        if (morphPos >= maxDim) { morphPos = maxDim; morphDir = -1; morphPauseTimer = DWELL_SECONDS; }
+        if (morphPos <= 0.0) { morphPos = 0.0; morphDir = 1; morphPauseTimer = DWELL_SECONDS; }
 
         // Pause at intermediate keyframes — detect crossing
         for (const kf of keyframes) {
           if (kf === 0 || kf === maxDim) continue;
           if (morphDir > 0 && morphPos >= kf && prevPos < kf) {
-            morphPos = kf; morphPauseTimer = 2; break;
+            morphPos = kf; morphPauseTimer = DWELL_SECONDS; break;
           } else if (morphDir < 0 && morphPos <= kf && prevPos > kf) {
-            morphPos = kf; morphPauseTimer = 2; break;
+            morphPos = kf; morphPauseTimer = DWELL_SECONDS; break;
           }
         }
       }
@@ -876,7 +917,11 @@ export function init(el) {
   const W = el.clientWidth, H = el.clientHeight;
 
   // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // alpha: true so the lens chalkboard can sit behind the figure. See the
+  // scene setup in buildScene() for why. The clear colour is fully transparent
+  // and #viewport paints the background instead.
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
   renderer.setSize(W, H);
   renderer.setPixelRatio(devicePixelRatio);
   el.appendChild(renderer.domElement);
@@ -884,7 +929,7 @@ export function init(el) {
 
   // Camera
   const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 500);
-  camera.position.set(8, 6, 10);
+  camera.position.copy(HOME_CAM_POS);
   threeCamera = camera;
 
   // Scene (temporary, replaced by buildScene)
@@ -966,7 +1011,10 @@ export function rebuild(full) {
 // constraint and a distance that frames the disk on a desktop crops it badly.
 export function setCameraTopDown() {
   if (!threeCamera || !threeControls) return;
-  const fitR = SPHERE_R * 1.15;                       // a little air around it
+  // Was 1.15. Pulled in to 1.06 — Dazzle fills the disk edge to edge, so the
+  // extra air read as the figure sitting small in the frame rather than as
+  // breathing room.
+  const fitR = SPHERE_R * 1.06;                       // a little air around it
   const halfFov = (threeCamera.fov * Math.PI / 180) / 2;
   const distV = fitR / Math.tan(halfFov);
   const distH = distV / Math.max(0.0001, threeCamera.aspect);
@@ -986,9 +1034,25 @@ export function setCameraTopDown() {
 export function resetMorph() {
   morphPos = 0;
   morphDir = 1;
-  morphPauseTimer = 2;
+  morphPauseTimer = DWELL_SECONDS;
   morphActive = true;
   lastDim = -1;          // force a position recompute on the next frame
+}
+
+// Put the camera back where it starts.
+//
+// Reset restored every setting but left the view wherever it had been dragged
+// to, which made a reset from an odd angle look like it had half worked — the
+// figure was correct and unrecognisable at the same time. buildScene() also
+// restores a saved camera across rebuilds, so this has to run AFTER the
+// rebuild it is paired with, not before, or the save clobbers it.
+export function resetCamera() {
+  if (!threeCamera || !threeControls) return;
+  threeCamera.position.copy(HOME_CAM_POS);
+  threeCamera.up.set(0, 1, 0);
+  threeControls.target.copy(HOME_CAM_TARGET);
+  threeCamera.lookAt(threeControls.target);
+  threeControls.update();
 }
 
 export function destroy() {

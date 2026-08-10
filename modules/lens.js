@@ -9,12 +9,20 @@
 // no rebuild, no pause, no flicker, smooth and visible the whole time. That
 // rules out the obvious implementations and dictates these three:
 //
-//  1. CHALKBOARD is a DOM layer over the canvas using mix-blend-mode: lighten.
-//     The app's background is near-black and its content is bright, so
-//     `lighten` takes the chalkboard wherever the scene is darker than it and
-//     the scene wherever it is brighter. The board replaces the background and
-//     leaves every node and curve untouched, with zero involvement from the
-//     renderer. Nothing is re-rendered; the morph keeps running underneath.
+//  1. CHALKBOARD is a DOM layer BEHIND the canvas. The canvas renders with
+//     alpha and #viewport paints the page colour, so the board slots between
+//     the two and the figure is drawn on top of it. Still zero involvement from
+//     the renderer per frame: nothing is re-rendered, the morph keeps running,
+//     and only a clip-path moves as the handle is dragged.
+//
+//     It was a layer OVER the canvas using mix-blend-mode: lighten until
+//     v0.14.3. That worked without touching the renderer at all, which is why
+//     it was chosen, but lighten is a per-channel max: a slate of #1a2620
+//     raised the green and blue of every node darker than itself, so deep reds
+//     came out muddy teal and the figure changed colour whenever the lens was
+//     open. In an app whose entire claim is that a number's colour IS its
+//     factorisation, that was not a cosmetic compromise. Putting the board
+//     behind the figure costs a transparent canvas and buys back the colours.
 //
 //  2. LABELS are HTML, positioned by projecting each node to screen space each
 //     frame. The renderer used to have its own 3D sprite labels behind a
