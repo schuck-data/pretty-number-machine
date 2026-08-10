@@ -12,9 +12,11 @@ briefing. No Play Console account exists. No TWA has been built.
 
 *Third revision of 2026-08-10; git history has the earlier two. The route (§1)
 and the trap (§2) are otherwise unchanged. What moved in this one: §4 steps 1–2
-are marked done, and step 3 is now marked hard-blocked on the D-U-N-S number —
-tested, not assumed, after a wrong claim to the contrary in an earlier draft of
-this same revision. The D&B wait is the entire critical path. The trade-style
+are done and step 3 is unblocked and next. Two things were learned the hard way
+and are recorded at their steps rather than here: organisation signup takes the
+D-U-N-S number as a required input, so the steps cannot be overlapped; and the
+published "up to 30 business days" for that number was a worst case, not a
+forecast — it arrived the same day. The trade-style
 item slipped to later and is tracked in §10 so it does not vanish. The home
 address is recorded as knowingly public (§3c). And the build tool flipped from
 PWABuilder to Bubblewrap on evidence (§1, §5b) — that was an open question in
