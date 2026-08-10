@@ -7,6 +7,7 @@ desktop.ini
 *~
 .vscode/
 .idea/
+.claude/
 
 # Scratch space. Working copies and prototypes belong outside the repo, not in
 # an ignored folder inside it: the whole tree is deployed to GitHub Pages.

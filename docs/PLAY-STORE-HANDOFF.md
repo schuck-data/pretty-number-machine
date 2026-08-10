@@ -389,9 +389,13 @@ description of what it produced.
   and labels beside the plain view — that one shows the whole idea in a single
   image; (3) the default Line shape with the transport visible, as the honest
   "what you actually open to".
-- **Privacy policy at a public URL.** Draft below. Host it in this repo as
-  `privacy.html`, giving
-  `https://schuckdata.com/pretty-number-machine/privacy.html`. Does not exist yet.
+- ✅ **Privacy policy at a public URL.** **Written 2026-08-10** as `privacy.html`
+  in this repo, giving
+  `https://schuckdata.com/pretty-number-machine/privacy.html`. Styled to match
+  the app — same self-hosted Space Grotesk, same `#0c0c0f` — and verified to
+  make **zero external requests**, which matters because it is the document
+  asserting the app contacts nobody. Shipping it required a service-worker fix;
+  see §8. The text below is what it says.
 
 ### Draft short description (≤80 characters)
 
@@ -487,6 +491,19 @@ scene is the problem that rule exists to prevent.
   If it struggles, the cheap levers are a lower N or gating colour drift above
   a node count. Charging money raises the stakes: a paying buyer who sees it
   stutter has a refund button two taps away (§3c).
+
+- **The service worker answers navigations for the entire scope, so any new
+  standalone page is invisible until it is explicitly excluded.** *Found and
+  fixed 2026-08-10 while adding `privacy.html`.* `sw.js` served the cached app
+  shell for every same-origin navigation in scope — correct while the app was
+  the only document in it. `privacy.html` broke that: anyone who had ever opened
+  the app and then followed the privacy link was handed the app instead of the
+  policy. **The dangerous part is the asymmetry.** A first-time visitor has no
+  worker, gets the real page from the network, and sees nothing wrong — so this
+  would have passed Play review and failed only for the people who actually use
+  the app. Reproduced on localhost with a live worker, fixed with an explicit
+  exclusion, and re-verified. **Any future standalone page needs the same
+  exclusion, and nothing in the tooling will remind you.**
 
 - **The TWA points at the live site.** Publishing the app does not freeze the
   web app. There is no staging environment. Treat `main` as production from the

@@ -104,7 +104,20 @@ self.addEventListener('fetch', (event) => {
   // the markup, so the two can no longer disagree. See PLAN.md section 6
   // item 6 — an "update available" toast is the right next step, and is now
   // the only way a long-lived client learns there is something newer.
-  if (request.mode === 'navigate') {
+  //
+  // One exception, and it is not a softening of the rule above. The shell
+  // answers navigations because every navigation into this scope IS the app —
+  // that stopped being true when privacy.html arrived. It is a standalone
+  // document with no shared JavaScript, so it cannot desynchronise from the
+  // worker's generation the way index.html could, and serving the app in its
+  // place is simply wrong: Google Play requires the privacy policy URL to be
+  // reachable, and anyone who had ever opened the app would have followed that
+  // link and been handed the app again. A first-time visitor has no worker and
+  // would have seen the real page, so this would have looked fine in review and
+  // broken for actual users.
+  const isStandaloneDoc = /\/privacy\.html$/.test(new URL(request.url).pathname);
+
+  if (request.mode === 'navigate' && !isStandaloneDoc) {
     event.respondWith(
       caches.match('./index.html', { ignoreSearch: true })
         .then((hit) => hit || caches.match('./'))
