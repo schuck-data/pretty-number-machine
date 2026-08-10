@@ -8,7 +8,7 @@
 // BUMP CACHE_VERSION on every deploy that changes any precached file.
 // Without a bump, returning visitors keep the old code forever.
 
-const CACHE_VERSION = 'pnm-v0.14.4';
+const CACHE_VERSION = 'pnm-v0.14.5';
 
 // Every cache this worker is allowed to touch begins with this. CACHE_VERSION
 // must start with it too.

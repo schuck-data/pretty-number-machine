@@ -454,7 +454,13 @@
      height the two controls would land on top of each other. */
   #lens-handle {
     position: absolute; z-index: 19;
-    top: calc(62px + env(safe-area-inset-top)); left: 0;
+    /* Clears the Dazzle button, which the handle collides with once the lens
+       is dragged most of the way open — the handle travels rightward while
+       Dazzle is pinned to the right edge, and both sat at the same height.
+       Dazzle wins the tap (z-index 20 against this one's 19), so the handle
+       became unusable exactly where you finish the drag.
+       12 top inset + the Reset's 34 + an 8 gap + Dazzle's 34 + an 8 gap. */
+    top: calc(96px + env(safe-area-inset-top)); left: 0;
     width: 34px; height: 46px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; gap: 4px;
     background: transparent;
@@ -486,7 +492,12 @@
     border-left: none;
     border-right: 5px solid currentColor;
   }
-  @media (pointer: coarse) { #lens-handle { width: 44px; height: 52px; } }
+  /* Touch targets grow to 44, so the stack above the handle grows with them:
+     12 + 44 + 8 + 44 + 8 = 116. Without moving `top` here the handle would
+     still overlap Dazzle on exactly the devices where it matters most. */
+  @media (pointer: coarse) {
+    #lens-handle { width: 44px; height: 52px; top: calc(116px + env(safe-area-inset-top)); }
+  }
 
   #panel::-webkit-scrollbar { width: 3px; }
 
@@ -847,7 +858,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.14.4 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v0.14.5 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
