@@ -5,9 +5,10 @@
 document covers publishing only.
 
 **Status:** 2026-08-10, **v0.14.2**. **Execution has started.** §4 steps 1–2 are
-done: the address is decided and the D-U-N-S number is requested and awaiting
-issue. Everything from §4 step 3 onward is still a briefing. No Play Console
-account exists. No TWA has been built.
+done: the address is decided, and the D-U-N-S number was requested and **issued
+the same day** — it was expected to take up to 30 business days and did not
+(§3a). Step 3 is unblocked and next. Everything from step 3 onward is still a
+briefing. No Play Console account exists. No TWA has been built.
 
 *Third revision of 2026-08-10; git history has the earlier two. The route (§1)
 and the trap (§2) are otherwise unchanged. What moved in this one: §4 steps 1–2
@@ -154,9 +155,14 @@ reweighed and reversed: an organisation account is **exempt from the
 12-tester / 14-day rule** (§5a), and it is the correct long-term home for
 anything Schuck Data publishes.
 
-**Consequence: a D-U-N-S number is required, and it is now the long pole.**
-Free requests can take up to **30 business days**; expedited is about eight, for
-a fee. Look the entity up first — it may already have one — then request.
+**Consequence: a D-U-N-S number is required.** It was expected to be the long
+pole — free requests are published as taking up to **30 business days**, with
+expedited at about eight for a fee.
+
+**It was not. Requested and issued the same day, 2026-08-10.** Recorded because
+the whole schedule was planned around that 30-day figure and it turned out to be
+a worst case rather than a forecast. If any future step quotes a similar range,
+test it before building a plan on it.
 
 **The legal name and address in the Google payments profile must match the Dun
 & Bradstreet record.** Mismatch is the standard verification rejection. Decide
@@ -258,22 +264,19 @@ new or reordered in this revision; they exist because of §3.
 
 1. ✅ **Decide the public-facing address** (§3c). **Done 2026-08-10** — the
    business address is the owner's home address, accepted as public.
-2. ✅ **Request the D-U-N-S number** (§3a). **Filed 2026-08-10**, awaiting issue.
+2. ✅ **Request the D-U-N-S number** (§3a). **Issued 2026-08-10, same day.**
    The request form never offered a trade style, so the DBA still has to be
    added afterwards through D-U-N-S Manager (§3b).
 3. **Play Console organisation account.** $25 one time, plus identity and
-   business verification against the D-U-N-S record.
-   ⛔ **This is hard-blocked on step 2 and cannot be started early.** *Tested
-   2026-08-10 by attempting it: the organisation signup form requires the
-   D-U-N-S number as an input, so there is no account to create until D&B
-   issues one.* An earlier draft of this revision claimed the two waits could
-   overlap, on the strength of a Google help page about self-chosen, extendable
-   verification deadlines. That page describes accounts that **already exist**
-   — the pre-September-2023 cohort being retro-verified — not new organisation
-   signup. It does not apply here. **The D-U-N-S wait is the whole critical
-   path; nothing account-side parallelises with it.**
-   When the number does arrive: sign in as `dakota@schuckdata.com` *before*
-   starting — the account binds
+   business verification against the D-U-N-S record. **Unblocked 2026-08-10.**
+   *Recorded because it cost a wrong turn: the organisation signup form takes
+   the D-U-N-S number as a required input, so this genuinely cannot be started
+   before step 2 completes — tested, not assumed. An earlier draft claimed the
+   two could overlap, citing a Google help page about self-chosen, extendable
+   verification deadlines. That page covers accounts that **already exist** —
+   the pre-September-2023 cohort being retro-verified — not new organisation
+   signup.*
+   Sign in as `dakota@schuckdata.com` *before* starting — the account binds
    permanently to whichever identity creates it, and the Workspace admin
    identity (`ds89holdco@gmail.com`) is the wrong one (§3d).
 4. **Add a second Admin user** (§3d).
@@ -546,7 +549,7 @@ Do not attempt these on his behalf:
 
 **Account and money**
 
-- [ ] D-U-N-S number issued *(requested 2026-08-10)*
+- [x] D-U-N-S number issued *(requested and issued 2026-08-10)*
 - [ ] DBA added as a trade style through D-U-N-S Manager — **deferred from the
       initial request; nothing blocks on it and no error will ever mention it,
       which is exactly why it will be forgotten** (§3b)
