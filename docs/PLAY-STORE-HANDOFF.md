@@ -4,17 +4,19 @@
 **Read `PLAN.md` (alongside this file) first** for the charter and history. This
 document covers publishing only.
 
-**Status when written:** 2026-08-10, **v0.14.2**. Nothing in §§4–9 has been
-executed. No Play Console account exists. No D-U-N-S number has been requested.
-No TWA has been built. This is a briefing, not a progress report.
+**Status:** 2026-08-10, **v0.14.2**. **Execution has started.** §4 steps 1–2 are
+done: the address is decided and the D-U-N-S number is requested and awaiting
+issue. Everything from §4 step 3 onward is still a briefing. No Play Console
+account exists. No TWA has been built.
 
-*Supersedes the earlier 2026-08-10 / v0.14.2 revision; git history has that
-version. The route (§1) and the trap (§2) are unchanged. What moved: three
-account-level decisions were made and are recorded in the new §3 — organisation
-account, DBA as the developer name, and a $0.99 price. All three change the
-order of work, so §4 was rewritten and everything after it renumbered by one.
-§5a now says the tester requirement does not apply, and explains what would
-bring it back.*
+*Third revision of 2026-08-10; git history has the earlier two. The route (§1)
+and the trap (§2) are otherwise unchanged. What moved in this one: §4 steps 1–2
+are marked done and step 3 now says account creation need not wait on D&B,
+because the verification deadline is self-chosen and extendable. The trade-style
+item slipped to later and is tracked in §10 so it does not vanish. The home
+address is recorded as knowingly public (§3c). And the build tool flipped from
+PWABuilder to Bubblewrap on evidence (§1, §5b) — that was an open question in
+the previous revision and is the one change here that alters real work.*
 
 ---
 
@@ -32,6 +34,7 @@ Verified against the live origin on **2026-08-10**, not assumed:
 | Zero third-party requests at runtime | Three.js and the font vendored under `lib/`. The only external URL in source is the `http://www.w3.org` SVG namespace, which is a declaration, not a fetch |
 | **No data collection of any kind** | No analytics, no accounts, no telemetry, no cookies. Only a service-worker cache and one CSS custom property |
 | Repo public | `github.com/schuck-data/pretty-number-machine`, all rights reserved |
+| **Manifest declares `"orientation": "any"`** | Read from `manifest.webmanifest` 2026-08-10. Matters because API 36 stops apps locking orientation or aspect ratio on screens ≥600dp — a real migration hazard for other apps, and a non-issue for this one. Do not let a build tool substitute a fixed orientation |
 
 That data-collection row matters more than it looks: it makes the Data Safety
 form and the privacy policy trivially honest. **Keep it that way.** Adding any
@@ -59,8 +62,10 @@ Two tools do the wrapping:
 - **Bubblewrap** (`@bubblewrap/cli`) — command line, needs Node, a JDK, and the
   Android SDK. More control, more setup.
 
-**Recommendation: PWABuilder**, but see §5 — the target API requirement may
-decide this for you.
+**Recommendation: Bubblewrap.** *Reversed 2026-08-10 — previous revisions said
+PWABuilder.* PWABuilder is by far the friendlier tool, and it drives Bubblewrap
+under the hood anyway, but it does not expose the one setting that has a
+deadline attached to it. See §5b for the evidence.
 
 ---
 
@@ -176,8 +181,12 @@ inside verification and never reaches the store page.
 Adding the DBA as a **trade style** on the D&B record is free for US non-public
 companies through D-U-N-S Manager. Google does not require it. Do it anyway —
 it puts the DBA and the legal entity on one record, which is cheap insurance if
-a reviewer ever asks why the store name differs from the verified name. Do it
-while requesting the number, not after.
+a reviewer ever asks why the store name differs from the verified name.
+
+**Deferred 2026-08-10.** The D-U-N-S request was filed and the form never asked
+for a trade style, so this is outstanding. It is exactly the kind of item that
+gets forgotten, because nothing blocks on it and no error will ever mention it.
+Once the number is issued, add the DBA through D-U-N-S Manager. Tracked in §10.
 
 Before committing to the name: **developer names cannot be identical across
 accounts.** Search Google Play for the DBA first.
@@ -201,11 +210,14 @@ because there is no upside to waiting.
 
 Three further consequences of charging:
 
-- **The legal address becomes public.** Merchant accounts selling paid apps
-  display the legal address on the store listing. Free apps do not. If the
-  fictitious-name registration uses a home address, that address goes on Google
-  Play. Changing it after verification is a re-verification, not an edit — so
-  decide it before step 1 of §4, not after.
+- **The legal address becomes public, and here it is a home address.** Merchant
+  accounts selling paid apps display the legal address on the store listing;
+  free apps do not. This entity's business address *is* the owner's home
+  address, and the D-U-N-S request was filed with it on 2026-08-10. **That was
+  known and accepted, not overlooked** — the home address will appear on the
+  public Play listing. Changing it later is a re-verification across both D&B
+  and the payments profile, not an edit, so if it is ever revisited, revisit it
+  deliberately rather than mid-submission.
 - **A tax interview is required** before payouts release: a W-9 against the
   entity's EIN, plus a payout bank account.
 - **The economics.** Google's fee structure changed on **2026-06-30**; service
@@ -243,13 +255,20 @@ not take the listing with it.
 Order matters — later steps consume outputs from earlier ones. Steps 1–7 are
 new or reordered in this revision; they exist because of §3.
 
-1. **Decide the public-facing address** (§3c). It propagates to D&B, the
-   payments profile, and the public store listing. Cheapest to get right first.
-2. **Request the D-U-N-S number** (§3a). The long pole — up to 30 business days.
-   Look up the entity first in case it already has one. Add the DBA as a trade
-   style in the same visit (§3b).
+1. ✅ **Decide the public-facing address** (§3c). **Done 2026-08-10** — the
+   business address is the owner's home address, accepted as public.
+2. ✅ **Request the D-U-N-S number** (§3a). **Filed 2026-08-10**, awaiting issue.
+   The request form never offered a trade style, so the DBA still has to be
+   added afterwards through D-U-N-S Manager (§3b).
 3. **Play Console organisation account.** $25 one time, plus identity and
    business verification against the D-U-N-S record.
+   **This does not have to wait for the number.** You choose your own
+   verification deadline at signup, get a 60-day window before it in which to
+   verify, and can extend by 90 days if the D&B wait runs long. Set it
+   generously and let the two waits overlap rather than run end to end.
+   Sign in as `dakota@schuckdata.com` *before* starting — the account binds
+   permanently to whichever identity creates it, and the Workspace admin
+   identity (`ds89holdco@gmail.com`) is the wrong one (§3d).
 4. **Add a second Admin user** (§3d).
 5. **Merchant / payments profile**, tax interview, payout bank account (§3c).
 6. **Decide the package name**, e.g. `com.schuckdata.pnm`. **This is permanent.**
@@ -304,9 +323,28 @@ lands well *after* 31 August. **Target API 36 from the very first upload**
 rather than shipping 35 and re-cutting. The 2026-11-01 extension is the
 realistic fallback if the D-U-N-S wait runs long.
 
-**This may decide the tool.** If PWABuilder's output cannot be set to API 36,
-Bubblewrap takes an explicit `targetSdkVersion` in `twa-manifest.json`. Check
-before committing to PWABuilder.
+**This decided the tool.** *Investigated 2026-08-10; this was an open question
+in the previous revision and is now answered against PWABuilder.*
+
+PWABuilder generates its Android package **through Bubblewrap**, pinned to
+`targetSdkVersion 35` while `compileSdkVersion` is already 36. Three issues were
+filed about exactly this — [#6159](https://github.com/pwa-builder/PWABuilder/issues/6159)
+(2026-07-21), [#6160](https://github.com/pwa-builder/PWABuilder/issues/6160),
+[#6167](https://github.com/pwa-builder/PWABuilder/issues/6167) — with #6160 and
+#6167 both closed as duplicates of #6159. **Honest limit: all three read as
+closed, and the comment threads were not retrievable, so whether a fix has
+shipped is unconfirmed.** The last direct report of the generated output, in
+July 2026, was API 35.
+
+Use **Bubblewrap directly**. It takes an explicit `targetSdkVersion` in
+`twa-manifest.json`, which is the same pipeline PWABuilder would have used
+without the dependency on someone else's release cycle for a dated requirement.
+The cost is setup: Node, a JDK, and the Android SDK. That is a one-afternoon
+cost against a deadline that removes the app from sale.
+
+If PWABuilder is used anyway, **verify the emitted `targetSdkVersion` in the
+generated `build.gradle` before uploading** — do not trust the tool's own
+description of what it produced.
 
 ---
 
@@ -501,7 +539,10 @@ Do not attempt these on his behalf:
 
 **Account and money**
 
-- [ ] D-U-N-S number issued, with the DBA recorded as a trade style (§3b)
+- [ ] D-U-N-S number issued *(requested 2026-08-10)*
+- [ ] DBA added as a trade style through D-U-N-S Manager — **deferred from the
+      initial request; nothing blocks on it and no error will ever mention it,
+      which is exactly why it will be forgotten** (§3b)
 - [ ] Payments profile legal name and address match the D&B record exactly
 - [ ] Organisation account verified — not fallen back to personal (§5a)
 - [ ] Second user added with Admin permissions (§3d)
@@ -531,11 +572,14 @@ Do not attempt these on his behalf:
 
 Stated plainly so nobody inherits a false certainty:
 
-- **Whether PWABuilder can target API 36.** Not tested. If it cannot,
-  Bubblewrap can. Verify before choosing the tool (§5b).
-- **Whether PWABuilder's generated manifest matches ours.** It reads the live
-  manifest, but confirm `start_url`, `scope` and orientation survive into the
-  Android manifest before publishing.
+- **Whether PWABuilder has since shipped API 36.** The three tracking issues all
+  read as closed but their comment threads could not be retrieved (§5b). This
+  no longer blocks anything — Bubblewrap is the choice regardless — but the
+  claim "PWABuilder cannot do 36" should be stated as "was not confirmed to",
+  not as settled fact.
+- **Whether the generated Android manifest matches ours.** Whichever tool is
+  used, confirm `start_url` and `scope` survive into the Android manifest before
+  publishing. Orientation is no longer a worry — see §0.
 - **Whether a paid TWA behaves identically to a free one.** No reason to expect
   otherwise — the purchase gates the install, not the content — but it has not
   been observed. Confirm on the internal test track before production.
@@ -544,10 +588,15 @@ Stated plainly so nobody inherits a false certainty:
   The whole schedule hangs off this number, so find out early (§4 step 2).
 - **Low-end device performance**, for the app generally and Dazzle in
   particular. Never measured on anything but a Pixel 9.
-- **Nothing in §§4–10 has been executed.** Every step is written from knowledge,
-  not from having done it. Expect the console UI to have moved.
+- **Only §4 steps 1–2 have been executed.** Everything from step 3 onward is
+  written from knowledge, not from having done it. Expect the console UI to have
+  moved.
 
 Resolved since the previous revision, all verified 2026-08-10 and now stated as
 fact above: the 12-tester rule and why it does not bind (§5a); the target API
 level requirement (§5b); that the developer name may differ from the verified
-legal name (§3b); and that free → paid is a one-way door (§3c).
+legal name (§3b); that free → paid is a one-way door (§3c); that the Play
+Console verification deadline is self-chosen and extendable, so account creation
+need not wait on D&B (§4 step 3); that the manifest declares `orientation: any`
+and is therefore unaffected by the API 36 orientation change (§0); and that the
+build tool is Bubblewrap rather than PWABuilder (§1, §5b).
