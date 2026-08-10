@@ -522,8 +522,34 @@ has long listed an "update available — reload" toast as the answer if this eve
 bit. It has bitten, and it is now the *only* way a long-lived client learns
 there is something newer.
 
-Do **not** reach for `skipWaiting()` — swapping the worker under a live WebGL
-scene is the problem that rule exists to prevent.
+**Half done as of v0.14.4, and the remaining half is the half that matters for
+Play.**
+
+`skipWaiting()` is now in, so a new version becomes active as soon as it has
+precached and **one refresh** picks it up, instead of requiring every copy to be
+closed. The blanket "do not reach for `skipWaiting()`" in earlier revisions was
+too crude: what is actually dangerous is `skipWaiting()` *combined with*
+`clients.claim()` or with deleting the cache a running page is reading from.
+Both are avoided, so the page you are looking at finishes its life on the
+generation it started with.
+
+Two things that cost real bugs and should not be rediscovered:
+
+- **`caches.match()` searches every cache in storage, oldest first.** Harmless
+  while activate deleted all old caches. The moment a previous generation is
+  kept alive on purpose, a global match hands the new worker the *old* files.
+  Caught in testing, not reasoning — a seeded old cache served its `index.html`
+  to the new worker. Every lookup is now scoped to `CACHE_VERSION`, which is
+  what makes keeping old caches safe at all.
+- **The old cache must outlive the old page**, not the old worker. A page whose
+  cache was deleted falls through to the network and gets the *new* generation
+  against its *old* loaded JavaScript — the 2026-08-09 failure by another route.
+
+**Still outstanding, and this is the Play-relevant part: an installed TWA has no
+refresh button.** A browser tab gets closed eventually; an app someone leaves
+open for weeks may never navigate at all. The "update available — reload" prompt
+in `PLAN.md` §6 item 6 is still the only way such a client learns there is
+something newer, and it is still worth building before submission.
 
 ---
 

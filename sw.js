@@ -8,7 +8,7 @@
 // BUMP CACHE_VERSION on every deploy that changes any precached file.
 // Without a bump, returning visitors keep the old code forever.
 
-const CACHE_VERSION = 'pnm-v0.14.3';
+const CACHE_VERSION = 'pnm-v0.14.4';
 
 const PRECACHE = [
   './',
@@ -62,18 +62,46 @@ self.addEventListener('install', (event) => {
         throw err;
       })
   );
-  // No skipWaiting(). Swapping the worker out from under a live WebGL scene
-  // causes confusing bugs; the new version takes over on next launch.
+  // skipWaiting() so a new version becomes the ACTIVE worker as soon as it has
+  // finished precaching, instead of queueing until every copy of the app is
+  // closed. Without it an update is invisible indefinitely — a browser tab gets
+  // closed eventually, but an installed TWA might not be for weeks.
+  //
+  // This is safe here only because of two deliberate choices below: the new
+  // worker does NOT claim pages that are already running, and activate does NOT
+  // delete the cache those pages are still reading from. Add either of those
+  // back and this becomes the mixed-generation bug that took the app down on
+  // 2026-08-09 — new JavaScript against old, live.
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const stale = (await caches.keys()).filter((k) => k !== CACHE_VERSION);
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+
+    // Claim only on a genuine first install, when no older cache exists and so
+    // no page can be mid-generation. It earns its place there: it lets the very
+    // first visit work offline without needing a relaunch.
+    //
+    // Claiming on an UPDATE would be the bug. The running page has already
+    // loaded its modules; switching its controller would point any later fetch
+    // at the new generation while the old one is still executing.
+    if (stale.length === 0) {
+      await self.clients.claim();
+      return;
+    }
+
+    // Never bin a cache a live client may still be reading from. The old worker
+    // keeps serving that page from its own generation until the page goes away,
+    // which is what keeps it coherent.
+    //
+    // Deleting everything older than the previous generation bounds storage at
+    // two while preserving the one that matters. With no clients at all, there
+    // is nothing to protect and everything stale goes.
+    const doomed = clients.length > 0 ? stale.slice(0, -1) : stale;
+    await Promise.all(doomed.map((k) => caches.delete(k)));
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -94,16 +122,21 @@ self.addEventListener('fetch', (event) => {
   // the renderer ever started. Menu and buttons, no figure. Every returning
   // visitor saw it.
   //
-  // The worker's generation now defines the WHOLE app. A client runs entirely
-  // v0.14.1 or entirely v0.14.2, never a mixture. Stale-but-working beats
-  // fresh-and-broken, and with no skipWaiting() the swap happens on relaunch,
-  // when nothing is half-rendered.
+  // The worker's generation defines the WHOLE app. A client runs entirely one
+  // version or entirely another, never a mixture. Stale-but-working beats
+  // fresh-and-broken, and the swap happens between page loads rather than
+  // under a half-rendered scene.
   //
-  // Cost, accepted: an update is invisible until every copy of the app is
-  // closed. That was already true of the JavaScript; it is now also true of
-  // the markup, so the two can no longer disagree. See PLAN.md section 6
-  // item 6 — an "update available" toast is the right next step, and is now
-  // the only way a long-lived client learns there is something newer.
+  // Since v0.14.4 that swap costs ONE refresh rather than closing every copy:
+  // skipWaiting() makes a new version active as soon as it has precached, but
+  // it does not claim the running page and does not delete the cache that page
+  // is reading from, so the page you are looking at finishes its life on the
+  // generation it started with. The NEXT navigation gets the new one.
+  //
+  // Still outstanding for the TWA case, and the reason PLAN.md section 6
+  // item 6 stays open: an installed app has no refresh button. A long-lived
+  // copy needs an "update available" prompt to learn there is something newer,
+  // because it may never navigate at all.
   //
   // One exception, and it is not a softening of the rule above. The shell
   // answers navigations because every navigation into this scope IS the app —
@@ -117,17 +150,34 @@ self.addEventListener('fetch', (event) => {
   // broken for actual users.
   const isStandaloneDoc = /\/privacy\.html$/.test(new URL(request.url).pathname);
 
+  // Every lookup below goes through THIS worker's own cache, never the global
+  // caches.match(). That distinction is load-bearing as of v0.14.4.
+  //
+  // caches.match() searches EVERY cache in storage and returns the first hit,
+  // in creation order — so it is oldest-first. That was harmless while activate
+  // deleted every old cache, because there was only ever one to search. Now
+  // that a previous generation is deliberately kept alive for pages still
+  // running on it, a global match would hand this worker the OLD generation's
+  // files. Caught in testing: a seeded v0.14.3 cache served its index.html to
+  // the v0.14.4 worker, which is precisely the mixed-generation failure the
+  // whole cache-first design exists to prevent.
+  //
+  // Scoping to CACHE_VERSION is what makes keeping old caches safe: each
+  // generation reads only its own, so the two cannot bleed into each other.
+  const fromOwnCache = (req, opts) =>
+    caches.open(CACHE_VERSION).then((c) => c.match(req, opts));
+
   if (request.mode === 'navigate' && !isStandaloneDoc) {
     event.respondWith(
-      caches.match('./index.html', { ignoreSearch: true })
-        .then((hit) => hit || caches.match('./'))
+      fromOwnCache('./index.html', { ignoreSearch: true })
+        .then((hit) => hit || fromOwnCache('./'))
         .then((hit) => hit || fetch(request))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then((hit) => {
+    fromOwnCache(request, { ignoreSearch: true }).then((hit) => {
       if (hit) return hit;
       return fetch(request).then((res) => {
         // Runtime-cache same-origin successes so anything missed by the
