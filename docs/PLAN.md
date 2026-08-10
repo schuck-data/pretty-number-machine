@@ -1,5 +1,10 @@
 # Pretty Number Machine — Project Plan
 
+> **Start at [`HANDOFF.md`](HANDOFF.md).** It is newer than this document and
+> states the current position. This file is the charter and history; it predates v1
+> entirely and describes the project's reasoning rather than its current
+> state.
+
 **Owner:** Dakota Schuck
 **Current version:** v0.14.2 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/

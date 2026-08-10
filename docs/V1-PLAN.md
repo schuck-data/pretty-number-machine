@@ -1,5 +1,10 @@
 # v1.0.0 Plan — Pretty Number Machine
 
+> **Start at [`HANDOFF.md`](HANDOFF.md).** It is newer than this document and
+> states the current position. Every work item below is now closed; this file is history —
+> read it for *why* each v1 change was made, and which performance claims were
+> measured rather than judged.
+
 **For:** whoever builds v1.0.0.
 **Read `PLAN.md` for the charter, `PLAY-STORE-HANDOFF.md` for publishing.** This
 document covers the v1.0.0 rebuild only.

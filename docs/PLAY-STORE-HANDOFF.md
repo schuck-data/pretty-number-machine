@@ -1,5 +1,11 @@
 # Play Store Handoff — Pretty Number Machine
 
+> **Start at [`HANDOFF.md`](HANDOFF.md).** It is newer than this document and
+> states the current position. This file is still the best reference for the asset-links
+> trap (§2), paid-app mechanics (§3) and Play deadlines (§5), but its §4
+> sequence has been superseded and its status block describes the shipped
+> build rather than v1.
+
 **For:** whoever runs the Google Play submission.
 **Read `PLAN.md` (alongside this file) first** for the charter and history. This
 document covers publishing only.
