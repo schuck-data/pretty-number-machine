@@ -8,7 +8,7 @@
 // BUMP CACHE_VERSION on every deploy that changes any precached file.
 // Without a bump, returning visitors keep the old code forever.
 
-const CACHE_VERSION = 'pnm-v0.14.4';
+const CACHE_VERSION = 'pnmv1-v1.0.0-dev.1';
 
 // Every cache this worker is allowed to touch begins with this. CACHE_VERSION
 // must start with it too.
@@ -20,9 +20,9 @@ const CACHE_VERSION = 'pnm-v0.14.4';
 // would count the OTHER build's cache as its own junk and eventually bin it,
 // taking that build offline.
 //
-// The trailing hyphen is what separates the two namespaces: 'pnmv1-…' does not
-// start with 'pnm-'. That is deliberate, not luck. Do not drop the hyphen.
-const CACHE_PREFIX = 'pnm-';
+// The trailing hyphen is what separates the two namespaces: 'pnm-…' is the other build's and
+// does not start with 'pnmv1-'. That is deliberate, not luck. Do not drop the hyphen.
+const CACHE_PREFIX = 'pnmv1-';
 
 const PRECACHE = [
   './',
@@ -124,28 +124,6 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
   if (new URL(request.url).origin !== self.location.origin) return;
-
-  // Hands off the v1 subtree entirely — not just its navigations, its assets
-  // too. That build is a separate application with its own worker, its own
-  // cache namespace and its own lifecycle; this one must not touch it.
-  //
-  // A worker's scope is the folder it lives in, so ./v1/ sits INSIDE this
-  // one's. Without this bail-out the first visit to /v1/ would be answered
-  // with this build's cached index.html — the app, not the new app — because
-  // the navigation branch below serves the shell for everything in scope.
-  // That is the third outing of this exact bug: privacy.html, then a seeded
-  // stale cache, now here.
-  //
-  // Asset requests need excluding as well, not only navigations. A URL under
-  // ./v1/ would miss in this cache, fall through to the network, and then be
-  // runtime-cached into THIS generation — quietly filling one build's cache
-  // with another build's files.
-  //
-  // Derived from self.location rather than hardcoded, so it survives the app
-  // being served from a different path. That relocatability is deliberate and
-  // is what let ./v1/ be a plain copy with no edits.
-  const V1_PREFIX = new URL('./v1/', self.location).pathname;
-  if (new URL(request.url).pathname.startsWith(V1_PREFIX)) return;
 
   // Navigations: cache-first, from the SAME versioned cache as everything
   // else. This is load-bearing, not a performance choice.
