@@ -94,7 +94,7 @@ Gate on 1–6. 7–9 are cheap and ride along. 10 is process.
 | 3 | **`InstancedMesh` + cheaper material** | Geometry is shared but every node gets its own `MeshStandardMaterial` — full PBR, ~1000 draw calls, no batching. Mobile GPUs struggle in the low hundreds. This is the real ceiling on `MAX_N`, and Dazzle is a one-tap path to it | ☐ |
 | 4 | **Cap pixel ratio at 2** | `setPixelRatio(devicePixelRatio)` uncapped. A 3× phone renders 9× the fragments on top of item 3 | ☐ |
 | 5 | **Update prompt** | An installed TWA has no refresh button. Since v0.14.4 a browser needs one refresh, but an app left open may never navigate at all. `PLAN.md` §6 item 6 | ☐ |
-| 6 | **Measure on a low-end device** | FPS counter behind a debug flag, then actual numbers. Everything above is a hypothesis until this exists | ☐ |
+| 6 | **FPS counter behind a debug flag** | *Scope reduced 2026-08-10: no low-end device is available.* The counter still ships — it costs little and makes the measurement possible the day a slow handset turns up. **But items 1, 3 and 4 now proceed on judgement rather than evidence, and must stay labelled that way** (§3) | ☐ |
 | 7 | **`lang`, reduced motion, meta CSP** | `<html>` has no `lang`. `prefers-reduced-motion` appears zero times in an app that morphs, pulses and rotates continuously. No CSP — Pages cannot set headers but `<meta http-equiv>` works | ☐ |
 | 8 | **Error boundary** | Modules are isolated; a renderer failure is a blank screen with no message | ☐ |
 | 9 | **Scratch-buffer the position hot path** | `interpolatedPos` allocates three `Vector3`s per node per frame — 180,000 objects/second at N=1000. Benchmarked at **0.063 ms/frame vs 0.005 scratch**, 12× — real, but see §3 | ☐ |
@@ -121,8 +121,31 @@ not be sampled here at all: the browser pane does not composite, so
 `requestAnimationFrame` is throttled and sampling times out.
 
 `PLAY-STORE-HANDOFF.md` §8's "never measured on anything but a Pixel 9" is
-**still true**. That is what item 6 is for, and it should come early enough to
-falsify items 3 and 4 rather than merely confirm them.
+**still true, and will remain true through v1.0.0.**
+
+**Decided 2026-08-10: no low-end device is available, so items 1, 3 and 4 are
+built on educated judgement.** That is a legitimate call — the reasoning is
+strong and the changes are standard practice for shipped WebGL — but it is not
+the same thing as knowing, and the difference should not quietly evaporate
+between here and the store listing.
+
+What the judgement rests on, stated so it can be argued with later:
+
+- **Item 3 (instancing).** ~1000 draw calls with a unique `MeshStandardMaterial`
+  each. Mobile GPUs are draw-call bound far more than fragment bound, and PBR
+  shading for flat-coloured spheres buys nothing. Low confidence in the *size*
+  of the win, high confidence in its *direction*.
+- **Item 4 (pixel ratio cap).** Capping at 2 is near-universal in shipped WebGL.
+  On a 3× display it removes ~55% of fragments for a difference most people
+  cannot see. This is the safest bet on the list.
+- **Item 1 (context loss).** Not a performance guess at all. Android reclaims GL
+  contexts; without a handler the canvas stays black permanently. The only
+  uncertainty is *how often*, not *whether*.
+
+**Do not let this become a claim that v1.0.0 is fast on low-end hardware.** It
+is a claim that v1.0.0 removes the three things most likely to make it slow.
+First run on a cheap handset is still a genuine unknown, and the FPS counter
+exists so that run produces a number instead of an impression.
 
 ---
 
