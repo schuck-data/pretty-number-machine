@@ -4,9 +4,12 @@
 **Read `PLAN.md` for the charter, `PLAY-STORE-HANDOFF.md` for publishing.** This
 document covers the v1.0.0 rebuild only.
 
-**Status:** 2026-08-10, `v1.0.0-dev.5`. **Items 1, 2, 4, 5, 7, 8, 9 and 10 are
-implemented and verified in `v1/`.** Only **item 3 (instancing)** and **item 6
-(FPS counter)** remain. The shipped build is
+**Status:** 2026-08-10, `v1.0.0-dev.7`. **Feature-complete.** Every work item is
+implemented and verified in `v1/`, except instancing, which is deliberately
+deferred to v1.1 with reasons in §2 and §3.
+
+**Next is not more code — it is §4 promotion**, then the bundle and an internal
+test track. The remaining unknowns are all about publishing, not the app. The shipped build is
 untouched apart from the service-worker exclusion (§1c) and the lens-handle fix.
 
 **Item 2 has a consequence worth reading before judging the app:** the dwell and
@@ -97,10 +100,10 @@ Gate on 1–6. 7–9 are cheap and ride along. 10 is process.
 |---|---|---|---|
 | 1 | **WebGL context-loss recovery** | `webglcontextlost` appears **zero** times. Android reclaims GL contexts when backgrounded or under memory pressure; the canvas goes permanently black. Invisible on desktop, invisible on a Pixel 9, fatal on a cheap phone. For a paid app that is a refund |☑ **done** (dev.3) |
 | 2 | **Wall-clock timing** | `renderer.js` uses a hardcoded `const dt = 1 / 60`. Dwell and morph speed are counted in *frames*, so the "3s" dwell is ~1.5s at 120 Hz and ~6s at 30 fps. The pulse effects already use `performance.now()`, so the two systems disagree with each other today |☑ **done** (dev.3) |
-| 3 | **`InstancedMesh` + cheaper material** | Geometry is shared but every node gets its own `MeshStandardMaterial` — full PBR, ~1000 draw calls, no batching. Mobile GPUs struggle in the low hundreds. This is the real ceiling on `MAX_N`, and Dazzle is a one-tap path to it | ☐ |
+| 3 | **Cheaper material** ✅ / **`InstancedMesh`** ⏸ | Nodes are now `MeshLambertMaterial`; the PBR shading was cost with no visible benefit at this size. **Instancing deliberately deferred to v1.1.** It is not a renderer change — `nd.mesh` is consumed by physics.js (which writes positions), info.js and physics.js (both raycast the mesh array) and lens.js, so it is an API migration across four files. Now measured: **1002 draw calls at N=1000, one per node.** That is the number instancing would collapse | ☑ **part done** (dev.7) |
 | 4 | **Cap pixel ratio at 2** | `setPixelRatio(devicePixelRatio)` uncapped. A 3× phone renders 9× the fragments on top of item 3 |☑ **done** (dev.3) |
 | 5 | **Update prompt** | An installed TWA has no refresh button. Since v0.14.4 a browser needs one refresh, but an app left open may never navigate at all. `PLAN.md` §6 item 6 |☑ **done** (dev.5) |
-| 6 | **FPS counter behind a debug flag** | *Scope reduced 2026-08-10: no low-end device is available.* The counter still ships — it costs little and makes the measurement possible the day a slow handset turns up. **But items 1, 3 and 4 now proceed on judgement rather than evidence, and must stay labelled that way** (§3) | ☐ |
+| 6 | **FPS counter behind a debug flag** | `?debug`. Reports fps, frame ms, p95, **draw calls**, triangles, nodes, N, dpr. The draw-call figure is the one that matters — it turned the central performance argument from inference into measurement on first run | ☑ **done** (dev.7) |
 | 7 | **`lang`, reduced motion, meta CSP** | `<html>` has no `lang`. `prefers-reduced-motion` appears zero times in an app that morphs, pulses and rotates continuously. No CSP — Pages cannot set headers but `<meta http-equiv>` works |☑ **done** (dev.3) |
 | 8 | **Error boundary** | Modules are isolated; a renderer failure is a blank screen with no message |☑ **done** (dev.5) |
 | 9 | **Scratch-buffer the position hot path** | *The premise was half wrong.* The `Vector3` churn was real but secondary: `getShapes()` rebuilt **and re-sorted** its array on every call, once per node per frame — a thousand arrays and a thousand sorts per frame at N=1000, for an identical six-entry list. Now cached. The out-vector is opt-in because physics.js legitimately holds two results at once |☑ **done** (dev.5) |
@@ -122,9 +125,20 @@ ms/frame on a desktop CPU **is not the bottleneck**, and saying otherwise would
 be dressing up a guess. Its real cost is GC pressure showing up as jank spikes,
 which that benchmark does not capture.
 
-The draw-call argument for item 3 is sound but **unmeasured**. Frame rates could
-not be sampled here at all: the browser pane does not composite, so
-`requestAnimationFrame` is throttled and sampling times out.
+The draw-call argument for item 3 is **no longer unmeasured**. The HUD from item
+6 reports, on first run:
+
+| State | Draw calls | Nodes | Triangles |
+|---|---|---|---|
+| Default | 25 | 24 | 13,798 |
+| Dazzle | **1002** | 1001 | 254,038 |
+
+Exactly one draw call per node, as argued. The mechanism is now confirmed; what
+remains unknown is how much a given phone cares.
+
+Frame timings still cannot be taken here. The HUD reported 113.3 ms in both the
+24-node and the 1001-node case — identical cost across a fortyfold difference in
+work, which measures the browser pane's throttle rather than the app.
 
 `PLAY-STORE-HANDOFF.md` §8's "never measured on anything but a Pixel 9" is
 **still true, and will remain true through v1.0.0.**
