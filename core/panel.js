@@ -746,8 +746,11 @@ export function initPanel() {
     $('show-curves').checked = false;
 
     $('pulse').checked = true;
-    $('pulse-speed').value = 2;
-    $('pulse-speed-display').textContent = '2.0';
+    // Pinned rather than inherited. It happens to equal the default right now,
+    // but it is a stated part of this preset, so it should not follow the
+    // default if that ever moves. Switching pulse ON is the real difference.
+    $('pulse-speed').value = 1;
+    $('pulse-speed-display').textContent = '1.0';
     $('line-pulse').checked = true;
     $('color-drift').checked = true;
     $('color-drift-speed').value = 2.5;
@@ -758,15 +761,15 @@ export function initPanel() {
     $('shape-drift').checked = false;
 
     update({
-      // A fifth of the way from Disk (0.5) toward Sphere (1.0), so the field
-      // domes gently instead of lying perfectly flat. Straight down onto a
-      // true plane there is no depth cue at all and the rotation reads as a
-      // spinning image rather than an object.
-      dimension: 0.6,
+      // A tenth of the way from Disk (0.5) toward Sphere (1.0). Straight down
+      // onto a true plane there is no depth cue at all and the rotation reads
+      // as a spinning image rather than an object, so the field domes — but
+      // only just. 0.6 was tried first and bulged too hard; this is half that.
+      dimension: 0.55,
       shapeDrift: false,     // the shape holds; everything else moves
       paused: false,
       pulse: true,
-      pulseSpeed: 2,
+      pulseSpeed: 1,
       linePulse: true,
       colorDrift: true,
       colorDriftSpeed: 2.5,

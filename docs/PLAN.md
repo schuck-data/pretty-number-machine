@@ -1,7 +1,7 @@
 # Pretty Number Machine — Project Plan
 
 **Owner:** Dakota Schuck
-**Current version:** v0.14.0 (repo: `schuck-data/pretty-number-machine`, public)
+**Current version:** v0.14.1 (repo: `schuck-data/pretty-number-machine`, public)
 **Live at:** https://schuckdata.com/pretty-number-machine/
 **Prototype:** v0.6.6 remains live at betterward.com/pnm — frozen, do not touch
 **Last updated:** 2026-08-06 (rev 10 — pre-release control cleanup)
@@ -211,6 +211,22 @@ mode, and its credibility is worth more.
 ---
 
 ## 5. Status log
+
+**2026-08-10 rev 11** — v0.14.1. Dazzle tuning against the live build, after
+the owner saw v0.14.0 in motion on a real screen — the two things rev 10 flagged
+as unverifiable were both slightly wrong, in the direction of too much.
+
+- **Dome halved, 0.6 → 0.55.** Rev 10 guessed a fifth of the way from Disk to
+  Sphere; a tenth is enough. The depth cue is the point, not the bulge.
+- **Pulse speed 2 → 1** in Dazzle. Pinned explicitly rather than dropped even
+  though it now equals `DEFAULT_CONFIG.pulseSpeed`: it is a stated part of the
+  preset and should not follow the default if that ever moves. Switching pulse
+  *on* remains the real difference from a clean slate.
+
+`CACHE_VERSION` bumped to `pnm-v0.14.1`. This is the first deploy where that
+matters for real rather than as hygiene — v0.14.0 is live and installed, so
+shipping changed files under the same key would have left returning visitors
+on the old code indefinitely.
 
 **2026-08-06 rev 10** — v0.14.0. Thirteen owner-requested edits ahead of the
 Play submission. Mostly small, but three were bugs wearing feature requests.
