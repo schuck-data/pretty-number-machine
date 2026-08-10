@@ -76,8 +76,9 @@ deadline attached to it. See §5b for the evidence.
 
 ## 2. THE TRAP — read this before anything else
 
-Still the single most likely way to lose an afternoon. **Re-confirmed
-2026-08-10: entirely outstanding.**
+Was the single most likely way to lose an afternoon for four revisions.
+**Substantially solved 2026-08-10** — the serving path is proven and the Jekyll
+hazard in §2b is disarmed. What remains is filling in real values, §2d.
 
 A TWA only loses the browser address bar if the site proves it authorises the
 app, via **Digital Asset Links**: a file at
@@ -121,9 +122,22 @@ include:
   - .well-known
 ```
 
-**Confirmed 2026-08-10:** that repo has **no** `.nojekyll` (correct — keep it
-that way) and **no** `include:` directive, and
-`https://schuckdata.com/.well-known/assetlinks.json` returns **404**.
+**Done 2026-08-10.** The `include:` block is in that repo's `_config.yml`, with
+a comment explaining why it is load-bearing and why `.nojekyll` must not be used
+instead. `.nojekyll` is still absent, which is correct — keep it that way.
+
+**Verified after deploying, not assumed:** Pages rebuilt in about 30 seconds and
+`https://schuckdata.com/.well-known/assetlinks.json` now returns **200** with
+`content-type: application/json`. The site root and the app both still return
+200, and all nine legacy uppercase redirects (`/ARTMATH/`, `/BACKSTAGE/`,
+`/CAREERS/`, `/CONTACT/`, `/FOUNDER/`, `/ABOUT/`, `/SERVICES/`, `/WORK/`,
+`/SITEMAP/`) still resolve — they answer 200 rather than 30x because
+`jekyll-redirect-from` generates meta-refresh stub pages, which is expected.
+
+So the thing this section has warned about since its first revision — Jekyll
+silently swallowing the directory — is no longer a risk. It was tested with a
+placeholder rather than reasoned about, which is the whole point: the failure
+mode was the directory vanishing, not the contents being wrong.
 
 ### 2c. Verify it before building anything
 
@@ -131,13 +145,29 @@ that way) and **no** `include:` directive, and
 curl -i https://schuckdata.com/.well-known/assetlinks.json
 ```
 
-Must return **200** with `content-type: application/json`. Google also has a
-tester at
+Must return **200** with `content-type: application/json`. As of 2026-08-10 it
+does. Google also has a tester at
 `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://schuckdata.com&relation=delegate_permission/common.handle_all_urls`
+— that will *fail* until §2d is done, and correctly so.
 
-**While you are in that repo**, it also needs a link to the app from
-`/artmath/` — PNM is currently reachable only by knowing the URL. Nothing on
-`schuckdata.com` links to it. Same repo, same visit.
+### 2d. What is still outstanding
+
+The file currently served is a **placeholder that authorises nothing**. Both
+values in it are deliberately fake and both must be replaced:
+
+| Field | Placeholder | Real value comes from |
+|---|---|---|
+| `package_name` | `com.schuckdata.pnm.PLACEHOLDER` | §4 step 6 — the permanent package name, not yet decided |
+| `sha256_cert_fingerprints[0]` | thirty-two zero bytes | Play Console, after §4 step 11 — the **app signing** certificate, not the local upload key |
+
+Neither could be filled in yet, which is exactly why a placeholder was used: the
+failure this section exists to prevent is Jekyll eating the directory, and that
+is now disproven independently of the contents.
+
+**Also still outstanding in that repo, deliberately not done:** nothing on
+`schuckdata.com` links to the app — PNM is reachable only by knowing the URL. A
+link from `/artmath/` is the obvious home for it. That is a content and design
+decision about the marketing site rather than plumbing, so it was left alone.
 
 ---
 
@@ -587,8 +617,11 @@ Do not attempt these on his behalf:
 
 **Build and listing**
 
-- [ ] `https://schuckdata.com/.well-known/assetlinks.json` returns 200 with the
-      correct package name and SHA-256 fingerprint
+- [x] `https://schuckdata.com/.well-known/assetlinks.json` returns 200 at all —
+      the Jekyll hazard is disarmed and the serving path is proven (§2b)
+- [ ] …and returns the **real** package name and SHA-256 fingerprint, not the
+      placeholder currently there (§2d)
+- [ ] A link to the app exists somewhere on `schuckdata.com` (§2d)
 - [ ] Bundle targets API 36 (§5b)
 - [ ] Update prompt shipped (§7)
 - [ ] Dazzle checked on a low-end device (§8)
