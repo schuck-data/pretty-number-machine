@@ -1,0 +1,56 @@
+# Static checks on every push and pull request.
+#
+# No install step and no dependencies — `tools/check.mjs` runs on stock Node.
+# That is deliberate: this project has no build step, and CI that needed
+# node_modules would be the thin end of introducing one.
+#
+# What this guards is listed in tools/check.mjs. All of it is the same shape:
+# invariants that fail SILENTLY in production. A missing precache path does not
+# throw, it just quietly means the app never works offline; a stale version
+# label does not throw, it just makes every bug report start from a wrong
+# premise. Those are exactly the failures a human reviewer skims past.
+#
+# The one thing this does NOT do is run the app. A browser smoke test — load,
+# build the scene, press Dazzle, press Reset, assert no console errors — would
+# have caught two real bugs during development that only manual testing found.
+# It needs Playwright, so it needs dependencies, so it is a deliberate decision
+# rather than an oversight. See docs/V1-PLAN.md item 10.
+
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Static checks
+        run: node tools/check.mjs
+
+      # Every module must at least parse. Cheap, and it catches the class of
+      # typo that only shows up as a blank screen in a browser.
+      - name: Parse every module
+        run: |
+          set -e
+          fails=0
+          for f in $(find . -name '*.js' -not -path './.git/*' -not -path '*/lib/three/*'); do
+            cp "$f" "/tmp/$(basename "$f" .js).mjs"
+            if ! node --check "/tmp/$(basename "$f" .js).mjs" 2>/dev/null; then
+              echo "PARSE FAIL: $f"
+              fails=$((fails+1))
+            fi
+          done
+          if [ "$fails" -gt 0 ]; then
+            echo "$fails file(s) failed to parse"
+            exit 1
+          fi
+          echo "all modules parse"

@@ -46,6 +46,11 @@ function lineFadeAmount(width) {
 // Was (8, 6, 10). Pushed out ~10% along the same view direction: the angle was
 // right, the figure just sat too large in the frame at load, with the outermost
 // nodes crowding the edge before the morph had even started travelling.
+// Reused by the per-node position update in the animation loop. Module scope
+// rather than per-frame so it is allocated exactly once for the life of the
+// app. Never escapes that loop — see the comment at its use site.
+const _posScratch = new THREE.Vector3();
+
 const HOME_CAM_POS = new THREE.Vector3(8.8, 6.6, 11);
 const HOME_CAM_TARGET = new THREE.Vector3(0, 0, 0);
 
@@ -792,17 +797,22 @@ export function buildScene() {
     if (dim !== lastDim) {
       lastDim = dim;
       const N = resolveN();
+      // The one genuinely hot call site: once per node, every frame the shape
+      // is moving. `_posScratch` is written and immediately copied out twice,
+      // so nothing outside this loop ever sees it — which is the condition that
+      // makes reusing it safe. Callers that keep a result must not pass `out`;
+      // see the note in positions.js.
       for (const nd of nodeData) {
-        const pos = interpolatedPos(nd.n, N, dim);
-        nd.mesh.position.copy(pos);
-        nd.currentPos.copy(pos);
+        interpolatedPos(nd.n, N, dim, _posScratch);
+        nd.mesh.position.copy(_posScratch);
+        nd.currentPos.copy(_posScratch);
       }
       // Update glow sprites
       for (const gs of glowSprites) {
         if (gs.userData.nodeRef) {
           gs.position.copy(gs.userData.nodeRef.mesh.position);
         } else {
-          gs.position.copy(interpolatedPos(0, N, dim));
+          gs.position.copy(interpolatedPos(0, N, dim, _posScratch));
         }
       }
       // Update curve positions

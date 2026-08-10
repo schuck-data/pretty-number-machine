@@ -882,7 +882,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.3 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.5 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
@@ -924,6 +924,14 @@
   import { initPanel } from './core/panel.js';
   import { initSheet } from './core/sheet.js';
   import { initTransport } from './core/transport.js';
+  import {
+    installGlobalErrorBoundary, markRendered, showFatalError, watchForUpdates,
+  } from './core/notices.js';
+
+  // Armed before anything else runs, so a failure during startup has somewhere
+  // to be reported. It only fires while the app has not yet rendered — see
+  // notices.js — so a stray rejection later cannot blank a working scene.
+  installGlobalErrorBoundary();
 
   // First: sets the sheet's initial state, so everything below sizes against
   // the layout the user will actually see.
@@ -945,15 +953,28 @@
     }
   }
 
-  // Build panel (reads registered modules + shapes)
-  initPanel();
+  // Panel and renderer, inside a boundary. Everything above this point either
+  // has its own error handling (the module loop) or cannot fail usefully; from
+  // here on a throw means no visualisation, and a black rectangle explains
+  // nothing to someone who paid for this.
+  try {
+    // Build panel (reads registered modules + shapes)
+    initPanel();
 
-  // Start renderer
-  init(document.getElementById('viewport'));
+    // Start renderer
+    init(document.getElementById('viewport'));
 
-  // After the renderer, so the playhead reads a live dimension on its first
-  // frame rather than the default.
-  initTransport();
+    // After the renderer, so the playhead reads a live dimension on its first
+    // frame rather than the default.
+    initTransport();
+
+    // From here a later failure is a bump, not a dead app, so the global
+    // boundary stands down.
+    markRendered();
+  } catch (err) {
+    console.error('[PNM] Fatal error during startup:', err);
+    showFatalError(err);
+  }
 
   // Offline support. Registered last and failing silently on purpose — a
   // service worker problem must never keep the app from starting.
@@ -965,7 +986,10 @@
   // silently never installs.
   if ('serviceWorker' in navigator) {
     const registerSW = () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        // An installed app has no refresh button, so it needs telling.
+        watchForUpdates(reg);
+      }).catch((err) => {
         console.warn('[PNM] Service worker registration failed:', err);
       });
     };

@@ -8,7 +8,7 @@
 // BUMP CACHE_VERSION on every deploy that changes any precached file.
 // Without a bump, returning visitors keep the old code forever.
 
-const CACHE_VERSION = 'pnmv1-v1.0.0-dev.3';
+const CACHE_VERSION = 'pnmv1-v1.0.0-dev.5';
 
 // Every cache this worker is allowed to touch begins with this. CACHE_VERSION
 // must start with it too.
@@ -29,6 +29,7 @@ const PRECACHE = [
   './index.html',
   './manifest.webmanifest',
 
+  './core/notices.js',
   './core/state.js',
   './core/math.js',
   './core/positions.js',

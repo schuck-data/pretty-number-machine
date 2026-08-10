@@ -9,12 +9,27 @@ const PHI = GOLDEN_ANGLE;
 // ============================================================
 const shapes = new Map();
 
+// getShapes() used to rebuild AND re-sort this array on every call, and
+// interpolatedPos() calls it once per node per frame — a thousand throwaway
+// arrays and a thousand sorts per frame at N=1000, to produce an identical
+// six-entry list every time. Shapes are registered once at module load and
+// never change afterwards, so the work was pure waste.
+//
+// Cached instead, invalidated by registerShape(). This is almost certainly a
+// larger saving than the Vector3 churn everyone notices first, because a sort
+// allocates and compares where a Vector3 merely allocates.
+//
+// The cached array is returned by reference. No caller mutates it today
+// (panel.js only maps over it); if one ever needs to, it must copy first.
+let shapesSorted = null;
+
 export function registerShape(dimValue, name, posFunc) {
   shapes.set(dimValue, { name, pos: posFunc });
+  shapesSorted = null;
 }
 
 export function getShapes() {
-  return [...shapes.entries()].sort((a, b) => a[0] - b[0]);
+  return (shapesSorted ??= [...shapes.entries()].sort((a, b) => a[0] - b[0]));
 }
 
 export function getMaxDim() {
@@ -27,15 +42,30 @@ export function getMinDim() {
   return sorted.length > 0 ? sorted[0][0] : 0;
 }
 
-// Compute interpolated position for a node at a given dimension value
-export function interpolatedPos(n, N, dim) {
+// Compute interpolated position for a node at a given dimension value.
+//
+// `out` is optional. Pass a Vector3 and the result is written into it instead of
+// allocating; omit it and you get a fresh vector, exactly as before.
+//
+// It is OPT-IN rather than a shared module-level scratch, and that is not
+// timidity. Several callers legitimately hold two results at once —
+// physics.js compares posA against posB, restA against restB, and does
+// `rest.distanceTo(interpolatedPos(...))`. A single shared scratch would make
+// both sides the same object, so every one of those comparisons would silently
+// become a distance from a point to itself: zero, with no error anywhere.
+//
+// So the hot per-node morph loop in renderer.js opts in, and everything that
+// needs an independent vector simply does not.
+export function interpolatedPos(n, N, dim, out) {
+  const set = (v) => (out ? out.copy(v) : v);
+
   const sorted = getShapes();
-  if (sorted.length === 0) return new THREE.Vector3();
-  if (sorted.length === 1) return sorted[0][1].pos(n, N);
+  if (sorted.length === 0) return out ? out.set(0, 0, 0) : new THREE.Vector3();
+  if (sorted.length === 1) return set(sorted[0][1].pos(n, N));
 
   // Clamp to registered range
-  if (dim <= sorted[0][0]) return sorted[0][1].pos(n, N);
-  if (dim >= sorted[sorted.length - 1][0]) return sorted[sorted.length - 1][1].pos(n, N);
+  if (dim <= sorted[0][0]) return set(sorted[0][1].pos(n, N));
+  if (dim >= sorted[sorted.length - 1][0]) return set(sorted[sorted.length - 1][1].pos(n, N));
 
   // Find bracketing shapes
   let lower = sorted[0], upper = sorted[1];
@@ -50,7 +80,12 @@ export function interpolatedPos(n, N, dim) {
   const t = (dim - lower[0]) / (upper[0] - lower[0]);
   const posA = lower[1].pos(n, N);
   const posB = upper[1].pos(n, N);
-  return new THREE.Vector3().lerpVectors(posA, posB, t);
+  // posA and posB are still allocated by the shape functions themselves. Fixing
+  // that means changing the registerShape() contract, which math.js also builds
+  // curves against — out of scope here, and noted in docs/V1-PLAN.md item 9.
+  return out
+    ? out.lerpVectors(posA, posB, t)
+    : new THREE.Vector3().lerpVectors(posA, posB, t);
 }
 
 
