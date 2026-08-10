@@ -158,15 +158,25 @@ Everything after this point is contingent on signal.
 
 ### Burst 6 — Google Play
 **See `PLAY-STORE-HANDOFF.md` — full briefing, drafted copy, and the traps.**
-- [ ] TWA wrapper via PWABuilder or Bubblewrap (no native code required)
 - [ ] Play Console account, $25 one-time
+- [ ] TWA wrapper via PWABuilder or Bubblewrap (no native code required)
 - [ ] `assetlinks.json` at the **domain root** — a different repo, and Jekyll
-      drops dot-directories by default. This is the big one.
+      drops dot-directories by default. This is the big one. Link PNM from
+      `/artmath/` in the same visit; nothing on the site points at it today.
 - [ ] Store listing, screenshots, privacy policy (trivial — no data collected,
-      keep it that way)
+      keep it that way). Use Dazzle for the hero screenshot — it is the only
+      reproducible frame in the app.
+- [ ] **Update prompt** — required before submission, not optional. Since
+      v0.14.2 everything is cache-first, so an installed TWA held open for
+      weeks would never learn a new version exists. See rev 12 and handoff §6.
+- [ ] **Dazzle on a low-end device** — one tap reaches 1001 meshes with three
+      animated effects, and item 3 below is still open.
 - **Done when:** installable from Play, launching with no address bar
-- **Schedule risk:** new personal Play accounts may need 12 testers for 14 days
-  before production access. Verify early; it is the long pole, not the build.
+- **Two dated deadlines**, both verified 2026-08-10 (handoff §4):
+  **12 testers for 14 continuous days** before production access, confirmed
+  still current for personal accounts — the long pole, not the build; and
+  **target API 36 from 2026-08-31**, which the timeline almost certainly puts
+  you past, so build against 36 from the first upload.
 
 ### Burst 7 — Audio prototype (do any time, out of order)
 Highest-variance item. Cheap to test, potentially reshapes the product.
