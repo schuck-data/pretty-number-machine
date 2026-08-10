@@ -4,8 +4,9 @@
 **Read `PLAN.md` for the charter, `PLAY-STORE-HANDOFF.md` for publishing.** This
 document covers the v1.0.0 rebuild only.
 
-**Status:** 2026-08-10, `v1.0.0-dev.3`. **Items 1, 2, 4 and 7 are implemented
-and verified in `v1/`.** Items 3, 5, 6, 8, 9 and 10 remain. The shipped build is
+**Status:** 2026-08-10, `v1.0.0-dev.5`. **Items 1, 2, 4, 5, 7, 8, 9 and 10 are
+implemented and verified in `v1/`.** Only **item 3 (instancing)** and **item 6
+(FPS counter)** remain. The shipped build is
 untouched apart from the service-worker exclusion (§1c) and the lens-handle fix.
 
 **Item 2 has a consequence worth reading before judging the app:** the dwell and
@@ -98,12 +99,12 @@ Gate on 1–6. 7–9 are cheap and ride along. 10 is process.
 | 2 | **Wall-clock timing** | `renderer.js` uses a hardcoded `const dt = 1 / 60`. Dwell and morph speed are counted in *frames*, so the "3s" dwell is ~1.5s at 120 Hz and ~6s at 30 fps. The pulse effects already use `performance.now()`, so the two systems disagree with each other today |☑ **done** (dev.3) |
 | 3 | **`InstancedMesh` + cheaper material** | Geometry is shared but every node gets its own `MeshStandardMaterial` — full PBR, ~1000 draw calls, no batching. Mobile GPUs struggle in the low hundreds. This is the real ceiling on `MAX_N`, and Dazzle is a one-tap path to it | ☐ |
 | 4 | **Cap pixel ratio at 2** | `setPixelRatio(devicePixelRatio)` uncapped. A 3× phone renders 9× the fragments on top of item 3 |☑ **done** (dev.3) |
-| 5 | **Update prompt** | An installed TWA has no refresh button. Since v0.14.4 a browser needs one refresh, but an app left open may never navigate at all. `PLAN.md` §6 item 6 | ☐ |
+| 5 | **Update prompt** | An installed TWA has no refresh button. Since v0.14.4 a browser needs one refresh, but an app left open may never navigate at all. `PLAN.md` §6 item 6 |☑ **done** (dev.5) |
 | 6 | **FPS counter behind a debug flag** | *Scope reduced 2026-08-10: no low-end device is available.* The counter still ships — it costs little and makes the measurement possible the day a slow handset turns up. **But items 1, 3 and 4 now proceed on judgement rather than evidence, and must stay labelled that way** (§3) | ☐ |
 | 7 | **`lang`, reduced motion, meta CSP** | `<html>` has no `lang`. `prefers-reduced-motion` appears zero times in an app that morphs, pulses and rotates continuously. No CSP — Pages cannot set headers but `<meta http-equiv>` works |☑ **done** (dev.3) |
-| 8 | **Error boundary** | Modules are isolated; a renderer failure is a blank screen with no message | ☐ |
-| 9 | **Scratch-buffer the position hot path** | `interpolatedPos` allocates three `Vector3`s per node per frame — 180,000 objects/second at N=1000. Benchmarked at **0.063 ms/frame vs 0.005 scratch**, 12× — real, but see §3 | ☐ |
-| 10 | **Smoke test + `CACHE_VERSION` CI check** | There are no tests, no CI, no linting. Two real bugs today were caught only by manual browser testing, and `CACHE_VERSION` discipline had three near-misses | ☐ |
+| 8 | **Error boundary** | Modules are isolated; a renderer failure is a blank screen with no message |☑ **done** (dev.5) |
+| 9 | **Scratch-buffer the position hot path** | *The premise was half wrong.* The `Vector3` churn was real but secondary: `getShapes()` rebuilt **and re-sorted** its array on every call, once per node per frame — a thousand arrays and a thousand sorts per frame at N=1000, for an identical six-entry list. Now cached. The out-vector is opt-in because physics.js legitimately holds two results at once |☑ **done** (dev.5) |
+| 10 | **Smoke test + `CACHE_VERSION` CI check** | There are no tests, no CI, no linting. Two real bugs today were caught only by manual browser testing, and `CACHE_VERSION` discipline had three near-misses |☑ **done** (dev.5) |
 
 **Explicitly not in v1.0.0:** panel/renderer refactors, declarative controls,
 analytics. `panel.js` (800 lines) and `renderer.js` (1000) are heavy and `state`
