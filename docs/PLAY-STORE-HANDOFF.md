@@ -308,6 +308,17 @@ new or reordered in this revision; they exist because of §3.
    days" alert. Verification required **uploading supporting documents**, not
    just typing the D-U-N-S number, so have entity paperwork to hand before
    starting rather than mid-form.
+   Two things observed in the flow that this document did not predict:
+   - **A payment of $30 was requested against a Google Cloud billing account**
+     (`015005-CD7820-40AA02`), not the $25 developer fee this document names.
+     Whether that is part of the verification flow or a separate Google Cloud
+     billing account opened alongside it was **not established**. Worth
+     confirming, because a Cloud billing account can carry recurring charges
+     where the Play fee is genuinely one-time.
+   - **Phone verification is gated behind the other checks**, not parallel to
+     them: the console will not verify phone numbers until the organisation
+     and identity are verified and the documents approved. So the account is
+     one serial queue, not a checklist that can be worked in any order.
    *Recorded because it cost a wrong turn: the organisation signup form takes
    the D-U-N-S number as a required input, so this genuinely cannot be started
    before step 2 completes — tested, not assumed. An earlier draft claimed the
