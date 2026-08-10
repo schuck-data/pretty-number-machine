@@ -111,8 +111,22 @@ export function resolveN() {
 // ============================================================
 // CLEANUP
 // ============================================================
+// Set while rebuilding after a context loss.
+//
+// When a GL context is lost the driver has already freed every object that
+// lived in it. Calling dispose() on those afterwards asks the NEW context to
+// delete buffers it never owned, which is what produced a wall of
+// `INVALID_OPERATION: delete: object does not belong to this context` warnings
+// during recovery. Harmless, but noise on the console is how real warnings get
+// missed, and the calls are pure waste.
+//
+// So on that one path the JS-side references are dropped without touching the
+// GPU. Normal rebuilds still dispose properly — skipping it there would leak.
+let skipGpuDispose = false;
+
 function disposeMesh(obj) {
   if (!obj) return;
+  if (skipGpuDispose) return;
   if (obj.geometry) obj.geometry.dispose();
   if (obj.material) {
     if (obj.material.map) obj.material.map.dispose();
@@ -140,7 +154,11 @@ function cleanup() {
   // Dispose node meshes
   for (const nd of nodeData) disposeMesh(nd.mesh);
   // Dispose curves
-  for (const c of curveLines) { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }
+  for (const c of curveLines) {
+    if (skipGpuDispose) break;   // same reason as disposeMesh(): the context took these with it
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) c.material.dispose();
+  }
   // Dispose glow sprites
   for (const g of glowSprites) disposeMesh(g);
 
@@ -675,12 +693,36 @@ export function buildScene() {
 
   // Start animation
   const animStartTime = performance.now();
+  // Seeded to the same instant as animStartTime so the very first frame sees a
+  // dt near zero rather than a spike measured from whenever the previous scene
+  // last drew — which, after a rebuild, could be a long time ago.
+  let lastFrameTime = animStartTime;
 
   function animate() {
     animId = requestAnimationFrame(animate);
-    if (!threeRenderer) return;
+    if (!threeRenderer || contextLost) return;
 
-    const t = (performance.now() - animStartTime) / 1000;
+    const now = performance.now();
+    const t = (now - animStartTime) / 1000;
+
+    // Real elapsed seconds, not an assumed 1/60.
+    //
+    // The morph used to advance by a hardcoded 1/60 per FRAME, which quietly
+    // made every duration in this app a frame count wearing a seconds costume.
+    // A "3 second" dwell was 180 frames: about 1.5s on a 120Hz phone, 3s at
+    // 60Hz, 6s on anything struggling at 30fps. The same figure therefore
+    // morphed at twice the intended speed on exactly the hardware most likely
+    // to be used to judge it. Worse, the pulse and colour-drift effects above
+    // already ran off performance.now(), so the two halves of the animation
+    // disagreed with each other on every display that was not 60Hz.
+    //
+    // Clamped to 100ms. A backgrounded tab, a long GC pause or a breakpoint
+    // produces an enormous gap, and feeding that in raw would teleport the
+    // morph across several keyframes in one step — skipping the dwell at each,
+    // which is the one thing the dwell exists to prevent. Capping means a
+    // stalled app resumes where it left off instead of somewhere arbitrary.
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+    lastFrameTime = now;
 
     threeControls.autoRotate = state.autoRotate && !state.paused;
     threeControls.autoRotateSpeed = state.driftSpeed * 0.8;
@@ -710,7 +752,9 @@ export function buildScene() {
         morphActive = true;
       }
 
-      const dt = 1 / 60;
+      // dt comes from the real clock at the top of the frame now. The local
+      // `const dt = 1 / 60` that used to sit here shadowed it, which would have
+      // made this whole change a silent no-op.
       const speed = state.shapeDriftSpeed * 0.15;
       const maxDim = 2.5;
       const keyframes = [0, 0.5, 1.0, 1.5, 2.0, 2.5];
@@ -886,7 +930,12 @@ export function buildScene() {
     }
 
     // Module animate hooks
-    const animCtx = { time: t, dt: 1 / 60, dim, scene: threeScene, camera: threeCamera, nodes: nodeData, nodeByN, N: resolveN() };
+    // dt is the real measured delta, same as the morph uses. It was a hardcoded
+    // 1/60 here too — so the frame-rate assumption was not confined to this
+    // file, it was published to every module through the animate contract.
+    // No module reads it today, which is the only reason this never surfaced;
+    // the first one that does would have inherited the bug silently.
+    const animCtx = { time: t, dt, dim, scene: threeScene, camera: threeCamera, nodes: nodeData, nodeByN, N: resolveN() };
     for (const [name, mod] of getModules()) {
       if (!mod.enabled || mod._crashed) continue;
       try {
@@ -912,6 +961,78 @@ export function buildScene() {
 // ============================================================
 let viewport = null;
 
+// ============================================================
+// DEVICE PIXEL RATIO
+// ============================================================
+// Capped at 2. A 3x phone renders ~2.25x the fragments of a 2x one for a
+// difference almost nobody can resolve on a 5-inch screen, and this app already
+// asks a lot of the fill rate: a thousand lit spheres, additive glow sprites,
+// and thick Line2 curves that are drawn as screen-space quads.
+//
+// Uncapped devicePixelRatio was the single cheapest performance mistake in the
+// pre-v1 build. Capping is near-universal in shipped WebGL for exactly this
+// reason.
+//
+// NOT measured on a low-end device — see docs/V1-PLAN.md §3. This is the change
+// on that list carrying the highest confidence, but it is still judgement.
+const MAX_PIXEL_RATIO = 2;
+const pixelRatio = () => Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);
+
+// ============================================================
+// WEBGL CONTEXT LOSS
+// ============================================================
+// Android reclaims GL contexts. Backgrounding the app, memory pressure, the
+// screen locking, another app wanting the GPU — any of these can take the
+// context away, and it is markedly more likely on the cheap hardware this app
+// has never been tested on.
+//
+// Without these handlers the canvas goes black and STAYS black. No error, no
+// recovery, nothing to do but force-quit. In a browser tab that is an annoyance
+// you fix by reloading. In an installed TWA, with no address bar and no reload
+// button, it is the whole app dead until the user works out how to kill it —
+// and for a paid app, that is a refund and a one-star review.
+//
+// preventDefault() on the lost event is the load-bearing line: without it the
+// browser never fires `webglcontextrestored` and recovery is impossible.
+let contextLost = false;
+
+function installContextLossHandlers(canvas) {
+  canvas.addEventListener('webglcontextlost', (e) => {
+    // Tells the browser we intend to recover. Omit this and restoration never
+    // happens — this is the difference between a recoverable app and a dead one.
+    e.preventDefault();
+    contextLost = true;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    console.warn('[PNM] WebGL context lost — pausing until it is restored.');
+    emit('contextLost', {});
+  }, false);
+
+  canvas.addEventListener('webglcontextrestored', () => {
+    contextLost = false;
+    console.warn('[PNM] WebGL context restored — rebuilding the scene.');
+    // Every GPU-side resource died with the context: geometries, materials,
+    // textures, the lot. buildScene() constructs all of them from scratch, so
+    // rebuilding is both the correct recovery and the one that cannot drift out
+    // of step with normal startup. It also restarts the animation loop.
+    try {
+      // The rebuild runs cleanup() first, which would otherwise try to dispose
+      // resources the dead context already freed. Cleared in `finally` so a
+      // failed rebuild cannot leave normal teardown permanently disabled — that
+      // would turn a recoverable glitch into a memory leak for the rest of the
+      // session.
+      skipGpuDispose = true;
+      try { buildScene(); } finally { skipGpuDispose = false; }
+      emit('contextRestored', {});
+    } catch (err) {
+      console.error('[PNM] Rebuild after context restore failed:', err);
+    }
+  }, false);
+}
+
+export function isContextLost() {
+  return contextLost;
+}
+
 export function init(el) {
   viewport = el;
   const W = el.clientWidth, H = el.clientHeight;
@@ -923,9 +1044,11 @@ export function init(el) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setClearColor(0x000000, 0);
   renderer.setSize(W, H);
-  renderer.setPixelRatio(devicePixelRatio);
+  renderer.setPixelRatio(pixelRatio());
   el.appendChild(renderer.domElement);
   threeRenderer = renderer;
+
+  installContextLossHandlers(renderer.domElement);
 
   // Camera
   const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 500);
@@ -948,6 +1071,10 @@ export function init(el) {
     threeCamera.aspect = w / h;
     threeCamera.updateProjectionMatrix();
     threeRenderer.setSize(w, h);
+    // Re-applied on resize, not only at startup: dragging a window between a
+    // retina and a non-retina display changes devicePixelRatio without
+    // recreating the renderer, and Three does not notice on its own.
+    threeRenderer.setPixelRatio(pixelRatio());
   });
   resizeObserver.observe(el);
 

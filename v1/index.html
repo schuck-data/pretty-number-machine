@@ -1,7 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Content Security Policy, declared in the document because GitHub Pages
+     cannot set response headers.
+
+     script-src needs 'unsafe-inline'. Two scripts in this file must be inline:
+     the importmap (external importmaps are not portably supported) and the
+     module bootstrap. The first draft omitted it and blocked BOTH, killing the
+     app completely — caught in testing, which is the only reason it is not in
+     this comment as a shipped incident.
+
+     Hashing the two inline blocks would be stricter and was rejected: this
+     project has no build step, so a hash would silently go stale the next time
+     either block is touched, and a dead app is a worse outcome than a slightly
+     softer directive.
+
+     'unsafe-inline' does not make this pointless. default-src, connect-src and
+     script-src still confine every load and every connection to this origin, so
+     an injected <script src> pointing anywhere else is refused, as is any
+     attempt to phone home. That matches what the privacy policy claims.
+
+     frame-ancestors is deliberately absent: browsers ignore it in a meta tag,
+     so including it only produces a console error that trains people to ignore
+     console errors. It needs a real header, which Pages cannot send. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Pretty Number Machine — v1 preview</title>
@@ -859,7 +882,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.2 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.3 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>

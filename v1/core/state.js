@@ -96,6 +96,40 @@ export const DEFAULT_CONFIG = {
   onStateChange: null,
 };
 
+// ============================================================
+// REDUCED MOTION
+// ============================================================
+// This app is motion from the moment it loads: the figure morphs continuously
+// between six arrangements and the camera orbits the whole time. For someone
+// with a vestibular disorder that is not a stylistic flourish, it is a reason
+// to close the app — and on an app store listing, an accessibility complaint.
+//
+// So the OS-level preference changes what the app does, rather than being
+// detected and ignored. Two settings are stood down:
+//
+//   shapeDrift — the continuous morph, the largest movement on screen
+//   autoRotate — the constant camera orbit
+//
+// The pulses and colour drift already default to off, so they need no help.
+// Nothing is removed: every control stays exactly where it was, and a person
+// who wants the motion can switch it on. This changes the default, not the
+// capability.
+//
+// Applied to DEFAULT_CONFIG rather than to `state`, so that Reset honours the
+// preference too. A Reset that switched the morph back on would hand the motion
+// straight back to the person who asked the operating system not to have it.
+//
+// Guarded because matchMedia is absent in some non-browser contexts, and this
+// module is otherwise environment-free.
+export const prefersReducedMotion =
+  typeof matchMedia === 'function' &&
+  matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (prefersReducedMotion) {
+  DEFAULT_CONFIG.shapeDrift = false;
+  DEFAULT_CONFIG.autoRotate = false;
+}
+
 // Hot properties: can be changed without full rebuild
 export const HOT_KEYS = new Set([
   'dimension', 'shapeDrift', 'shapeDriftSpeed', 'autoRotate', 'driftSpeed', 'lineWidth', 'pulse', 'linePulse', 'pulseSpeed', 'colorDrift', 'colorDriftSpeed',

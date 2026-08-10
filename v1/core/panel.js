@@ -482,6 +482,17 @@ function updateModuleStates() {
 // WIRE EVERYTHING
 // ============================================================
 export function initPanel() {
+  // Bring the two motion toggles into line with the actual defaults before
+  // anything else runs.
+  //
+  // Their `checked` attributes are hardcoded in index.html, which was fine
+  // while the defaults were constants. Under reduced motion (core/state.js)
+  // they are not: state would say the morph is off while the checkbox insisted
+  // it was on, and the first click would appear to do nothing because it would
+  // be turning OFF something already off.
+  $('shape-drift').checked = DEFAULT_CONFIG.shapeDrift;
+  $('auto-rotate').checked = DEFAULT_CONFIG.autoRotate;
+
   // Collapsible sections
   document.querySelectorAll('.section-header').forEach(h => {
     h.addEventListener('click', () => h.classList.toggle('open'));
@@ -630,7 +641,12 @@ export function initPanel() {
     $('show-curves').checked = true;
     $('line-width').value = 2;
     $('line-width-display').textContent = '2';
-    $('auto-rotate').checked = true;
+    // Read from DEFAULT_CONFIG, not a literal `true`. Under reduced motion
+    // these two default to off (core/state.js), and a Reset that hardcoded them
+    // on would hand the motion straight back to someone who asked the OS not to
+    // have it. The rest of this function still uses literals; these are the two
+    // the preference touches.
+    $('auto-rotate').checked = DEFAULT_CONFIG.autoRotate;
     $('prime-glow').checked = true;
     $('prime-glow-intensity').value = 0.3;
     $('prime-glow-display').textContent = '0.3';
@@ -644,7 +660,7 @@ export function initPanel() {
     $('color-drift').checked = false;
     $('color-drift-speed').value = 1.0;
     $('color-drift-speed-display').textContent = '1.0';
-    $('shape-drift').checked = true;
+    $('shape-drift').checked = DEFAULT_CONFIG.shapeDrift;   // see note above
     $('filter-primes').checked = true;
     $('filter-powers').checked = true;
     $('filter-composites').checked = true;
@@ -773,7 +789,12 @@ export function initPanel() {
     $('color-drift').checked = true;
     $('color-drift-speed').value = 2.5;
     $('color-drift-speed-display').textContent = '2.5';
-    $('auto-rotate').checked = true;
+    // Dazzle is an explicit request for the showiest state the app has, but the
+    // OS preference is a standing instruction and outranks a single tap. Under
+    // reduced motion Dazzle still gives every prime, a thousand nodes and the
+    // colour drift — it just does not also spin the camera. The toggle is right
+    // there for anyone who wants it back.
+    $('auto-rotate').checked = DEFAULT_CONFIG.autoRotate;
     $('drift-speed').value = 0.3;
     $('drift-speed-display').textContent = '0.3';
     $('shape-drift').checked = false;
@@ -791,7 +812,9 @@ export function initPanel() {
       linePulse: true,
       colorDrift: true,
       colorDriftSpeed: 2.5,
-      autoRotate: true,
+      // Must track the checkbox set above, or state and UI disagree: the scene
+      // would spin while the control claimed rotation was off.
+      autoRotate: DEFAULT_CONFIG.autoRotate,
       driftSpeed: 0.3,
     });
 
