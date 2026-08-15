@@ -932,6 +932,20 @@ export function initPanel() {
     $('drift-speed-display').textContent = '0.3';
     $('shape-drift').checked = false;
 
+    // The divergence sweep, at the floor. This is the one Dazzle setting that
+    // is not about being showy — it is the slowest motion in the app by three
+    // orders of magnitude, a full turn in something like a thousand minutes.
+    //
+    // It pairs with `shapeDrift: false` above rather than fighting it. Dazzle
+    // holds the SHAPE still and moves everything else, so the field is a stable
+    // dome you can actually look at; against that, a divergence crawl slowly
+    // reorganises which node sits where without the arrangement ever appearing
+    // to move. Watch it for a minute and the spiral arms have quietly changed
+    // count. Anything faster and it stops being the background process it is
+    // meant to be and starts competing with the colour drift.
+    $('angle-drift').checked = true;
+    showSweepSpeed(SWEEP_MIN);
+
     update({
       // A tenth of the way from Disk (0.5) toward Sphere (1.0). Straight down
       // onto a true plane there is no depth cue at all and the rotation reads
@@ -949,6 +963,13 @@ export function initPanel() {
       // would spin while the control claimed rotation was off.
       autoRotate: DEFAULT_CONFIG.autoRotate,
       driftSpeed: 0.3,
+      // The sweep, matching the two controls set above. Note this is NOT gated
+      // on reduced motion the way autoRotate is: at the floor the angle moves
+      // about six thousandths of a degree per second, which is below the
+      // threshold of anything a vestibular preference is protecting against.
+      // The camera spin is the thing that had to stand down, and it does.
+      angleDrift: true,
+      angleDriftSpeed: SWEEP_MIN,
     });
 
     // Last, so it frames the shape the settings above just chose. With the
