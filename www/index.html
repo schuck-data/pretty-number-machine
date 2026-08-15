@@ -260,33 +260,37 @@
      surprise. min-height 34px keeps it a comfortable touch target despite the
      small type.
 
-     Deliberately the LOUDEST thing in its section, and the opposite of the
-     floating scene controls. Those are escape hatches you should have to look
-     for; this is the answer to a question the divergence slider actively
-     provokes — "what was it supposed to be?" — and a person who has just
-     dragged the figure into nonsense should be able to find their way back at a
-     glance. Accent-toned rather than grey, with a tinted fill so it reads as a
-     button and not as a label. */
+     The brief is "not quiet", which is a narrower target than it sounds and is
+     NOT the same as loud. It should not need hunting for the way the floating
+     scene controls do — it answers a question the divergence slider actively
+     provokes, and someone who has dragged the figure into nonsense should find
+     the way back without searching. But it is still a small utility inside one
+     section, sitting a few pixels from the panel's own Reset, and dressing it
+     as a primary action oversells it and competes with everything around it.
+
+     So: accent-toned text at 0.75 rather than near-white, a border that is
+     visible without ringing, and no fill at rest — the fill arrives only on
+     press, as feedback rather than decoration. Weight 500, not 600. */
   .mini-btn {
     display: block; margin: 6px 0 2px; padding: 0 12px; min-height: 34px;
-    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.10);
-    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
-    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
-    font-size: 11px; font-family: inherit; font-weight: 600;
+    background: transparent;
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.28);
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.75);
+    font-size: 10px; font-family: inherit; font-weight: 500;
     cursor: pointer; border-radius: 6px; transition: all 0.2s;
     letter-spacing: 0.04em;
   }
   .mini-btn:active {
-    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.2);
+    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.12);
   }
   /* The divergence readout carries three digits, a decimal and a degree sign —
      more than the 24px the effect rows budget for a bare number. Without this
      the value wraps under its slider the moment it passes 100°. */
   #divergence-angle-display { min-width: 52px; }
-  /* The sweep multiplier runs from 0.01x to 3.00x, so it needs room for four
-     characters and the sign — more than the bare numbers the other effect rows
-     show. */
-  #angle-drift-speed-display { min-width: 46px; }
+  /* The sweep multiplier runs from 0.001x to 3.00x, so at the slow end it is
+     five characters plus the sign — more than the bare numbers the other effect
+     rows budget for. */
+  #angle-drift-speed-display { min-width: 54px; }
   #status { font-size: 0.6rem; color: rgba(224,221,213,0.2); margin-top: 6px; letter-spacing: 0.03em; }
   #viewport { position: absolute; top: 0; left: 280px; right: 0; bottom: 0; transition: left 0.3s ease; }
   #panel.collapsed ~ #viewport { left: 0; }
@@ -595,9 +599,9 @@
     .toggle:hover .toggle-track { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25); }
     #reset-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
     .mini-btn:hover {
-      background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.18);
-      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.65);
-      color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),1);
+      background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.08);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
+      color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
     }
     #corner-reset:hover, #dazzle-btn:hover {
       color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
@@ -981,7 +985,7 @@
         <span class="toggle-track"></span>
         Sweep
       </label>
-      <input type="range" id="angle-drift-speed" min="0" max="100" step="1" value="81">
+      <input type="range" id="angle-drift-speed" min="0" max="100" step="1" value="86">
       <span class="value" id="angle-drift-speed-display">1.00&times;</span>
     </div>
   </div>

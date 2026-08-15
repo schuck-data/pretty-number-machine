@@ -677,14 +677,21 @@ export function initPanel() {
   // sensitivity instead: one step is always about a 6% change in speed,
   // whether you are at 0.02x or at 2x. That is the property a speed control
   // wants, and it is the same reasoning behind logarithmic volume faders.
-  const SWEEP_MIN = 0.01, SWEEP_MAX = 3;
+  // The floor is 0.001x — a full turn in about 1000 minutes, or most of a
+  // waking day. That is not a joke value: at the top of the N range the outer
+  // nodes are far enough out that even a crawl is visible motion, and the
+  // slowest setting should be slow enough to watch the structure reorganise
+  // rather than slow enough to look stopped. The span is now a factor of 3000,
+  // which is precisely why the mapping has to be geometric.
+  const SWEEP_MIN = 0.001, SWEEP_MAX = 3;
   const sweepPosToSpeed = pos => SWEEP_MIN * Math.pow(SWEEP_MAX / SWEEP_MIN, pos / 100);
   const sweepSpeedToPos = spd =>
     Math.round(100 * Math.log(spd / SWEEP_MIN) / Math.log(SWEEP_MAX / SWEEP_MIN));
 
-  // Two decimals below 1, so the slow end reads as 0.01x / 0.04x rather than
-  // rounding to a wall of 0.0x and appearing to do nothing when dragged.
-  const fmtSweep = spd => `${spd < 1 ? spd.toFixed(2) : spd.toFixed(2)}×`;
+  // Enough decimals to show that a drag did something. Two is right for most of
+  // the range, but below 0.01 everything would round to a wall of 0.00x and the
+  // slider would appear dead exactly where the finest control lives.
+  const fmtSweep = spd => `${spd < 0.01 ? spd.toFixed(3) : spd.toFixed(2)}×`;
 
   function showSweepSpeed(speed, moveSlider = true) {
     $('angle-drift-speed-display').textContent = fmtSweep(speed);

@@ -113,6 +113,28 @@ const HOME_CAM_TARGET = new THREE.Vector3(0, 0, 0);
 // wall-clock beat rather than scaling with speed.
 const DWELL_SECONDS = 3;
 
+// The FIRST dwell is longer than the rest — the pause on the arrangement the
+// app opens with, and the one it returns to after a Reset.
+//
+// Those two moments are different from every later keyframe. A viewer arriving
+// at the app has not yet worked out what they are looking at, and starting the
+// morph on the same three-second beat as every subsequent shape moves the
+// figure before they have finished reading the one it opened with. After a
+// Reset the same applies for a different reason: the point of a Reset is to see
+// the default state, and it is worth actually getting to look at it.
+//
+// Deliberately NOT applied when resuming from pause. Un-pausing is a request
+// for motion, and making someone wait six seconds for it after they have
+// pressed play would read as the app being broken.
+const INITIAL_DWELL_SECONDS = 6;
+
+// Consumed once, by whichever comes first: the morph starting for the first
+// time, or a Reset. A flag rather than a comparison against some "have we
+// started yet" state, because the condition is genuinely one-shot and every
+// other way of asking the question gets it wrong when a rebuild happens to
+// land at the same moment.
+let initialDwellPending = true;
+
 // Three.js refs
 let threeScene = null, threeCamera = null, threeRenderer = null, threeControls = null;
 let animId = null;
@@ -853,7 +875,11 @@ export function buildScene() {
       if (!morphActive) {
         morphPos = state.dimension;
         morphDir = Math.random() < 0.5 ? 1 : -1;
-        morphPauseTimer = DWELL_SECONDS;
+        // Long on the very first activation, ordinary on every later one —
+        // which is what distinguishes "the app just opened" from "the user
+        // just pressed play". See INITIAL_DWELL_SECONDS.
+        morphPauseTimer = initialDwellPending ? INITIAL_DWELL_SECONDS : DWELL_SECONDS;
+        initialDwellPending = false;
         morphActive = true;
       }
 
@@ -1460,7 +1486,17 @@ export function setCameraTopDown() {
 export function resetMorph() {
   morphPos = 0;
   morphDir = 1;
-  morphPauseTimer = DWELL_SECONDS;
+  // A Reset earns the long dwell, for the same reason opening the app does:
+  // the whole point of the action is to look at the default arrangement, and
+  // three seconds is not looking at it.
+  //
+  // Set on the timer directly and the flag marked CONSUMED, not raised. This
+  // function also sets morphActive = true below, so the block in animate() that
+  // reads the flag will not run — leaving the flag pending would bank the long
+  // dwell and spend it on the next un-pause instead, which is exactly the case
+  // INITIAL_DWELL_SECONDS is documented not to apply to.
+  morphPauseTimer = INITIAL_DWELL_SECONDS;
+  initialDwellPending = false;
   morphActive = true;
   lastDim = -1;          // force a position recompute on the next frame
 }
