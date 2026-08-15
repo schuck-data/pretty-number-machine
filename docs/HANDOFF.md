@@ -285,6 +285,19 @@ chance to forget one. "Reset does not reset everything" has been a bug twice.
 The Constants controls were added to that list when they were built; the next
 control must be too.
 
+**A slider in a scrolling panel needs `touch-action: pan-y`.** Without it a range
+input claims the whole gesture the moment a finger lands on it, so scrolling the
+panel past a slider drags that slider instead — and the value teleports to
+wherever the finger was horizontally, rather than nudging. This affected every
+slider in the panel and went unnoticed for a long time because on a mouse it
+does not happen at all. It is fixed on the element type in `www/index.html`, so
+a new slider inherits the fix; a new *custom* control that handles its own
+pointer events does not, and must think about it.
+
+Worth remembering how it surfaced: it produced a false bug report. A screenshot
+taken after an accidental drag showed the divergence angle at 209°, which looked
+exactly like a wrong default, and the wrong thing was very nearly "fixed".
+
 **An angle change is not a rebuild.** `divergenceAngle` is in `HOT_KEYS` so it
 never reaches `buildScene()`, which would dispose and recreate every mesh in the
 scene. The scene is kept in step by `stepDivergence()` in `renderer.js` instead,
