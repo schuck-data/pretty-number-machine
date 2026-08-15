@@ -1,182 +1,174 @@
 # Handoff — Pretty Number Machine
 
 **Start here.** This is the entry point and the authoritative statement of where
-things stand. The other three documents are deeper but partly historical;
-Appendix B says which parts of each are still true.
+things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
+documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-10. **The app is feature-complete. Nothing below is a code
-task.** What remains is publishing.
+**Written:** 2026-08-15. **The web app is feature-complete. The next work is
+building it into a Play Store game — see `ANDROID-BUILD.md`.**
 
 ---
 
 ## 0. Where things actually are
 
-### The two builds
+### The app, as it exists today
+
+A static, no-build-step web app: native ES modules, vendored three.js, event bus
+and module registry in `core/state.js`, feature modules crash-isolated. Two
+copies are live at schuckdata.com:
 
 | Path | Version | Role |
 |---|---|---|
-| `schuckdata.com/pretty-number-machine/` | `v0.14.5` | The **shipped** build. Live, public, indexed. Frozen apart from live defect fixes |
-| `schuckdata.com/pretty-number-machine/v1/` | `v1.0.0-dev.7` | The **v1 build**, feature-complete. `noindex`. Where all v1 work happened |
+| `schuckdata.com/pretty-number-machine/` | `v0.14.5` | The **shipped** web build. Public, indexed. Frozen apart from live defect fixes |
+| `schuckdata.com/pretty-number-machine/v1/` | `v1.0.0-dev.7` | The **v1 build**, feature-complete. `noindex`. This is the code the Android app is built from |
 
 They are independent applications sharing an origin: separate service workers,
-separate scopes, separate cache namespaces (`pnm-` and `pnmv1-`). The shipped
-worker explicitly hands off the `./v1/` subtree. **Do not merge these concerns.**
+scopes and cache namespaces (`pnm-` and `pnmv1-`). Append `?debug` to either
+URL for a HUD (fps, frame time, p95, draw calls, triangles, node count, dpr).
 
-Append `?debug` to either URL for a HUD showing fps, frame time, p95, draw
-calls, triangles, node count and dpr.
+**The web copies are not part of the Android build.** Whether v1 is ever
+promoted onto the canonical web path, or the web copies come down, is a website
+decision that nothing in `ANDROID-BUILD.md` depends on (see §3).
+
+### The plan
+
+PNM becomes a **Capacitor** app: the v1 web code, bundled unchanged inside a
+native Android shell that this repo owns, published free on Google Play as a
+**Game → Educational**, with **Play Games Services achievements** (the
+achievement-hunter surface) and **one $0.99 in-app product** that turns the
+bundled satirical fake ads on. No server, no accounts, no external requests.
+iOS is a later second shell on the same code.
+
+The earlier plan — a Trusted Web Activity built with Bubblewrap, sold as a
+$0.99 paid app — is **abandoned**. Play Games Services has no web-side API any
+more, so a TWA cannot publish achievements without a hand-built native bridge,
+and once a native shell exists Capacitor is the standard way to have one.
+`ANDROID-BUILD.md` §1 has the goals-to-constraints reasoning.
 
 ### Play Console
 
-- **Organisation account created** under `dakota@schuckdata.com` (a Google
-  Workspace identity, administered from `ds89holdco@gmail.com`).
-- **D-U-N-S issued** 2026-08-10, same day it was requested.
-- **Identity verification was in progress** at time of writing, with documents
-  uploaded and a "please allow a few days" notice. **Check the console for its
-  current state before assuming anything.**
-- Phone verification is gated behind identity and organisation verification —
-  the account is a serial queue, not a checklist.
+- **Organisation account created** under `dakota@schuckdata.com` (Workspace
+  identity, administered from `ds89holdco@gmail.com`).
+- **D-U-N-S issued** 2026-08-10.
+- **Identity verification was in progress** as of 2026-08-10, documents uploaded.
+  **Check the console for its current state before assuming anything.** Phone
+  verification is gated behind identity and organisation verification.
+- Nothing has been uploaded. No app record exists yet.
 
-### What is already published and live
+### What is live on the web
 
 - `privacy.html` at `…/pretty-number-machine/privacy.html`, zero external requests
-- `https://schuckdata.com/.well-known/assetlinks.json` returns **200** with the
-  real package name and a **placeholder fingerprint**
+- `https://schuckdata.com/.well-known/assetlinks.json` — served by the
+  `schuck-data.github.io` repo for the abandoned TWA. **Removed from that repo
+  on 2026-08-15**; it disappears from the live site on the next push there.
+  Nothing needs it
 
 ---
 
-## 1. The next action, and the order that matters
+## 1. The next action
 
-**Promote v1 onto the canonical path, and do it before generating any bundle.**
+**`ANDROID-BUILD.md` §5 step 1 — the scaffold spike.** Install Capacitor 8,
+wrap the v1 code, run it on the Pixel 9, measure with `?debug`. It proves the
+whole approach for an afternoon's work and should happen before anything else
+is touched. Everything after it is laid out in `ANDROID-BUILD.md` §5 (technical)
+and §6 (Play Console).
 
-`start_url` is compiled into the Android manifest at bundle time. Build a bundle
-while v1 lives at `/v1/` and the shipped app loads a URL called "v1" **forever**
-— changing it later means a new bundle upload, and the name is a lie the moment
-v1.1 exists.
+In parallel, and needing only Dakota:
 
-Promotion means: copy `v1/`'s application files over the repo root, keeping the
-shipped build reachable at a frozen path if it is still wanted (decided
-2026-08-10: it stays live). Then:
-
-- The promoted build's `CACHE_VERSION` must move to the `pnm-` namespace, or
-  returning users' workers will not recognise it as their own generation.
-- The `./v1/` bail-out in the root `sw.js` becomes dead code if `/v1/` is
-  retired, and must **stay** if it is not.
-- `noindex` must come off the promoted copy and stay on whatever remains at
-  `/v1/`.
-- Re-run `node tools/check.mjs`, which exists to catch exactly the version and
-  precache mistakes this step invites.
+- The two decisions in `ANDROID-BUILD.md` §7 that are Dakota's — **billing
+  plugin** and **fate of the web copy**
+- Play Console: verification state, second Admin user, merchant profile
+- The **achievement list** — a design task with no dependencies
 
 ---
 
-## 2. The publishing sequence from here
+## 2. Decided — do not reopen
 
-Steps 1–3 of `PLAY-STORE-HANDOFF.md` §4 are done. What is left:
-
-| # | Step | State |
+| Decision | Value | Notes |
 |---|---|---|
-| 1 | Promote v1 to the canonical path | **next** |
-| 2 | Add a second Play Console user with Admin permissions | not done — this is the only recovery path if the Workspace or domain fails |
-| 3 | Merchant/payments profile, tax interview (W-9), payout bank account | blocked on identity verification |
-| 4 | **Set the app to Paid at $0.99 — before any production release** | blocked on 3. See §3 |
-| 5 | Generate the bundle with **Bubblewrap**, targeting **API 36** | after promotion |
-| 6 | Enrol in Play App Signing (the default) | with 5 |
-| 7 | Put the **real SHA-256 fingerprint** into `assetlinks.json` in the `schuck-data.github.io` repo | after 6 — it comes from Play Console, and it is the **app signing** cert, not the local upload key |
-| 8 | Feature graphic, 1024×500 | **does not exist.** Required |
-| 9 | Screenshots, ≥2, phone aspect | needs a device. Use Dazzle for a reproducible hero frame |
-| 10 | Data Safety form — declare no collection | true, and worth keeping true |
-| 11 | Content rating questionnaire | a mathematics visualiser; expect the lowest rating |
-| 12 | Internal test → closed test → production | the internal test is where you find out whether the TWA opens without an address bar |
-
-**Deadline:** from **2026-08-31**, new submissions must target Android 16
-(API 36). An extension to 2026-11-01 can be requested in Play Console.
-
-**The 12-tester / 14-day rule does not apply** — that is for personal accounts,
-and this is an organisation account. It returns if organisation verification
-fails and the account falls back to personal.
+| Package name | `com.schuckdata.pnm` | Becomes permanent at first upload to Play. Chosen; not yet locked |
+| Distribution model | **Free**, one **$0.99 non-consumable** in-app product | An app ever offered free can never become paid. Free is the deliberate choice, so the one-way door is irrelevant — but it is a door |
+| The product | Turns the bundled fake ads **on**. Off by default. Grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever |
+| Achievements | Local ledger is the source of truth; PGS is the public record and cross-device copy | Works offline and signed out. See `ANDROID-BUILD.md` §3 |
+| Identity | Never build accounts. No server, no database | Play holds purchases, PGS holds achievements and saves. Referral/invite features were cut for exactly this reason |
+| Listing category | Games → Educational | PGS requires a game; hunters find games |
+| Shell | **Capacitor 8** | Targets API 36. Not TWA, not PWABuilder |
+| Public address | The owner's home address | It is the business address; merchant accounts display it. Known and accepted |
+| Web copy | Stays live, frozen, free | Decided 2026-08-10. Whether that still holds is Dakota's to revisit (`ANDROID-BUILD.md` §7); nothing in the build depends on it |
 
 ---
 
-## 3. Decided and permanent — do not reopen
-
-| Decision | Value | Why it cannot be changed |
-|---|---|---|
-| Package name | `com.schuckdata.pnm` | Cannot be edited after publishing, ever. Already in the live `assetlinks.json` |
-| Price | **Paid, $0.99** | **Free → paid is a one-way door.** An app ever offered free can never become paid; the only remedy is a new listing with a new package name. Set the price **before the first production release** |
-| Public address | The owner's home address | It is the business address. Merchant accounts selling paid apps display it on the listing. Known and accepted, not overlooked |
-| Free web version | Stays up | A buyer can reach the identical app free in a browser. Weighed and accepted. **Do not take the web version down to protect the listing** |
-| Build tool | Bubblewrap, not PWABuilder | PWABuilder pins `targetSdkVersion 35` while the deadline needs 36 |
-
----
-
-## 4. What only Dakota can do
+## 3. What only Dakota can do
 
 - Anything with Dun & Bradstreet, including adding the **DBA as a trade style**,
-  which is still outstanding and which nothing will ever remind you about
-- Identity and business verification
-- Merchant/payments profile, tax interview, payout bank account
-- Setting the price
+  still outstanding and which nothing will ever remind you about
+- Identity and business verification; second Admin user; merchant/payments
+  profile; tax interview; payout account
+- Choosing the billing plugin; deciding the web copy's fate
+- Generating and safeguarding the upload keystore; anything involving
+  credentials, keys or payment details
 - Accepting Play policies and the developer agreement
-- Anything involving credentials, keys or payment details
-- Taking device screenshots
-- Judging how anything looks
+- Device testing, screenshots, and judging how anything looks
 
 ---
 
-## 5. Traps that have actually bitten
+## 4. Traps that have actually bitten
 
-Not hypothetical. Each of these cost real time.
+Not hypothetical. Each cost real time. The first four concern the **web
+builds**, which stay live; the Capacitor app has no service worker and none of
+that machinery — that is one of the reasons for it.
 
 **Service worker scope, four times.** A worker answers navigations for its whole
 folder. It swallowed `privacy.html`; it served a seeded stale cache; it would
-have swallowed `/v1/`. **Any new standalone page or subtree inside an app's
-scope must be explicitly excluded, and nothing will warn you.**
+have swallowed `/v1/`. Any new standalone page or subtree inside an app's scope
+must be explicitly excluded, and nothing will warn you.
 
-**`caches.match()` searches every cache, oldest first.** Harmless while old
-caches were deleted immediately. The moment a previous generation is kept alive
-on purpose, a global match serves the *old* files. Every lookup is now scoped to
-the worker's own `CACHE_VERSION`.
-
-**Testing update detection is recursive.** The page runs the *previously cached*
-copy of the code that detects updates, so a new detection attempt is tested
-against the old logic still in the cache. Reload so the page is running the new
-code before concluding anything.
+**`caches.match()` searches every cache, oldest first.** Every lookup is scoped
+to the worker's own `CACHE_VERSION` for this reason.
 
 **`CACHE_VERSION` discipline.** Change any precached file without bumping it and
-clients stay on old code indefinitely. Three near-misses in one day.
-`tools/check.mjs` now guards it.
+clients stay on old code indefinitely. `tools/check.mjs` guards it — for the web
+builds. In the Capacitor app the guard becomes version-name agreement instead.
+
+**Testing update detection is recursive.** The page runs the *previously cached*
+copy of the code that detects updates. Reload before concluding anything.
 
 **A meta CSP can kill the app.** `script-src 'self'` blocked the inline importmap
-and module bootstrap, and nothing ran at all. It needs `'unsafe-inline'`;
-hashing was rejected because there is no build step, so a hash goes stale
-silently.
+and nothing ran. It needs `'unsafe-inline'`. Capacitor adds its own origin to
+this list — see `ANDROID-BUILD.md` §2.
 
-**Verify against a real HTTPS origin or localhost.** Plain HTTP to a LAN IP is
-not a secure context, so no worker registers and every load is coherent by
-construction — useless for testing anything about caching.
+**Verify against a real HTTPS origin, localhost, or the device.** Plain HTTP to a
+LAN IP is not a secure context. The Cowork browser pane never runs the render
+loop, so nothing about animation or performance can be judged there.
+
+**Certificates: app-signing, not upload.** The old asset-links fingerprint trap
+returns in a new coat as the PGS Android credential's SHA-1. It comes from Play
+Console after Play App Signing is on, not from the local keystore.
 
 ---
 
-## 6. Still unknown
+## 5. Still unknown
 
-- **Performance on low-end hardware.** Never measured; no such device available.
-  Draw calls *are* now measured: **1002 at N=1000, one per node.** How much a
-  cheap phone cares is still open. `?debug` is how the first one that runs it
-  produces a number rather than an impression.
-- **Whether a paid TWA behaves like a free one.** No reason to think otherwise
-  — the purchase gates the install, not the content — but unobserved.
-- **Whether the generated Android manifest preserves `start_url` and `scope`.**
-  Confirm before publishing. Orientation is fine: the manifest declares
-  `"any"`, so the API 36 orientation restriction does not apply.
-- **Nothing past §2 step 1 has been executed.** Everything there is written from
-  knowledge, not from having done it. Expect the console UI to have moved.
+- **Performance in Android System WebView** on the Pixel and on anything cheaper.
+  Chrome numbers: **1002 draw calls at N=1000**, one per node, instancing
+  deferred. WebView is Chromium and should match; measure, don't assume
+- **Plugin fitness.** Which community Capacitor plugins for PGS v2 and Play
+  Billing 8+ are actually maintained. `ANDROID-BUILD.md` §4 makes evaluating
+  them the first native task and gives the escape hatch
+- **The PGS publish gate** — how many achievements the console requires (design
+  for ten regardless)
+- Whether bundled satirical self-ads trigger the "contains ads" declaration
+- **Nothing in `ANDROID-BUILD.md` has been executed.** It is written from
+  knowledge, not from having done it. Expect the console UI to have moved
 
 ---
 
 ## Appendix A — Codebase directory
 
 No build step, no dependencies, no bundler. Open `index.html` from any static
-server and it runs. Three.js is vendored under `lib/`. Every path is relative,
-which is what let `v1/` be a plain copy with no edits.
+server and it runs. Three.js is vendored under `lib/`. Every path is relative.
+This describes the code as it is today; `ANDROID-BUILD.md` §2 lists what the
+build adds and removes.
 
 ### Where do I change…
 
@@ -196,7 +188,7 @@ which is what let `v1/` be a plain copy with no edits.
 | The play/pause/scrub bar | `core/transport.js` |
 | The update prompt or the error boundary | `core/notices.js` |
 | The debug HUD | `core/debug-hud.js` |
-| Offline behaviour, caching, update semantics | `sw.js` |
+| Offline behaviour, caching, update semantics (web builds only) | `sw.js` |
 | Markup, styles, the bootstrap, the CSP | `index.html` |
 
 ### Files
@@ -216,7 +208,8 @@ which is what let `v1/` be a plain copy with no edits.
 | `core/notices.js` | 266 | Update prompt and fatal error boundary. **Imports nothing** — it must work when the rest has failed |
 
 **Feature modules** — dynamically imported, crash-isolated. One that throws is
-disabled and the app carries on.
+disabled and the app carries on. The achievements and fake-ads modules will be
+two more of these.
 
 | File | Lines | Owns |
 |---|---|---|
@@ -233,17 +226,14 @@ an exported `register()`.
 
 **`state` is a mutable global singleton** in `state.js`, written from many
 places. `HOT_KEYS` declares which properties can change without a scene rebuild.
-Nothing enforces it: put a key in the wrong set and it fails silently and
-confusingly.
+Nothing enforces it: put a key in the wrong set and it fails silently.
 
 **`nd.mesh` is a de facto public API.** `physics.js` writes `nd.mesh.position`
 directly; `physics.js` and `info.js` both raycast against the array of node
-meshes; `lens.js` reads positions off it. **This is why instancing is a v1.1
-project and not a renderer change** — it would migrate four files at once.
+meshes; `lens.js` reads positions off it. This is why instancing is a project
+and not a renderer change — it would migrate four files at once.
 
-**`shapeDriftSpeed` and `transport.js`'s `SPEED_DEFAULT` must agree.** The
-transport's handle height is a mapping centred on that value; a mismatch parks
-the handle at the wrong place for the speed actually in force.
+**`shapeDriftSpeed` and `transport.js`'s `SPEED_DEFAULT` must agree.**
 
 **Reset writes ~40 DOM values by hand** in `panel.js`. Every new control is a
 chance to forget one. "Reset does not reset everything" has been a bug twice.
@@ -260,21 +250,25 @@ node tools/check.mjs
 Dependency-free. Verifies precache paths exist, `CACHE_VERSION` matches
 `CACHE_PREFIX`, the UI version label agrees with it, and no hardcoded frame step
 returned. Runs in CI on push and PR, alongside a parse check of every module.
+The precache and cache-version guards go away with the Capacitor build and are
+replaced by version-name agreement (`ANDROID-BUILD.md` §2).
 
 **There is no browser smoke test.** It needs Playwright, so it needs
-dependencies. That is a decision, not an oversight — but it means *every*
-behavioural claim in this project was verified by driving a real browser by
-hand, and two real bugs were found that way that reading never would have.
+dependencies — a decision that was defensible while the project had none.
+Capacitor ends that era; revisit. Every behavioural claim so far was verified
+by driving a real browser by hand, and two real bugs were found that way.
 
 ---
 
 ## Appendix B — The other documents
 
-| Document | Read it for | What is stale |
+| Document | Read it for | Status |
 |---|---|---|
-| `PLAN.md` | The charter, the project's history and reasoning | Predates v1 entirely |
-| `PLAY-STORE-HANDOFF.md` | **Still the best reference** on the asset-links trap (§2), paid-app mechanics (§3), and Play deadlines (§5) | Its §4 sequence is superseded by §2 here. Its status block describes the shipped build |
-| `V1-PLAN.md` | Why each v1 change was made, and which performance claims were measured versus judged | Work items are all closed; it is now history rather than a plan |
+| `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Written 2026-08-15, nothing executed |
+| `PLAN.md` | The charter, the project's history and reasoning, the gotchas learned building the web app | History. Predates v1; its Burst 6 (TWA via Bubblewrap) is superseded |
+| `V1-PLAN.md` | Why each v1 change was made; which performance claims were measured versus judged | History. All items closed. Its references to a paid TWA are superseded |
+| `archive/PLAY-STORE-HANDOFF.md` | The TWA / paid-app plan, in full | **Superseded 2026-08-15.** Kept for the asset-links and Play-deadline reasoning only |
+| `archive/BURST-1-BRIEF.md` | Early history | History |
 
 If these disagree with this document, **this document is newer**. If it
 disagrees with the code, the code is right and this should be fixed.

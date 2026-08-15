@@ -34,9 +34,10 @@ It also installs as an app and runs with no network connection.
 | `core/` | State bus, prime maths, layout, control panel, Three.js renderer |
 | `modules/` | Optional features, registered at boot and isolated from crashes |
 | `lib/` | Vendored Three.js and Space Grotesk — see THIRD-PARTY.md |
-| `sw.js` | Service worker. **Bump `CACHE_VERSION` on any deploy.** |
-| `docs/PLAN.md` | Roadmap, decisions, and gotchas. **Read before changing anything.** |
-| `docs/PLAY-STORE-HANDOFF.md` | Briefing for the Google Play submission |
+| `sw.js` | Service worker for the web builds. **Bump `CACHE_VERSION` on any deploy.** |
+| `docs/HANDOFF.md` | **Start here.** Where things stand, decisions, traps, codebase directory |
+| `docs/ANDROID-BUILD.md` | The plan for the Google Play build (Capacitor, achievements, in-app product) |
+| `docs/PLAN.md`, `docs/V1-PLAN.md` | Charter and history of the web app |
 | `docs/archive/` | Superseded documents, kept for history |
 
 ## Licence
