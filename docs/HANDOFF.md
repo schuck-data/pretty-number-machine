@@ -28,13 +28,23 @@ They are independent applications sharing an origin: separate service workers,
 scopes and cache namespaces (`pnm-` and `pnmv1-`). Append `?debug` to either
 URL for a HUD (fps, frame time, p95, draw calls, triangles, node count, dpr).
 
-### The Android shell
+### The Android shell — and which copy is alive
 
 Since 2026-08-15 the repo also holds a **Capacitor 8 Android project** in
 `android/`, with `package.json` and `capacitor.config.json` at the root. Its
-`webDir` points at `v1/` — the spike moved no files, and step 2 decides whether
-the tree moves to `www/`. Building it needs a toolchain that is **not** the
-obvious one; `ANDROID-BUILD.md` §5 lists it, and §9 says why.
+`webDir` points at **`www/`**, a third copy of the web code that belongs to the
+app alone.
+
+**`www/` is the living codebase.** All new work goes there. `v1/` and the
+shipped root build are now frozen web artifacts: they keep their service
+workers, they stay live at schuckdata.com, and they do not receive features or
+fixes unless something is broken for a real visitor. The Constants section and
+the DEV/EDU comment layers exist only in `www/`, and that asymmetry is
+deliberate — do not "sync" them back.
+
+Building needs a toolchain that is **not** the obvious one; `ANDROID-BUILD.md`
+§5 lists it, and §9 says why. Read §9 before debugging anything that looks like
+a build not taking effect.
 
 Note that the repo root is the published GitHub Pages site, so `android/`'s 53
 committed files are served from schuckdata.com. Harmless — no secrets are in
@@ -83,15 +93,19 @@ and once a native shell exists Capacitor is the standard way to have one.
 
 ## 1. The next action
 
-**`ANDROID-BUILD.md` §5 step 2 — the strip.** Step 1, the scaffold spike, was
-executed on 2026-08-15 and succeeded: PNM runs as a Capacitor app on the Pixel 9
-from the v1 code unmodified, no CSP trouble, no crash. Step 2 removes `sw.js`,
-the manifest and the update prompt, and swaps the precache guards in
-`tools/check.mjs` for version-agreement guards.
+**`ANDROID-BUILD.md` §5 step 3 — the adapter and the achievement ledger.**
+Steps 1 and 2 were both executed on 2026-08-15. The app builds, installs and
+runs well on the Pixel 9; the web-only machinery is gone from the app copy; the
+checks guard the app build on its own terms.
 
-**One thing from step 1 is still owed: a performance measurement.** Nothing has
-been measured on device — see §5 below. It does not block step 2, but no claim
-about WebView performance may be made until it is done.
+Step 3 is `platform/` with its no-op fallback and `modules/achievements.js`, and
+it has a prerequisite that is **not** code: the achievement list must be
+designed first (`ANDROID-BUILD.md` §3, ten of them, 2000 XP to share out). That
+is a joint task and nothing else blocks it.
+
+**Still owed from step 1: a performance measurement.** Nothing has been measured
+on device — see §5 below. It has not blocked anything so far and does not block
+step 3, but no claim about WebView performance may be made until it is done.
 
 Everything after that is laid out in `ANDROID-BUILD.md` §5 (technical) and §6
 (Play Console).
@@ -205,6 +219,7 @@ build adds and removes.
 | I want to change | Look in |
 |---|---|
 | A default value for anything | `core/state.js` → `DEFAULT_CONFIG` |
+| The divergence angle, or the Constants section | `core/positions.js` → `setDivergenceAngle()`; `core/renderer.js` → `stepDivergence()` and `refreshDivergenceCurves()`; markup in `index.html` (app build only) |
 | Whether a change needs a full scene rebuild | `core/state.js` → `HOT_KEYS` |
 | A panel control, or what Reset restores | `core/panel.js` |
 | The Dazzle preset | `core/panel.js` → `applyDazzle()` |
@@ -267,6 +282,17 @@ and not a renderer change — it would migrate four files at once.
 
 **Reset writes ~40 DOM values by hand** in `panel.js`. Every new control is a
 chance to forget one. "Reset does not reset everything" has been a bug twice.
+The Constants controls were added to that list when they were built; the next
+control must be too.
+
+**An angle change is not a rebuild.** `divergenceAngle` is in `HOT_KEYS` so it
+never reaches `buildScene()`, which would dispose and recreate every mesh in the
+scene. The scene is kept in step by `stepDivergence()` in `renderer.js` instead,
+which is also where the deliberate compromise lives: node positions are exact
+every frame, parastichy curve arrays are rebuilt at 20 Hz and settled exactly
+once the angle stops moving. Anything else added that invalidates geometry
+without changing its SIZE should follow the same pattern rather than reaching
+for a rebuild.
 
 **Timing is wall-clock.** `dt` is measured and clamped to 100 ms. Do not
 reintroduce a fixed frame step — `tools/check.mjs` fails the build if you do.
@@ -294,7 +320,8 @@ by driving a real browser by hand, and two real bugs were found that way.
 
 | Document | Read it for | Status |
 |---|---|---|
-| `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Written 2026-08-15, nothing executed |
+| `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Steps 1–2 executed 2026-08-15; §9 is the trap list and is worth reading first |
+| `CODE-NOTES.md` | The two comment layers in `www/` — `DEV:` for implementation, `EDU:` for the mathematics — and where the mathematics actually lives | Current, 2026-08-15 |
 | `PLAN.md` | The charter, the project's history and reasoning, the gotchas learned building the web app | History. Predates v1; its Burst 6 (TWA via Bubblewrap) is superseded |
 | `V1-PLAN.md` | Why each v1 change was made; which performance claims were measured versus judged | History. All items closed. Its references to a paid TWA are superseded |
 | `archive/PLAY-STORE-HANDOFF.md` | The TWA / paid-app plan, in full | **Superseded 2026-08-15.** Kept for the asset-links and Play-deadline reasoning only |

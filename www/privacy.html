@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Privacy Policy — Pretty Number Machine</title>
+<meta name="description" content="Pretty Number Machine collects no data. No accounts, no analytics, no advertising, no cookies, no telemetry.">
+<meta name="theme-color" content="#0c0c0f">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<style>
+  /* Space Grotesk, self-hosted — the same file index.html uses. This page must
+     make ZERO third-party requests: it is the document asserting that the app
+     contacts nobody, so pulling a webfont off a CDN would falsify it in the act
+     of claiming it. Note that schuckdata.com itself does load Google Fonts;
+     this page deliberately does not. See docs/PLAY-STORE-HANDOFF.md section 0. */
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 300 700;
+    font-display: swap;
+    src: url('./lib/fonts/SpaceGrotesk-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+      U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+
+  :root {
+    --bg: #0c0c0f;
+    --text: #e0ddd5;
+    --text-dim: rgba(224, 221, 213, 0.45);
+    --accent: #3ddbd9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    padding: 3rem 1.5rem 6rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    font-weight: 300;
+    font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+    line-height: 1.65;
+  }
+
+  main {
+    max-width: 34rem;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-weight: 500;
+    font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+    line-height: 1.2;
+    margin: 0 0 0.35em;
+  }
+
+  .lede {
+    color: var(--accent);
+    font-weight: 400;
+    margin: 0 0 2.5rem;
+  }
+
+  p { margin: 0 0 1.4em; }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(224, 221, 213, 0.12);
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
+  footer p { margin: 0 0 0.5em; }
+
+  a {
+    color: var(--accent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="lede">Pretty Number Machine collects no data.</p>
+
+  <p>There are no accounts, no analytics, no advertising, no cookies, and no
+  telemetry. Nothing you do in the app is transmitted anywhere, because the app
+  does not contact any server once it has loaded. It works with no network
+  connection at all.</p>
+
+  <p>The app stores a copy of its own files on your device so that it can run
+  offline. That cache contains no personal information and is removed when you
+  uninstall the app or clear its storage.</p>
+
+  <p>No information is shared with anyone, because none is gathered.</p>
+
+  <footer>
+    <p>Contact: <a href="mailto:dakota@schuckdata.com">dakota@schuckdata.com</a></p>
+    <p>Last updated: 10 August 2026</p>
+    <p><a href="./">Back to Pretty Number Machine</a></p>
+  </footer>
+</main>
+</body>
+</html>

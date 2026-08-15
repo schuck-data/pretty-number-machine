@@ -249,8 +249,23 @@ appear to `adb`. Cost fifteen minutes to work out, 2026-08-15.
    service worker inside the shell is trap #1 wearing a new coat. If a device
    build ever serves stale assets or raises an update prompt, that is why —
    and step 2 deletes both files anyway
-2. **Strip.** Remove `sw.js`, manifest, update prompt, precache guards. Add the
-   version-agreement guards. CI green
+2. ~~**Strip.**~~ **Done 2026-08-15.** The app got its OWN copy of the web code
+   at `www/`, rather than the tree being moved — decided by Dakota so the live
+   web builds keep working and §7's "fate of the web copy" stays genuinely open
+   instead of being forced by a refactor. `webDir` points at `www/`.
+
+   `www/` is now the LIVING codebase; `v1/` and the shipped root build are
+   frozen web artifacts and receive no further work. Removed from `www/`:
+   `sw.js`, `manifest.webmanifest`, the `<link rel=manifest>`, the `robots` meta,
+   the service-worker registration, and the update-prompt half of `notices.js`
+   (the error boundary stays, and matters more here — there is no address bar).
+
+   `tools/check.mjs` now checks two kinds of build. The web builds keep the
+   precache and CACHE_VERSION guards. The app build gets version agreement
+   across `www/index.html` ↔ `package.json` ↔ `versionName`, a sane
+   `versionCode`, and an ABSENCE guard that fails if `sw.js` or a manifest ever
+   reappears under `www/` — the cheapest insurance against the bug that has cost
+   this project the most
 3. **Adapter + ledger.** `platform/` with the no-op fallback, `modules/achievements.js`
    with the designed list. Verify in a browser: unlocks fire, persist, survive
    reload
@@ -323,9 +338,25 @@ Avoid these now so the second shell is only paperwork:
   install took platform **37.0** only. `compileSdk 36` needs `android-36`,
   installed by hand from the SDK Manager. Tick **Android SDK Command-line
   Tools** in the same pass or every later SDK change is another GUI trip
+- **`adb install -r` does not clear the WebView's HTTP cache, and the WebView
+  caches `https://localhost/`.** This one cost an hour on 2026-08-15 and looked
+  exactly like a build failure: the APK provably contained the new `index.html`
+  (verified by extracting it from the archive), `cap sync` had run, Gradle had
+  rebuilt — and the running app showed the *previous* build's page. The tell is
+  `document.title`, visible without any tooling in the DevTools page list.
+  **Fix: `adb shell pm clear com.schuckdata.pnm` before relaunching**, or accept
+  that any web-asset change may not appear. Note the irony and the lesson: the
+  service worker was removed to end exactly this class of bug, and the platform
+  has a second cache underneath it that behaves the same way
 - **`?debug` has no address bar in a shell.** The HUD reads `location.search`.
   On device, measuring means Chrome DevTools over `chrome://inspect`. Any plan
-  that says "append `?debug`" is written for the web build, not this one
+  that says "append `?debug`" is written for the web build, not this one.
+  Attaching from the command line works and is worth knowing:
+  `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`, then the
+  page list at `http://localhost:9222/json`. Caveat found the same day: Node's
+  `fetch` is refused by that endpoint's DNS-rebinding guard while PowerShell's
+  `Invoke-RestMethod` is accepted, and a forward that has been hit by a refused
+  request tends to wedge — restart the adb server and use a fresh port
 - **Do not pipe `adb exec-out screencap -p` through PowerShell.** Redirection
   mangles the binary. `adb shell screencap -p /sdcard/x.png` then `adb pull`
 - **App-signing certificate, not upload key**, for the PGS Android credential —

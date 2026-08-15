@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Content Security Policy, declared in the document because GitHub Pages
+     cannot set response headers.
+
+     script-src needs 'unsafe-inline'. Two scripts in this file must be inline:
+     the importmap (external importmaps are not portably supported) and the
+     module bootstrap. The first draft omitted it and blocked BOTH, killing the
+     app completely — caught in testing, which is the only reason it is not in
+     this comment as a shipped incident.
+
+     Hashing the two inline blocks would be stricter and was rejected: this
+     project has no build step, so a hash would silently go stale the next time
+     either block is touched, and a dead app is a worse outcome than a slightly
+     softer directive.
+
+     'unsafe-inline' does not make this pointless. default-src, connect-src and
+     script-src still confine every load and every connection to this origin, so
+     an injected <script src> pointing anywhere else is refused, as is any
+     attempt to phone home. That matches what the privacy policy claims.
+
+     frame-ancestors is deliberately absent: browsers ignore it in a meta tag,
+     so including it only produces a console error that trains people to ignore
+     console errors. It needs a real header, which Pages cannot send. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://localhost capacitor://localhost; script-src 'self' 'unsafe-inline' https://localhost capacitor://localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://localhost capacitor://localhost; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pretty Number Machine</title>
+<meta name="description" content="An interactive visualisation of prime factorisation, where a number's colour is its factorisation: 2 is red, 3 is green, 5 is blue, and 6 is yellow because 2 x 3.">
+<meta name="theme-color" content="#0c0c0f">
+<!-- No <link rel="manifest"> and no `robots` meta. This copy is the APP: it is
+     bundled inside the Android shell and never served over the web, so there is
+     no crawler to instruct and no browser to persuade that the page could be
+     installed. It is already installed. See docs/ANDROID-BUILD.md §2. -->
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  /* Space Grotesk, self-hosted. Variable font — one file covers 300–700. */
+  /* SIL Open Font License, see lib/fonts/OFL.txt */
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 300 700;
+    font-display: swap;
+    src: url('./lib/fonts/SpaceGrotesk-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+      U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+
+  :root {
+    --accent-r: 61; --accent-g: 219; --accent-b: 217;
+    --bg: #0c0c0f;
+    --panel-bg: rgba(12, 12, 15, 0.85);
+    --text: #e0ddd5;
+    --text-dim: rgba(224, 221, 213, 0.45);
+    --text-faint: rgba(224, 221, 213, 0.25);
+    /* The floating corner controls, 20% up from --text-faint. At 0.25 the
+       Reset was genuinely hard to find against the scene. Its own value rather
+       than a bump to --text-faint, which also dresses the panel's Reset and the
+       module buttons — those sit on the panel's solid backdrop and are legible
+       already. NOTE: #lens-handle was deliberately matched to #corner-reset and
+       still uses --text-faint, so the two now differ slightly. */
+    --text-corner: rgba(224, 221, 213, 0.3);
+    --border: rgba(180, 200, 210, 0.08);
+    --border-lite: rgba(180, 200, 210, 0.12);
+    --border-ctrl: rgba(180, 200, 210, 0.15);
+    --field-bg: rgba(200, 220, 230, 0.04);
+    --track-bg: rgba(200, 220, 230, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; overflow: hidden; }
+
+  #panel {
+    position: absolute; top: 0; left: 0; width: 280px; height: 100vh;
+    background: var(--panel-bg); backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.12);
+    border-radius: 0 16px 16px 0;
+    padding: 20px 16px; overflow-y: auto; z-index: 10;
+    transition: transform 0.3s ease;
+  }
+  #panel.collapsed { transform: translateX(-280px); }
+  #panel-toggle {
+    position: absolute; top: 12px; left: 12px; z-index: 20;
+    width: 32px; height: 32px; border: 1px solid var(--border-ctrl);
+    background: var(--panel-bg); backdrop-filter: blur(20px);
+    color: var(--text-dim); font-size: 16px; cursor: pointer;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    transition: left 0.3s ease, border-color 0.2s, color 0.2s;
+  }
+  #panel:not(.collapsed) ~ #panel-toggle { left: 292px; }
+  #panel h1 {
+    font-size: 13px; color: var(--text); font-weight: 300;
+    letter-spacing: 0.2em; margin-bottom: 14px; text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .section-header {
+    font-size: 0.8rem; color: rgba(224,221,213,0.5); text-transform: uppercase;
+    letter-spacing: 0.12em; font-weight: 700;
+    margin: 14px 0 0; border-top: 1px solid var(--border); padding-top: 10px;
+    cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px;
+    transition: color 0.2s;
+  }
+  .section-header:first-of-type { border-top: none; margin-top: 0; }
+  .section-header::before {
+    content: '\25B8'; font-size: 0.6rem; transition: transform 0.2s;
+    display: inline-block; width: 10px;
+  }
+  .section-header.open::before { transform: rotate(90deg); }
+  .section-content { display: none; padding: 6px 0 0 10px; border-left: 2px solid var(--border); margin-left: 4px; }
+  .section-header.open + .section-content { display: block; }
+
+  /* A collapsible nested inside a section. Reuses .section-header so it picks
+     up the existing open/close binding in panel.js rather than needing its own,
+     and is toned down so it reads as subordinate to its parent rather than as a
+     peer of Primes and Nodes. */
+  .section-header.sub {
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
+    color: rgba(224,221,213,0.38);
+    border-top: none; margin: 4px 0 0; padding-top: 4px;
+  }
+  .section-content.sub { padding-left: 8px; margin-left: 2px; }
+
+  .prime-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .prime-btn, .prime-grid .grid-btn {
+    width: 38px; height: 28px; border: 1px solid var(--border-ctrl); background: var(--field-bg);
+    color: var(--text-dim); font-size: 11px; font-family: inherit; cursor: pointer; border-radius: 5px;
+    transition: all 0.2s;
+  }
+  .prime-grid .grid-btn {
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.03em;
+    color: rgba(224,221,213,0.35);
+  }
+  .prime-btn.active { border-color: var(--text); color: var(--text); }
+  /* Collapsed by the More/Less control. Hidden, not removed — a hidden button
+     keeps its .active state, and applyPrimeTier() guarantees nothing active is
+     ever hidden. */
+  .prime-btn.tier-hidden { display: none; }
+  #more-btn { color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.75); }
+
+  label { display: block; font-size: 0.78rem; margin: 6px 0 3px; color: var(--text-dim); font-weight: 400; }
+  label span { color: var(--text); font-weight: 600; }
+  select, input[type=number] {
+    width: 100%; padding: 6px 8px; background: var(--field-bg);
+    border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; font-size: 12px; font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  select:focus, input[type=number]:focus { outline: none; border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4); }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 24px; margin: 2px 0;
+    background: transparent; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 4px; background: var(--track-bg); border-radius: 2px; border: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 22px; margin-top: -9px;
+    background: linear-gradient(to bottom, #555, #333);
+    border: 1px solid rgba(180,200,210,0.2); border-radius: 3px;
+    box-shadow: 0 0 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  input[type=range]::-moz-range-track {
+    height: 4px; background: var(--track-bg); border-radius: 2px; border: none;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 12px; height: 22px;
+    background: linear-gradient(to bottom, #555, #333);
+    border: 1px solid rgba(180,200,210,0.2); border-radius: 3px;
+    box-shadow: 0 0 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .effect-row {
+    display: flex; align-items: center; gap: 8px; margin: 2px 0; padding: 2px 0;
+  }
+  .effect-row .toggle { flex-shrink: 0; }
+  .effect-row input[type=range] { flex: 1; margin: 0; }
+  .effect-row .value { min-width: 24px; text-align: right; font-size: 0.65rem; color: rgba(224,221,213,0.6); font-weight: 600; }
+
+  .control-row { margin: 6px 0; }
+  .control-label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.72rem; color: var(--text-dim); margin-bottom: 1px; font-weight: 400;
+  }
+  .control-label .value {
+    color: rgba(224,221,213,0.6); font-weight: 600; font-size: 0.65rem;
+    letter-spacing: 0.03em;
+  }
+  .control-line { display: flex; align-items: center; gap: 6px; }
+  .control-line input[type=range] { flex: 1; margin: 0; }
+
+  .toggle {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; padding: 5px 0; margin: 1px 0;
+    font-size: 0.75rem; color: var(--text-dim); font-weight: 400;
+    user-select: none; transition: color 0.2s;
+  }
+  .toggle input[type=checkbox] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+  .toggle-track {
+    position: relative; flex-shrink: 0;
+    width: 34px; height: 17px;
+    background: var(--track-bg);
+    border: 1px solid var(--border-lite);
+    border-radius: 10px; transition: all 0.25s ease;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute; top: 1px; left: 1px;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: linear-gradient(to bottom, #555, #333);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition: all 0.25s ease;
+  }
+  .toggle input:checked + .toggle-track {
+    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.15);
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4);
+    box-shadow: 0 0 8px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.1);
+  }
+  .toggle input:checked + .toggle-track::after {
+    left: 18px;
+    background: linear-gradient(to bottom, rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9), rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.7));
+    box-shadow: 0 0 6px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+
+  .range-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .range-row .toggle { flex-shrink: 0; margin: 0; padding: 4px 0; }
+  .range-row input[type=number] { width: 80px; flex-shrink: 0; }
+  .range-row .n-info { flex: 1; font-size: 0.7rem; color: rgba(224,221,213,0.4); text-align: right; white-space: nowrap; }
+  #n-slider { cursor: pointer !important; }
+  .range-row .n-info span { color: var(--text); font-weight: 600; }
+
+  #reset-btn {
+    width: 100%; padding: 7px; margin-top: 14px; background: transparent;
+    border: 1px solid var(--border); color: var(--text-faint);
+    font-size: 10px; font-family: inherit; cursor: pointer;
+    border-radius: 6px; transition: all 0.2s; letter-spacing: 0.05em;
+  }
+
+  /* A small reset that belongs to ONE control rather than the whole panel.
+     Narrower and quieter than #reset-btn so it cannot be mistaken for it —
+     tapping "reset" and losing every setting when you meant to restore one
+     angle would be a bad surprise. min-height 32px keeps it a comfortable
+     touch target despite the small type. */
+  .mini-btn {
+    display: block; margin: 4px 0 2px; padding: 0 10px; min-height: 32px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-faint); font-size: 10px; font-family: inherit;
+    cursor: pointer; border-radius: 6px; transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  /* The divergence readout carries three digits, a decimal and a degree sign —
+     more than the 24px the effect rows budget for a bare number. Without this
+     the value wraps under its slider the moment it passes 100°. */
+  #divergence-angle-display { min-width: 52px; }
+  #status { font-size: 0.6rem; color: rgba(224,221,213,0.2); margin-top: 6px; letter-spacing: 0.03em; }
+  #viewport { position: absolute; top: 0; left: 280px; right: 0; bottom: 0; transition: left 0.3s ease; }
+  #panel.collapsed ~ #viewport { left: 0; }
+  /* The WebGL canvas is transparent and #viewport paints the background behind
+     it, so the lens chalkboard can be layered between the two (#lens-board,
+     z-index 0). The canvas has to be POSITIONED to sit above it: a positioned
+     element with z-index 0 still paints over a static sibling, so leaving the
+     canvas unpositioned would put the chalkboard back on top — the exact bug
+     this arrangement replaced. Labels stay above at z-index 2. */
+  #viewport > canvas { position: relative; z-index: 1; }
+
+  /* Fix dropdown colors for dark theme */
+  select option { background: #1a1a1f; color: var(--text); }
+
+  /* All button highlight when all primes selected */
+  .grid-btn.active {
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.5);
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9);
+    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.1);
+  }
+
+  /* Node row: toggle + slider on same line */
+  .node-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .node-row .toggle { flex-shrink: 0; margin: 0; padding: 4px 0; }
+  .node-row input[type=range] { flex: 1; }
+  .node-row .value { font-size: 0.65rem; color: rgba(224,221,213,0.6); font-weight: 600; min-width: 24px; text-align: right; }
+
+  /* ==========================================================
+     TRANSPORT BAR — play/pause as the shape's playhead.
+     The button is the slider handle: it rides the track as the
+     shape morphs, and dragging it scrubs by hand.
+     ========================================================== */
+  #transport {
+    position: absolute; z-index: 20;
+    left: 296px; right: 16px; bottom: 16px;
+    height: 44px; display: flex; align-items: center;
+    transition: left 0.3s ease;
+    pointer-events: none;              /* only the track and handle are live */
+  }
+  #panel.collapsed ~ #transport { left: 16px; }
+
+  #transport-track {
+    position: relative; flex: 1; height: 44px;
+    margin: 0 22px;                    /* room for the handle at 0% and 100% */
+    pointer-events: auto; cursor: pointer;
+    display: flex; align-items: center;
+    touch-action: none;
+  }
+  #transport-track::before {
+    content: ''; position: absolute; left: 0; right: 0; height: 4px;
+    background: var(--track-bg); border-radius: 2px;
+    box-shadow: inset 0 0 0 1px rgba(180,200,210,0.06);
+  }
+
+  #transport-btn {
+    position: absolute; top: 50%; left: 0;
+    transform: translate(-50%, -50%);
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit; font-size: 15px; line-height: 1;
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+    background: rgba(12, 12, 15, 0.94);
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
+    box-shadow: 0 3px 14px rgba(0,0,0,0.55);
+    cursor: grab; touch-action: none; padding: 0;
+    /* No transition on `left` — it has to track the pointer exactly while
+       dragging, and the morph moves it every frame anyway. */
+    transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  }
+  /* Icons are drawn in CSS, not typed as characters. U+23F8 PAUSE and U+25B6
+     PLAY carry emoji presentation, so Android substitutes its own orange
+     colour glyph and ignores `color` entirely. Shapes always obey the theme. */
+  #transport-btn::before, #transport-btn::after {
+    content: ''; display: block;
+    width: 4px; height: 15px; border-radius: 1px;
+    background: currentColor;
+  }
+  #transport-btn::before { margin-right: 5px; }
+  #transport-btn.paused::before {
+    width: 0; height: 0; background: none; border-radius: 0;
+    margin: 0 0 0 3px;                 /* optically centre the triangle */
+    border-left: 14px solid currentColor;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+  }
+  #transport-btn.paused::after { display: none; }
+
+  #transport-btn.paused {
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.7);
+    box-shadow: 0 3px 14px rgba(0,0,0,0.55),
+                0 0 12px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.22);
+  }
+  #transport-btn.dragging { cursor: grabbing; }
+  #transport-btn.speeding {
+    cursor: ns-resize;
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.9);
+    box-shadow: 0 3px 14px rgba(0,0,0,0.55),
+                0 0 18px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+  }
+
+  /* Speed figure, shown only while the handle is being lifted. */
+  #transport-readout {
+    position: absolute; bottom: calc(50% + 42px);
+    transform: translateX(-50%);
+    padding: 3px 8px; border-radius: 6px;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.04em;
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+    background: rgba(12, 12, 15, 0.94);
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+    opacity: 0; pointer-events: none; white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  #transport-readout.visible { opacity: 1; }
+
+  /* ==========================================================
+     CORNER RESET — deliberately faint. It undoes everything, so
+     it should be findable but never invite a stray tap.
+     ========================================================== */
+  #corner-reset {
+    position: absolute; z-index: 20;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-corner);
+    cursor: pointer; padding: 0;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  #corner-reset svg { width: 16px; height: 16px; display: block; }
+  @media (pointer: coarse) { #corner-reset { width: 44px; height: 44px; } }
+
+  /* ==========================================================
+     DAZZLE — Reset with a different normal. Sits directly under
+     the corner Reset and is styled identically, because it is
+     the same kind of control: one tap, everything changes.
+
+     The daisy is inline SVG in currentColor, NOT the 🌼
+     character. Emoji carry colour presentation, so Android
+     substitutes its own glyph and ignores `color` outright —
+     which is exactly how the transport buttons ended up orange
+     (see PLAN.md rev 7). A drawn daisy stays as faint as the
+     Reset beside it and follows the theme.
+     ========================================================== */
+  #dazzle-btn {
+    position: absolute; z-index: 20;
+    /* 12 top inset + the Reset's 34 + an 8 gap. */
+    top: calc(54px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-corner);
+    cursor: pointer; padding: 0;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  #dazzle-btn svg { width: 18px; height: 18px; display: block; }
+  @media (pointer: coarse) {
+    /* Reset grows to 44, so the gap below it has to move down with it. */
+    #dazzle-btn { width: 44px; height: 44px; top: calc(64px + env(safe-area-inset-top)); }
+  }
+
+  /* ==========================================================
+     LENS — the classroom layer, dragged across the figure.
+
+     The board sits ON TOP of the canvas and blends with `lighten`:
+     the app background is near-black and its content is bright, so
+     lighten takes the board wherever the scene is darker and the
+     scene wherever it is brighter. The chalkboard replaces the
+     background and leaves every node and curve untouched, with no
+     involvement from the renderer at all — the morph keeps running
+     underneath while you drag.
+
+     Texture is drawn in CSS. No image is loaded; the app still
+     makes zero external requests and still works offline.
+     ========================================================== */
+  /* Sits BEHIND the canvas, not over it. The canvas is transparent (see the
+     scene setup in core/renderer.js) and #viewport carries the page colour, so
+     this slots between them: a background the figure is drawn on rather than a
+     wash applied to it.
+
+     It used to be z-index 1 with mix-blend-mode: lighten, over the canvas.
+     Lighten is a per-channel max, so the slate did not merely replace the
+     background — it lifted the green and blue of every node darker than
+     #1a2620, turning deep reds muddy and tinting the whole figure. In an app
+     where the colour IS the factorisation, that was wrong about the maths, not
+     just about the look. */
+  #lens-board {
+    position: absolute; inset: 0; z-index: 0;
+    pointer-events: none;
+    background-color: #1a2620;                    /* chalkboard slate */
+
+    /* Grain is fractal noise from an inline SVG filter, not repeating
+       gradients. Repeating gradients at fixed angles cross into a regular
+       weave and read as stitched fabric — which is exactly what the first
+       attempt looked like. Turbulence has no repeating structure, so it
+       reads as slate tooth. Inline data URI, so nothing is fetched and the
+       app still works offline. */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23t)' opacity='0.4'/%3E%3C/svg%3E"),
+      /* broad cloudy unevenness, like a board wiped a thousand times */
+      radial-gradient(ellipse 95% 30% at 28% 32%, rgba(228,240,232,0.06), transparent 72%),
+      radial-gradient(ellipse 85% 24% at 70% 62%, rgba(228,240,232,0.05), transparent 74%),
+      radial-gradient(ellipse 60% 34% at 46% 88%, rgba(228,240,232,0.035), transparent 76%),
+      /* faint vignette so it reads as a board rather than a flat fill */
+      radial-gradient(ellipse 130% 130% at 50% 45%, transparent 52%, rgba(0,0,0,0.4));
+    background-size: 220px 220px, cover, cover, cover, cover;
+    background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    /* Overlay lets the grain modulate the slate instead of covering it. */
+    background-blend-mode: overlay, screen, screen, screen, multiply;
+  }
+
+  /* Labels are HTML, projected from 3D each frame. */
+  #lens-labels {
+    position: absolute; inset: 0; z-index: 2;
+    pointer-events: none; overflow: hidden;
+  }
+  .lens-label {
+    position: absolute; top: 0; left: 0;
+    margin: -0.6em 0 0 0.55em;                    /* clear of the node itself */
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em;
+    color: rgba(238, 245, 238, 0.92);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+    white-space: nowrap; will-change: transform;
+  }
+
+  /* The tab you grab. Sits on the lens edge, so it starts at the left
+     of the picture and travels with the boundary it controls. */
+  /* Left edge is `left` in px, set by the module and clamped so the whole tab
+     is always on screen. It is NOT centred on the boundary — doing that hung
+     half of it off the viewport at rest, where it was ungrabbable. */
+  /* Top-left, styled to match #corner-reset: transparent, faint, unobtrusive.
+     Sits below the corner Reset's row on purpose — when the lens is dragged
+     nearly fully open the handle reaches the right-hand side, and at the same
+     height the two controls would land on top of each other. */
+  #lens-handle {
+    position: absolute; z-index: 19;
+    /* Clears the Dazzle button, which the handle collides with once the lens
+       is dragged most of the way open — the handle travels rightward while
+       Dazzle is pinned to the right edge, and both sat at the same height.
+       Dazzle wins the tap (z-index 20 against this one's 19), so the handle
+       became unusable exactly where you finish the drag.
+       12 top inset + the Reset's 34 + an 8 gap + Dazzle's 34 + an 8 gap. */
+    top: calc(96px + env(safe-area-inset-top)); left: 0;
+    width: 34px; height: 46px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-faint);
+    cursor: ew-resize; touch-action: none;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  #lens-handle.dragging, #lens-handle.open {
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
+    border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+    background: rgba(12,12,15,0.7);
+  }
+  /* Grip bar plus a chevron, so it reads as "pull me that way" rather than as
+     decoration. Both drawn in currentColor, never typed — see the transport
+     icons for why characters are avoided. */
+  #lens-handle-grip {
+    width: 2px; height: 18px; border-radius: 1px;
+    background: currentColor;
+    box-shadow: -4px 0 0 -0.5px currentColor;
+  }
+  #lens-handle::after {
+    content: ''; width: 0; height: 0;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+  #lens-handle.open::after {
+    border-left: none;
+    border-right: 5px solid currentColor;
+  }
+  /* Touch targets grow to 44, so the stack above the handle grows with them:
+     12 + 44 + 8 + 44 + 8 = 116. Without moving `top` here the handle would
+     still overlap Dazzle on exactly the devices where it matters most. */
+  @media (pointer: coarse) {
+    #lens-handle { width: 44px; height: 52px; top: calc(116px + env(safe-area-inset-top)); }
+  }
+
+  #panel::-webkit-scrollbar { width: 3px; }
+
+  #panel::-webkit-scrollbar { width: 3px; }
+  #panel::-webkit-scrollbar-track { background: transparent; }
+  #panel::-webkit-scrollbar-thumb { background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.15); border-radius: 2px; }
+
+  /* ==========================================================
+     HOVER — mouse only.
+     On a touchscreen there is no pointer to move away, so a
+     :hover style applied on tap stays stuck until you tap
+     something else. Every hover rule in this file lives here.
+     ========================================================== */
+  @media (hover: hover) {
+    #panel-toggle:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4); color: var(--text); }
+    .section-header:hover { color: rgba(224,221,213,0.7); }
+    .prime-grid .grid-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(224,221,213,0.7); }
+    .prime-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(224,221,213,0.7); }
+    .toggle:hover { color: rgba(224,221,213,0.65); }
+    .toggle:hover .toggle-track { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25); }
+    #reset-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
+    .mini-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
+    #corner-reset:hover, #dazzle-btn:hover {
+      color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+      background: rgba(12,12,15,0.7);
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      background: linear-gradient(to bottom, #666, #444);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4);
+    }
+  }
+
+  /* ==========================================================
+     TOUCH TARGETS — 44px minimum.
+     Keyed on pointer:coarse, not screen width: a small window
+     on a desktop still has a mouse, and a tablet does not.
+     ========================================================== */
+  @media (pointer: coarse) {
+    .prime-btn, .prime-grid .grid-btn { min-width: 44px; height: 44px; font-size: 12px; }
+    .toggle { min-height: 44px; padding: 0; align-items: center; }
+    .range-row .toggle, .node-row .toggle, .effect-row .toggle { padding: 0; }
+    select, input[type=number] { min-height: 44px; font-size: 16px; }  /* 16px stops iOS zoom-on-focus */
+    #reset-btn { min-height: 44px; font-size: 12px; }
+    #panel-toggle { width: 44px; height: 44px; font-size: 18px; }
+    .section-header { padding-top: 14px; padding-bottom: 8px; }
+
+    /* Fatter slider thumbs and a taller grab area. The track stays
+       4px; only the hit region grows. */
+    input[type=range] { height: 44px; }
+    input[type=range]::-webkit-slider-thumb { width: 20px; height: 28px; margin-top: -12px; }
+    input[type=range]::-moz-range-thumb { width: 20px; height: 28px; }
+  }
+
+  /* ==========================================================
+     PHONE LAYOUT — panel becomes a bottom sheet.
+     A fixed 280px sidebar eats two-thirds of a phone screen and
+     leaves the visualisation in a sliver. Below 640px the panel
+     anchors to the bottom, the viewport goes full-bleed behind
+     it, and safe-area insets keep content clear of the notch,
+     the home indicator, and rounded corners.
+     ========================================================== */
+  @media (max-width: 640px) {
+    /* One value, used by both the sheet's height and the viewport's bottom
+       edge. They must agree or the visualisation ends up behind the sheet. */
+    :root { --sheet-h: 58vh; }
+
+    #panel {
+      top: auto; bottom: 0; left: 0;
+      width: 100%; height: var(--sheet-h);
+      border-right: none;
+      border-top: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.12);
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -12px 32px rgba(0,0,0,0.45);
+      overscroll-behavior: contain;
+      padding: 16px calc(16px + env(safe-area-inset-right))
+               calc(20px + env(safe-area-inset-bottom))
+               calc(16px + env(safe-area-inset-left));
+    }
+    #panel.collapsed { transform: translateY(100%); }
+
+    /* The viewport stops where the sheet starts. Letting it run full-bleed
+       under the sheet centres the visualisation behind the controls, which
+       is the one thing a phone user cannot scroll away from. When the sheet
+       is dismissed the viewport reclaims the whole screen. */
+    #viewport {
+      left: 0; bottom: var(--sheet-h);
+      transition: left 0.3s ease, bottom 0.3s ease;
+    }
+    #panel.collapsed ~ #viewport { left: 0; bottom: 0; }
+
+    /* The toggle rides the top edge of the sheet: at the bottom of the
+       screen when the sheet is away, lifted above it when the sheet is up.
+       It reads as a handle for the drawer rather than as a stray button,
+       and it stays in the thumb's arc either way. Both `left` rules from
+       the desktop layout have to be beaten. */
+    #panel-toggle,
+    #panel:not(.collapsed) ~ #panel-toggle {
+      left: auto; right: 12px; top: auto;
+      transform: none;
+      bottom: calc(var(--sheet-h) + 16px);
+      width: 76px; height: 44px; border-radius: 22px;
+      background: rgba(12, 12, 15, 0.94);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
+      color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.55),
+                  0 0 0 1px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.08);
+      transition: bottom 0.3s ease, border-color 0.2s, color 0.2s;
+    }
+    #panel.collapsed ~ #panel-toggle {
+      bottom: calc(18px + env(safe-area-inset-bottom));
+    }
+    /* The inline handler writes a left/right arrow, which is wrong for a
+       sheet that moves vertically. Override it in CSS so the markup and the
+       handler stay untouched. */
+    #panel-toggle { font-size: 0; }
+    #panel-toggle::before { content: '\25BE'; font-size: 20px; line-height: 1; }
+    #panel.collapsed ~ #panel-toggle::before { content: '\25B4'; }
+
+    /* Transport shares the bottom row with the drawer button, which has moved
+       to the right to make room. Both ride the sheet's top edge, so they stay
+       on one line whether the sheet is up or away. The right inset clears the
+       76px drawer button plus a gap. */
+    #transport,
+    #panel.collapsed ~ #transport {
+      left: 4px; right: 100px;
+      top: auto; bottom: calc(var(--sheet-h) + 16px);
+      transition: bottom 0.3s ease;
+    }
+    #panel.collapsed ~ #transport {
+      bottom: calc(18px + env(safe-area-inset-bottom));
+    }
+
+    /* Drag handle sitting exactly on the sheet's top edge. Hidden when the
+       sheet is away — there is no edge to grab. */
+    #sheet-grip {
+      position: absolute; left: 0; right: 0; z-index: 15;
+      bottom: var(--sheet-h);
+      height: 24px; margin-bottom: -12px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: ns-resize; touch-action: none;
+    }
+    #sheet-grip::before {
+      content: ''; width: 44px; height: 4px; border-radius: 2px;
+      background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
+      transition: background 0.2s, width 0.2s;
+    }
+    #sheet-grip.dragging::before {
+      background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
+      width: 64px;
+    }
+    #panel.collapsed ~ #sheet-grip { display: none; }
+
+    /* While dragging, animations fight the pointer. */
+    :root.sheet-resizing #panel,
+    :root.sheet-resizing #viewport,
+    :root.sheet-resizing #panel-toggle,
+    :root.sheet-resizing #sheet-grip,
+    :root.sheet-resizing #transport { transition: none !important; }
+  }
+
+  /* The grip is a phone affordance only; the desktop panel is a fixed
+     sidebar with nothing to resize. */
+  @media (min-width: 641px) {
+    #sheet-grip { display: none; }
+
+    #panel h1 { font-size: 12px; margin-bottom: 10px; }
+  }
+
+  /* Landscape on a phone is ~844px wide, so it stays a sidebar and
+     never reaches the block above. That is the intended behaviour:
+     in landscape there is width to spare and height to protect. */
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <h1>Pretty Number Machine</h1>
+
+  <!-- The Shape section is gone. Its only control was the dimension slider,
+       and the transport bar replaced it: the play button IS the playhead. The
+       shape name went with it — the picture says which shape it is. -->
+
+  <h2 class="section-header open">Primes</h2>
+  <div class="section-content">
+    <div class="prime-grid" id="prime-grid"></div>
+
+    <!-- Collapsed by default. These decide what is drawn rather than what the
+         app is about, and a wall of seven toggles under the grid buried the
+         primes themselves. Thickness lives here too, directly under the lines
+         it thickens. -->
+    <h2 class="section-header sub">Visibility</h2>
+    <div class="section-content sub">
+      <label class="toggle" for="filter-primes">
+        <input type="checkbox" id="filter-primes" checked>
+        <span class="toggle-track"></span>
+        Selected Primes
+      </label>
+      <label class="toggle" for="filter-powers">
+        <input type="checkbox" id="filter-powers" checked>
+        <span class="toggle-track"></span>
+        Powers of Selected Primes
+      </label>
+      <label class="toggle" for="filter-composites">
+        <input type="checkbox" id="filter-composites" checked>
+        <span class="toggle-track"></span>
+        Composites of Selected Primes
+      </label>
+      <label class="toggle" for="show-all-integers">
+        <input type="checkbox" id="show-all-integers">
+        <span class="toggle-track"></span>
+        All Integers in Range
+      </label>
+      <label class="toggle" for="show-zero">
+        <input type="checkbox" id="show-zero" checked>
+        <span class="toggle-track"></span>
+        Zero node
+      </label>
+      <label class="toggle" for="show-one">
+        <input type="checkbox" id="show-one" checked>
+        <span class="toggle-track"></span>
+        One node
+      </label>
+    </div>
+  </div>
+
+  <h2 class="section-header">Range</h2>
+  <div class="section-content">
+    <div class="range-row">
+      <label class="toggle" for="auto-n" style="margin:0">
+        <input type="checkbox" id="auto-n" checked>
+        <span class="toggle-track"></span>
+        Auto
+      </label>
+      <input type="number" id="n-input" value="30" min="1" max="10000" disabled>
+      <div class="n-info"><span id="n-display">30</span></div>
+    </div>
+    <input type="range" id="n-slider" min="1" max="2500" value="30">
+  </div>
+
+  <h2 class="section-header">Nodes</h2>
+  <div class="section-content">
+    <div class="node-row">
+      <label class="toggle" for="show-nodes" style="margin:0">
+        <input type="checkbox" id="show-nodes" checked>
+        <span class="toggle-track"></span>
+        All Nodes
+      </label>
+    </div>
+    <div class="control-row">
+      <div class="control-label">Size <span class="value" id="node-size-display">1.0</span></div>
+      <div class="control-line">
+        <input type="range" id="node-size" min="0.1" max="2" step="0.1" value="1.0">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-header">Parastichy Lines</h2>
+  <div class="section-content">
+    <label class="toggle" for="show-curves">
+      <input type="checkbox" id="show-curves" checked>
+      <span class="toggle-track"></span>
+      Show lines
+    </label>
+    <div class="control-row">
+      <!-- One slider, two regimes. 0 is very nearly black; thickness grows to a
+           ceiling and then stops; past that the same slider drives brightness
+           and glow instead. See LINE_* in core/renderer.js for the mapping. -->
+      <div class="control-label">Visibility <span class="value" id="line-width-display">2.0</span></div>
+      <div class="control-line">
+        <input type="range" id="line-width" min="0" max="12" step="0.5" value="2">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-header" id="section-appearance">Appearance</h2>
+  <div class="section-content">
+    <label>Color scheme</label>
+    <select id="color-scheme">
+      <option value="rgb">Additive RGB</option>
+      <option value="spectrum">Spectrum (red &rarr; blue)</option>
+      <option value="spectrum-rev">Spectrum (blue &rarr; red)</option>
+      <option value="none">Colorless</option>
+    </select>
+
+    <label>Background</label>
+    <select id="background-style">
+      <option value="black">Black</option>
+      <option value="white">White</option>
+    </select>
+  </div>
+
+  <h2 class="section-header">Effects</h2>
+  <div class="section-content">
+    <!-- Governs whether Play animates the SHAPE. Everything else the transport
+         resumes — pulses, colour drift, rotation — is gated on `paused` alone,
+         so turning this off leaves the figure still while the rest keeps
+         moving. No speed slider: morph speed lives on the transport handle's
+         vertical axis. -->
+    <div class="effect-row">
+      <label class="toggle" for="shape-drift" style="margin:0">
+        <input type="checkbox" id="shape-drift" checked>
+        <span class="toggle-track"></span>
+        Morph
+      </label>
+    </div>
+
+    <div class="effect-row">
+      <label class="toggle" for="prime-glow" style="margin:0">
+        <input type="checkbox" id="prime-glow" checked>
+        <span class="toggle-track"></span>
+        Prime glow
+      </label>
+      <input type="range" id="prime-glow-intensity" min="0.1" max="2" step="0.1" value="0.3">
+      <span class="value" id="prime-glow-display">0.3</span>
+    </div>
+
+    <div class="effect-row">
+      <label class="toggle" for="zero-glow" style="margin:0">
+        <input type="checkbox" id="zero-glow" checked>
+        <span class="toggle-track"></span>
+        Zero glow
+      </label>
+      <input type="range" id="zero-glow-intensity" min="0.1" max="3" step="0.1" value="1.1">
+      <span class="value" id="zero-glow-display">1.1</span>
+    </div>
+
+    <div class="effect-row">
+      <label class="toggle" for="pulse" style="margin:0">
+        <input type="checkbox" id="pulse">
+        <span class="toggle-track"></span>
+        Node Pulse
+      </label>
+      <input type="range" id="pulse-speed" min="0.2" max="3" step="0.1" value="1.0">
+      <span class="value" id="pulse-speed-display">1.0</span>
+    </div>
+
+    <div class="effect-row">
+      <label class="toggle" for="line-pulse" style="margin:0">
+        <input type="checkbox" id="line-pulse">
+        <span class="toggle-track"></span>
+        Line Pulse
+      </label>
+    </div>
+
+    <div class="effect-row">
+      <label class="toggle" for="color-drift" style="margin:0">
+        <input type="checkbox" id="color-drift">
+        <span class="toggle-track"></span>
+        Color Drift
+      </label>
+      <input type="range" id="color-drift-speed" min="0.1" max="3" step="0.1" value="1.0">
+      <span class="value" id="color-drift-speed-display">1.0</span>
+    </div>
+
+    <div class="effect-row">
+      <label class="toggle" for="auto-rotate" style="margin:0">
+        <input type="checkbox" id="auto-rotate" checked>
+        <span class="toggle-track"></span>
+        Rotation
+      </label>
+      <input type="range" id="drift-speed" min="0.1" max="5" step="0.1" value="0.3">
+      <span class="value" id="drift-speed-display">0.3</span>
+    </div>
+  </div>
+
+  <!-- CONSTANTS
+       Beneath Effects on purpose. Everything above changes how the figure is
+       DRAWN; this changes the rule it is built from. The divergence angle is
+       the one number the whole arrangement rests on, and moving it is the
+       fastest way to see that the golden angle is doing real work rather than
+       being a decorative choice. See core/positions.js for the mathematics. -->
+  <h2 class="section-header">Constants</h2>
+  <div class="section-content">
+    <label>Divergence angle</label>
+    <!-- Degrees, not radians, and 0.01 steps. Radians are what the code wants
+         and 137.5° is what a person can hold in their head; the conversion
+         lives in panel.js and nowhere else. The range is a full turn so the
+         rational angles — 180°, 120°, 90°, 72° — are all reachable, because
+         watching the figure collapse into spokes at each of them is the point
+         of the control. -->
+    <div class="effect-row">
+      <input type="range" id="divergence-angle" min="0" max="360" step="0.01" value="137.51">
+      <span class="value" id="divergence-angle-display">137.51&deg;</span>
+    </div>
+    <!-- Tap to return to phi. Restores the exact GOLDEN_ANGLE constant, not the
+         two-decimal value the slider can represent — see panel.js. -->
+    <button type="button" id="divergence-reset" class="mini-btn">Reset to &phi; (137.508&deg;)</button>
+
+    <div class="effect-row">
+      <label class="toggle" for="angle-drift" style="margin:0">
+        <input type="checkbox" id="angle-drift">
+        <span class="toggle-track"></span>
+        Sweep
+      </label>
+      <input type="range" id="angle-drift-speed" min="0.1" max="3" step="0.1" value="1.0">
+      <span class="value" id="angle-drift-speed-display">1.0</span>
+    </div>
+  </div>
+
+  <button id="reset-btn">Reset to defaults</button>
+  <div id="status"></div>
+  <div style="font-size:0.55rem; color:rgba(224,221,213,0.2); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.7 &middot; &copy; 2026 Dakota Schuck</div>
+</div>
+
+<button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
+<!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
+     across platforms and some render as colour emoji, which is exactly how
+     the transport button ended up orange on Android. -->
+<button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 1 0 3-6.7"/>
+    <path d="M3 4v5h5"/>
+  </svg>
+</button>
+<!-- A sparkle: two four-pointed stars with concave sides, drawn rather than
+     typed. The first attempt was a daisy of eight radial petals and read as a
+     gear — at 18px, anything with that many evenly spaced lobes does. Concave
+     sides are what separate a sparkle from a star or a cog.
+     Not the ✨ character: emoji carry colour presentation, so Android
+     substitutes its own glyph and ignores `color` — the trap that made the
+     transport buttons orange on Android. -->
+<button id="dazzle-btn" type="button" title="Dazzle" aria-label="Dazzle">
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M10 3 Q11 12 17 13 Q11 14 10 23 Q9 14 3 13 Q9 12 10 3 Z"/>
+    <path d="M18.5 2 Q19 5.5 22.5 6 Q19 6.5 18.5 10 Q18 6.5 14.5 6 Q18 5.5 18.5 2 Z"/>
+  </svg>
+</button>
+<div id="viewport"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./lib/three/three.module.js",
+    "three/addons/": "./lib/three/addons/"
+  }
+}
+</script>
+<script type="module">
+  import { init } from './core/renderer.js';
+  import { initPanel } from './core/panel.js';
+  import { initSheet } from './core/sheet.js';
+  import { initTransport } from './core/transport.js';
+  // watchForUpdates is gone with the service worker: in the shell, updates
+  // arrive through the Play Store and the app has no say in them. The error
+  // boundary stays — it is the one part of notices.js that matters more here,
+  // not less, because there is no address bar to reload from.
+  import {
+    installGlobalErrorBoundary, markRendered, showFatalError,
+  } from './core/notices.js';
+
+  // Armed before anything else runs, so a failure during startup has somewhere
+  // to be reported. It only fires while the app has not yet rendered — see
+  // notices.js — so a stray rejection later cannot blank a working scene.
+  installGlobalErrorBoundary();
+
+  // First: sets the sheet's initial state, so everything below sizes against
+  // the layout the user will actually see.
+  initSheet();
+
+  // Dynamic module loading — each one is isolated
+  const featureModules = [
+    './modules/physics.js',
+    './modules/info.js',
+    './modules/lens.js',   // after info.js — it calls into that module's API
+  ];
+
+  for (const path of featureModules) {
+    try {
+      const m = await import(path);
+      m.register();
+    } catch (err) {
+      console.error(`[PNM] Failed to load module ${path}:`, err);
+    }
+  }
+
+  // Panel and renderer, inside a boundary. Everything above this point either
+  // has its own error handling (the module loop) or cannot fail usefully; from
+  // here on a throw means no visualisation, and a black rectangle explains
+  // nothing to someone who paid for this.
+  try {
+    // Build panel (reads registered modules + shapes)
+    initPanel();
+
+    // Start renderer
+    init(document.getElementById('viewport'));
+
+    // After the renderer, so the playhead reads a live dimension on its first
+    // frame rather than the default.
+    initTransport();
+
+    // From here a later failure is a bump, not a dead app, so the global
+    // boundary stands down.
+    markRendered();
+  } catch (err) {
+    console.error('[PNM] Fatal error during startup:', err);
+    showFatalError(err);
+  }
+
+  // DEV: no service worker here, deliberately, and this comment is the guard
+  // rail. The web builds register one to cache themselves for offline use; the
+  // shell has no use for that — the APK *is* the offline copy, installed on the
+  // device by the store. Registering one anyway would reintroduce the single
+  // most expensive bug in this project's history: a cache that answers
+  // navigations for its whole scope and serves last week's code to a user who
+  // just updated. docs/HANDOFF.md §4 counts four separate occasions.
+  //
+  // If you are here because you want offline support: you already have it.
+</script>
+</body>
+</html>

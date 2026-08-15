@@ -7,8 +7,14 @@ android {
         applicationId "com.schuckdata.pnm"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // versionCode is what Play orders releases by; it must strictly increase
+        // on every upload and can never be reused, even after a rollback.
+        // versionName is the human-readable string, and is held equal to the
+        // label in www/index.html and the version in package.json — tools/check.mjs
+        // fails the build if the three ever drift apart. That guard replaces the
+        // CACHE_VERSION discipline the web builds needed (ANDROID-BUILD.md §2).
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0-dev.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
