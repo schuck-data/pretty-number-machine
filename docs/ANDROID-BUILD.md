@@ -1,8 +1,11 @@
 # Android build — Pretty Number Machine
 
-**Written:** 2026-08-15. **Status:** plan. Nothing in this document has been
-executed. It is the handoff for the build that turns PNM into a Play Store game
-with achievements and a single in-app product.
+**Written:** 2026-08-15. **Status:** §5 step 1 executed 2026-08-15; everything
+else is still plan. It is the handoff for the build that turns PNM into a Play
+Store game with achievements and a single in-app product.
+
+**The scaffold spike succeeded.** Capacitor 8.5.0 wraps the v1 code unchanged
+and runs on the Pixel 9. What that proved, and what it did not, is in §5 step 1.
 
 **Supersedes** the TWA / Bubblewrap / paid-app plan in `HANDOFF.md` §1–3 and
 `PLAY-STORE-HANDOFF.md`. Where those disagree with this document, this document
@@ -191,12 +194,61 @@ than it sounds. Do not let a stale plugin block the build.
 
 ## 5. Build sequence — technical
 
-1. **Scaffold.** `npm init`, install Capacitor 8, `npx cap init`, move web files
-   to `webDir`, `npx cap add android`, fix CSP, `npx cap sync`, open in Android
-   Studio, run on the Pixel 9. **Measure with `?debug`** — Android System WebView
-   is Chromium and should match Chrome, but confirm fps and draw calls rather
-   than assume. This step proves the whole approach for the price of an
-   afternoon; do it before anything else
+### Toolchain — what a fresh machine needs
+
+Established 2026-08-15 on Windows 11. None of it costs anything.
+
+| Piece | Where it came from | Note |
+|---|---|---|
+| Android Studio | `winget install --id Google.AndroidStudio` | The installer is silent; the SDK arrives via the first-run wizard, which you must launch Studio once to get |
+| SDK platform **36** | SDK Manager → SDK Platforms → **36.0** | The wizard installs 37.0 only. Not `36.1`, not the `-ext` variants |
+| Build-tools 36, platform-tools | first-run wizard | Brings `adb` |
+| SDK Command-line Tools | SDK Manager → SDK Tools | Gives `sdkmanager`; without it every SDK change is a GUI trip |
+| **Temurin JDK 21** | `winget install --id EclipseAdoptium.Temurin.21.JDK` | **Required.** See §9 — Studio's bundled JDK 25 cannot run Gradle 8.14.3 |
+| Android emulator | comes with "Standard" install | Not needed; testing is on the Pixel 9. A couple of GB if you care |
+
+Building from the command line:
+
+```
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"
+cd android; .\gradlew.bat assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+```
+
+`android/local.properties` carries this machine's `sdk.dir` and is gitignored;
+opening `android/` in Android Studio once regenerates it.
+
+Device prerequisites: Developer options on, **USB debugging** on, and the phone
+plugged **directly into the machine** — a USB-C dock will charge it and never
+appear to `adb`. Cost fifteen minutes to work out, 2026-08-15.
+
+### Steps
+
+1. ~~**Scaffold.**~~ **Done 2026-08-15.** `package.json` at the v1 version,
+   Capacitor 8.5.0, `cap init` with `com.schuckdata.pnm`, `cap add android`,
+   CSP widened, `gradlew assembleDebug`, `adb install`. **No web files were
+   moved**: `webDir` points straight at `v1/`, which is self-contained
+   (own `lib/three`, all-relative paths), so the spike cost nothing to undo.
+   Moving the tree to `www/` remains step 2's business.
+
+   **Proved:** the v1 code runs unmodified inside the shell. Debug APK 4.4 MB.
+   Renders correctly on the Pixel 9 — nodes, parastichy lines, transport bar,
+   panel. No CSP violation, no console error, no crash. Generated project is
+   AGP 8.13.0 / Gradle 8.14.3, `compileSdk` and `targetSdk` both 36, so the
+   API-36 deadline is met by the template with nothing to configure.
+
+   **Not proved — still open:** `?debug` was never run, so **no performance
+   number has been taken**. §7 of `HANDOFF.md` still stands: the WebView fps
+   and draw-call count are unmeasured. The HUD keys off `location.search`, and
+   a Capacitor shell has no address bar, so measuring means attaching Chrome
+   DevTools over `chrome://inspect` and setting `location.search = '?debug'`
+   by hand. Do this before believing anything about performance.
+
+   **Also unproved:** `sw.js` and `manifest.webmanifest` were bundled into the
+   APK by the copy, because the spike deliberately stripped nothing. A live
+   service worker inside the shell is trap #1 wearing a new coat. If a device
+   build ever serves stale assets or raises an update prompt, that is why —
+   and step 2 deletes both files anyway
 2. **Strip.** Remove `sw.js`, manifest, update prompt, precache guards. Add the
    version-agreement guards. CI green
 3. **Adapter + ledger.** `platform/` with the no-op fallback, `modules/achievements.js`
@@ -260,6 +312,22 @@ Avoid these now so the second shell is only paperwork:
 
 ## 9. Traps carried forward
 
+- **Android Studio's bundled JDK is too new for its own Gradle.** Studio
+  2026.1.3.7 ships JBR **25**; Gradle 8.14.3 supports at most Java 24 and dies
+  with `Unsupported class file major version 69` while compiling its own build
+  scripts — a message that says nothing about JDKs. Fix: install Temurin **21**
+  (`winget install --id EclipseAdoptium.Temurin.21.JDK`) and point `JAVA_HOME`
+  at it for command-line builds. Studio keeps using its own runtime for the IDE;
+  the two coexist. Cost one build to find, 2026-08-15
+- **The SDK wizard does not install the platform you need.** Its "Standard"
+  install took platform **37.0** only. `compileSdk 36` needs `android-36`,
+  installed by hand from the SDK Manager. Tick **Android SDK Command-line
+  Tools** in the same pass or every later SDK change is another GUI trip
+- **`?debug` has no address bar in a shell.** The HUD reads `location.search`.
+  On device, measuring means Chrome DevTools over `chrome://inspect`. Any plan
+  that says "append `?debug`" is written for the web build, not this one
+- **Do not pipe `adb exec-out screencap -p` through PowerShell.** Redirection
+  mangles the binary. `adb shell screencap -p /sdcard/x.png` then `adb pull`
 - **App-signing certificate, not upload key**, for the PGS Android credential —
   the same class of mistake as the old asset-links fingerprint
 - **`?debug` on real hardware** before believing any performance claim. The

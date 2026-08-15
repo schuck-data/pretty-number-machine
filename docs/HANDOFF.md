@@ -4,8 +4,10 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15. **The web app is feature-complete. The next work is
-building it into a Play Store game — see `ANDROID-BUILD.md`.**
+**Written:** 2026-08-15, revised the same day when the scaffold spike landed.
+**The web app is feature-complete, and it now also builds and runs as an Android
+app. The work ahead is turning that into a Play Store game — see
+`ANDROID-BUILD.md`.**
 
 ---
 
@@ -25,6 +27,20 @@ copies are live at schuckdata.com:
 They are independent applications sharing an origin: separate service workers,
 scopes and cache namespaces (`pnm-` and `pnmv1-`). Append `?debug` to either
 URL for a HUD (fps, frame time, p95, draw calls, triangles, node count, dpr).
+
+### The Android shell
+
+Since 2026-08-15 the repo also holds a **Capacitor 8 Android project** in
+`android/`, with `package.json` and `capacitor.config.json` at the root. Its
+`webDir` points at `v1/` — the spike moved no files, and step 2 decides whether
+the tree moves to `www/`. Building it needs a toolchain that is **not** the
+obvious one; `ANDROID-BUILD.md` §5 lists it, and §9 says why.
+
+Note that the repo root is the published GitHub Pages site, so `android/`'s 53
+committed files are served from schuckdata.com. Harmless — no secrets are in
+them, and the keystore is gitignored and will never be committed — but it is a
+consequence worth knowing about, and it interacts with the open decision about
+the web copy's fate (`ANDROID-BUILD.md` §7).
 
 **The web copies are not part of the Android build.** Whether v1 is ever
 promoted onto the canonical web path, or the web copies come down, is a website
@@ -67,11 +83,18 @@ and once a native shell exists Capacitor is the standard way to have one.
 
 ## 1. The next action
 
-**`ANDROID-BUILD.md` §5 step 1 — the scaffold spike.** Install Capacitor 8,
-wrap the v1 code, run it on the Pixel 9, measure with `?debug`. It proves the
-whole approach for an afternoon's work and should happen before anything else
-is touched. Everything after it is laid out in `ANDROID-BUILD.md` §5 (technical)
-and §6 (Play Console).
+**`ANDROID-BUILD.md` §5 step 2 — the strip.** Step 1, the scaffold spike, was
+executed on 2026-08-15 and succeeded: PNM runs as a Capacitor app on the Pixel 9
+from the v1 code unmodified, no CSP trouble, no crash. Step 2 removes `sw.js`,
+the manifest and the update prompt, and swaps the precache guards in
+`tools/check.mjs` for version-agreement guards.
+
+**One thing from step 1 is still owed: a performance measurement.** Nothing has
+been measured on device — see §5 below. It does not block step 2, but no claim
+about WebView performance may be made until it is done.
+
+Everything after that is laid out in `ANDROID-BUILD.md` §5 (technical) and §6
+(Play Console).
 
 In parallel, and needing only Dakota:
 
@@ -151,15 +174,22 @@ Console after Play App Signing is on, not from the local keystore.
 
 - **Performance in Android System WebView** on the Pixel and on anything cheaper.
   Chrome numbers: **1002 draw calls at N=1000**, one per node, instancing
-  deferred. WebView is Chromium and should match; measure, don't assume
+  deferred. WebView is Chromium and should match; measure, don't assume.
+  **Still unmeasured as of 2026-08-15.** The app is known to *run* on the
+  Pixel 9 and to look right, and it was judged good by hand — but "working
+  great" is not a number, and no fps or draw-call figure has been taken.
+  `ANDROID-BUILD.md` §5 step 1 says how to attach the HUD in a shell
 - **Plugin fitness.** Which community Capacitor plugins for PGS v2 and Play
   Billing 8+ are actually maintained. `ANDROID-BUILD.md` §4 makes evaluating
   them the first native task and gives the escape hatch
 - **The PGS publish gate** — how many achievements the console requires (design
   for ten regardless)
 - Whether bundled satirical self-ads trigger the "contains ads" declaration
-- **Nothing in `ANDROID-BUILD.md` has been executed.** It is written from
-  knowledge, not from having done it. Expect the console UI to have moved
+- **Only §5 step 1 of `ANDROID-BUILD.md` has been executed** (2026-08-15). The
+  rest is written from knowledge, not from having done it. The console sections
+  especially: expect the UI to have moved. Step 1 needed three corrections on
+  contact with reality, all now recorded in that document's §9 — assume the
+  later steps will need the same
 
 ---
 

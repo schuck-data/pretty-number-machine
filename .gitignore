@@ -12,3 +12,17 @@ desktop.ini
 # Scratch space. Working copies and prototypes belong outside the repo, not in
 # an ignored folder inside it: the whole tree is deployed to GitHub Pages.
 scratch/
+
+# Capacitor. node_modules must never be tracked: the repo root is the published
+# site, so anything committed here is served from schuckdata.com.
+node_modules/
+
+# Android build outputs. The android/ project itself is meant to be committed
+# and owned (ANDROID-BUILD.md §2); its build products are not.
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+*.keystore
+*.jks
