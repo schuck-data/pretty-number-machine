@@ -677,21 +677,34 @@ export function initPanel() {
   // sensitivity instead: one step is always about a 6% change in speed,
   // whether you are at 0.02x or at 2x. That is the property a speed control
   // wants, and it is the same reasoning behind logarithmic volume faders.
-  // The floor is 0.001x — a full turn in about 1000 minutes, or most of a
-  // waking day. That is not a joke value: at the top of the N range the outer
-  // nodes are far enough out that even a crawl is visible motion, and the
-  // slowest setting should be slow enough to watch the structure reorganise
-  // rather than slow enough to look stopped. The span is now a factor of 3000,
-  // which is precisely why the mapping has to be geometric.
-  const SWEEP_MIN = 0.001, SWEEP_MAX = 3;
+  // The floor is 0.0001x — 0.0006 degrees per second, a full turn in roughly
+  // 10,000 minutes, which is about a week. That is not a mistake and not a joke
+  // value.
+  //
+  // The reasoning is that at the top of the N range the figure is enormous in
+  // node count and the outermost nodes sit far from the centre, so the angular
+  // rate that reads as a crawl at the middle of the disk is still real movement
+  // at its rim. The floor is not meant to be a speed you sit and watch — it is
+  // meant to be slow enough that the arrangement is effectively still while you
+  // study it, and yet genuinely different when you come back to it. A setting
+  // you notice only by its results.
+  //
+  // The span is now a factor of 30,000, which is the entire argument for the
+  // geometric mapping below. A linear slider across that range would put every
+  // value from the floor to 0.01x inside the first three pixels of travel.
+  const SWEEP_MIN = 0.0001, SWEEP_MAX = 3;
   const sweepPosToSpeed = pos => SWEEP_MIN * Math.pow(SWEEP_MAX / SWEEP_MIN, pos / 100);
   const sweepSpeedToPos = spd =>
     Math.round(100 * Math.log(spd / SWEEP_MIN) / Math.log(SWEEP_MAX / SWEEP_MIN));
 
-  // Enough decimals to show that a drag did something. Two is right for most of
-  // the range, but below 0.01 everything would round to a wall of 0.00x and the
-  // slider would appear dead exactly where the finest control lives.
-  const fmtSweep = spd => `${spd < 0.01 ? spd.toFixed(3) : spd.toFixed(2)}×`;
+  // Enough decimals to show that a drag did something, at every scale. Two is
+  // right for most of the range, but the readout has to keep up as the floor
+  // drops or the slider appears dead exactly where the finest control lives —
+  // a wall of 0.00x tells you nothing about whether you moved anything.
+  const fmtSweep = (spd) => {
+    const dp = spd < 0.001 ? 4 : spd < 0.01 ? 3 : 2;
+    return `${spd.toFixed(dp)}×`;
+  };
 
   function showSweepSpeed(speed, moveSlider = true) {
     $('angle-drift-speed-display').textContent = fmtSweep(speed);
@@ -933,8 +946,12 @@ export function initPanel() {
     $('shape-drift').checked = false;
 
     // The divergence sweep, at the floor. This is the one Dazzle setting that
-    // is not about being showy — it is the slowest motion in the app by three
-    // orders of magnitude, a full turn in something like a thousand minutes.
+    // is not about being showy — it is the slowest motion in the app by four
+    // orders of magnitude, a full turn in something like a week.
+    //
+    // Deliberately SWEEP_MIN rather than a pinned number: "the lowest setting"
+    // is the specification, so if the floor moves this follows it down. It has
+    // already followed it once.
     //
     // It pairs with `shapeDrift: false` above rather than fighting it. Dazzle
     // holds the SHAPE still and moves everything else, so the field is a stable

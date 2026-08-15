@@ -167,6 +167,23 @@
     -webkit-appearance: none; appearance: none;
     width: 100%; height: 24px; margin: 2px 0;
     background: transparent; cursor: pointer;
+    /* Vertical drags scroll the panel; only horizontal ones move the slider.
+       Without this a range input claims the whole gesture the moment your
+       finger lands on it, so scrolling the settings list past a slider silently
+       drags that slider instead of scrolling — and because the jump is to
+       wherever your finger happened to be horizontally, the value does not
+       nudge, it teleports.
+
+       This is not hypothetical: it is how the divergence angle got reported as
+       defaulting to 209 degrees when it defaults to 137.5. A scroll gesture
+       started on the slider, dragged it to the middle of its 0..360 range, and
+       the screenshot that followed was of a setting nobody had chosen.
+
+       It applies to every slider in the panel, which is why it is set on the
+       element type rather than on the two that exposed it. `pan-y` is the whole
+       fix: it tells the browser that vertical panning belongs to the scroll
+       container, and leaves horizontal movement to the control. */
+    touch-action: pan-y;
   }
   input[type=range]::-webkit-slider-runnable-track {
     height: 4px; background: var(--track-bg); border-radius: 2px; border: none;
@@ -287,10 +304,10 @@
      more than the 24px the effect rows budget for a bare number. Without this
      the value wraps under its slider the moment it passes 100°. */
   #divergence-angle-display { min-width: 52px; }
-  /* The sweep multiplier runs from 0.001x to 3.00x, so at the slow end it is
-     five characters plus the sign — more than the bare numbers the other effect
-     rows budget for. */
-  #angle-drift-speed-display { min-width: 54px; }
+  /* The sweep multiplier runs from 0.0001x to 3.00x, so at the slow end it is
+     six characters plus the sign — well past what the bare numbers in the other
+     effect rows budget for. */
+  #angle-drift-speed-display { min-width: 62px; }
   #status { font-size: 0.6rem; color: rgba(224,221,213,0.2); margin-top: 6px; letter-spacing: 0.03em; }
   #viewport { position: absolute; top: 0; left: 280px; right: 0; bottom: 0; transition: left 0.3s ease; }
   #panel.collapsed ~ #viewport { left: 0; }
@@ -985,7 +1002,7 @@
         <span class="toggle-track"></span>
         Sweep
       </label>
-      <input type="range" id="angle-drift-speed" min="0" max="100" step="1" value="86">
+      <input type="range" id="angle-drift-speed" min="0" max="100" step="1" value="89">
       <span class="value" id="angle-drift-speed-display">1.00&times;</span>
     </div>
   </div>
