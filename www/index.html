@@ -58,13 +58,23 @@
     --text: #e0ddd5;
     --text-dim: rgba(224, 221, 213, 0.45);
     --text-faint: rgba(224, 221, 213, 0.25);
-    /* The floating corner controls, 20% up from --text-faint. At 0.25 the
-       Reset was genuinely hard to find against the scene. Its own value rather
-       than a bump to --text-faint, which also dresses the panel's Reset and the
-       module buttons — those sit on the panel's solid backdrop and are legible
-       already. NOTE: #lens-handle was deliberately matched to #corner-reset and
-       still uses --text-faint, so the two now differ slightly. */
-    --text-corner: rgba(224, 221, 213, 0.3);
+    /* The floating controls that sit ON the scene rather than on the panel:
+       #corner-reset, #dazzle-btn and #lens-handle. They get their own pair of
+       tokens because their background is not a backdrop, it is the artwork —
+       a value that reads fine against the panel's flat fill disappears over a
+       black region of the scene and glares over a bright one.
+
+       Raised from 0.3 to 0.46 on 2026-08-15: at 0.3 all three were findable
+       only if you already knew they were there. They are still deliberately
+       quieter than any panel control — these are "available if wanted", not
+       calls to action, and #corner-reset in particular undoes everything and
+       must never invite a stray tap. More visible, still not loud.
+
+       #lens-handle now shares these. It was described as "styled to match
+       #corner-reset" while actually using --text-faint, so the two drifted
+       apart; one token for all three is what that comment always intended. */
+    --text-corner: rgba(224, 221, 213, 0.46);
+    --border-corner: rgba(180, 200, 210, 0.22);
     --border: rgba(180, 200, 210, 0.08);
     --border-lite: rgba(180, 200, 210, 0.12);
     --border-ctrl: rgba(180, 200, 210, 0.15);
@@ -245,21 +255,38 @@
   }
 
   /* A small reset that belongs to ONE control rather than the whole panel.
-     Narrower and quieter than #reset-btn so it cannot be mistaken for it —
-     tapping "reset" and losing every setting when you meant to restore one
-     angle would be a bad surprise. min-height 32px keeps it a comfortable
-     touch target despite the small type. */
+     Narrower than #reset-btn so it cannot be mistaken for it — tapping "reset"
+     and losing every setting when you meant to restore one angle would be a bad
+     surprise. min-height 34px keeps it a comfortable touch target despite the
+     small type.
+
+     Deliberately the LOUDEST thing in its section, and the opposite of the
+     floating scene controls. Those are escape hatches you should have to look
+     for; this is the answer to a question the divergence slider actively
+     provokes — "what was it supposed to be?" — and a person who has just
+     dragged the figure into nonsense should be able to find their way back at a
+     glance. Accent-toned rather than grey, with a tinted fill so it reads as a
+     button and not as a label. */
   .mini-btn {
-    display: block; margin: 4px 0 2px; padding: 0 10px; min-height: 32px;
-    background: transparent; border: 1px solid var(--border);
-    color: var(--text-faint); font-size: 10px; font-family: inherit;
+    display: block; margin: 6px 0 2px; padding: 0 12px; min-height: 34px;
+    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.10);
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+    font-size: 11px; font-family: inherit; font-weight: 600;
     cursor: pointer; border-radius: 6px; transition: all 0.2s;
     letter-spacing: 0.04em;
+  }
+  .mini-btn:active {
+    background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.2);
   }
   /* The divergence readout carries three digits, a decimal and a degree sign —
      more than the 24px the effect rows budget for a bare number. Without this
      the value wraps under its slider the moment it passes 100°. */
   #divergence-angle-display { min-width: 52px; }
+  /* The sweep multiplier runs from 0.01x to 3.00x, so it needs room for four
+     characters and the sign — more than the bare numbers the other effect rows
+     show. */
+  #angle-drift-speed-display { min-width: 46px; }
   #status { font-size: 0.6rem; color: rgba(224,221,213,0.2); margin-top: 6px; letter-spacing: 0.03em; }
   #viewport { position: absolute; top: 0; left: 280px; right: 0; bottom: 0; transition: left 0.3s ease; }
   #panel.collapsed ~ #viewport { left: 0; }
@@ -384,7 +411,7 @@
     right: calc(12px + env(safe-area-inset-right));
     width: 34px; height: 34px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: transparent; border: 1px solid var(--border);
+    background: transparent; border: 1px solid var(--border-corner);
     color: var(--text-corner);
     cursor: pointer; padding: 0;
     transition: color 0.2s, border-color 0.2s, background 0.2s;
@@ -411,7 +438,7 @@
     right: calc(12px + env(safe-area-inset-right));
     width: 34px; height: 34px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: transparent; border: 1px solid var(--border);
+    background: transparent; border: 1px solid var(--border-corner);
     color: var(--text-corner);
     cursor: pointer; padding: 0;
     transition: color 0.2s, border-color 0.2s, background 0.2s;
@@ -506,9 +533,14 @@
     top: calc(96px + env(safe-area-inset-top)); left: 0;
     width: 34px; height: 46px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; gap: 4px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-faint);
+    /* A faint fill as well as the border. The handle sits over the scene at
+       the left edge, where the figure regularly passes behind it, and a purely
+       transparent control loses its outline against a bright node in a way the
+       two round buttons in the top corner do not — they sit over dead space
+       nearly all the time. */
+    background: rgba(12, 12, 15, 0.45);
+    border: 1px solid var(--border-corner);
+    color: var(--text-corner);
     cursor: ew-resize; touch-action: none;
     transition: color 0.2s, border-color 0.2s, background 0.2s;
   }
@@ -562,7 +594,11 @@
     .toggle:hover { color: rgba(224,221,213,0.65); }
     .toggle:hover .toggle-track { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25); }
     #reset-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
-    .mini-btn:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3); color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6); }
+    .mini-btn:hover {
+      background: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.18);
+      border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.65);
+      color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),1);
+    }
     #corner-reset:hover, #dazzle-btn:hover {
       color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.8);
       border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);
@@ -930,14 +966,23 @@
          two-decimal value the slider can represent — see panel.js. -->
     <button type="button" id="divergence-reset" class="mini-btn">Reset to &phi; (137.508&deg;)</button>
 
+    <!-- The sweep speed slider carries a POSITION (0..100), not the speed. The
+         speed is mapped from it logarithmically in panel.js. A linear slider
+         cannot serve this control: the useful range spans a factor of three
+         hundred, because the angular rate that reads as a gentle drift at N=30
+         is violent at N=1000 — the outermost nodes sit further out, so the same
+         change in angle drags them through a far greater distance. On a linear
+         scale the entire slow end collapses into the first pixel of travel.
+         Note the default therefore sits well right of centre; that is correct,
+         since almost all of the interesting range is below it. -->
     <div class="effect-row">
       <label class="toggle" for="angle-drift" style="margin:0">
         <input type="checkbox" id="angle-drift">
         <span class="toggle-track"></span>
         Sweep
       </label>
-      <input type="range" id="angle-drift-speed" min="0.1" max="3" step="0.1" value="1.0">
-      <span class="value" id="angle-drift-speed-display">1.0</span>
+      <input type="range" id="angle-drift-speed" min="0" max="100" step="1" value="81">
+      <span class="value" id="angle-drift-speed-display">1.00&times;</span>
     </div>
   </div>
 

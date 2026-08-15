@@ -661,10 +661,49 @@ export function initPanel() {
   $('angle-drift').addEventListener('change', () => {
     update({ angleDrift: $('angle-drift').checked });
   });
+
+  // DEV: the sweep speed slider is logarithmic. Its `value` is a position from
+  // 0 to 100 and means nothing on its own; the multiplier stored in state is
+  // derived from it here, and nowhere else.
+  //
+  // The range spans a factor of 300 because the useful range genuinely does.
+  // The same angular rate is a slow drift at N=30 and a blur at N=1000: the
+  // outer nodes are further from the centre, so a given change in angle sweeps
+  // them through a proportionally greater distance. A linear control cannot
+  // cover that — the slow end, which is where anyone watching a large figure
+  // wants to be, would occupy the first one percent of the travel.
+  //
+  // A geometric mapping gives every part of the slider the same PROPORTIONAL
+  // sensitivity instead: one step is always about a 6% change in speed,
+  // whether you are at 0.02x or at 2x. That is the property a speed control
+  // wants, and it is the same reasoning behind logarithmic volume faders.
+  const SWEEP_MIN = 0.01, SWEEP_MAX = 3;
+  const sweepPosToSpeed = pos => SWEEP_MIN * Math.pow(SWEEP_MAX / SWEEP_MIN, pos / 100);
+  const sweepSpeedToPos = spd =>
+    Math.round(100 * Math.log(spd / SWEEP_MIN) / Math.log(SWEEP_MAX / SWEEP_MIN));
+
+  // Two decimals below 1, so the slow end reads as 0.01x / 0.04x rather than
+  // rounding to a wall of 0.0x and appearing to do nothing when dragged.
+  const fmtSweep = spd => `${spd < 1 ? spd.toFixed(2) : spd.toFixed(2)}×`;
+
+  function showSweepSpeed(speed, moveSlider = true) {
+    $('angle-drift-speed-display').textContent = fmtSweep(speed);
+    if (moveSlider) $('angle-drift-speed').value = sweepSpeedToPos(speed);
+  }
+
   $('angle-drift-speed').addEventListener('input', () => {
-    $('angle-drift-speed-display').textContent = $('angle-drift-speed').value;
-    update({ angleDriftSpeed: +$('angle-drift-speed').value });
+    const spd = sweepPosToSpeed(+$('angle-drift-speed').value);
+    showSweepSpeed(spd, false);
+    update({ angleDriftSpeed: spd });
   });
+
+  // Sync both Constants readouts to state at startup rather than trusting the
+  // literals in the markup. The angle is exact rather than the slider's
+  // two-decimal approximation of it, and the sweep slider's position is derived
+  // from the mapping instead of being a hand-computed constant that would go
+  // stale the moment SWEEP_MIN or SWEEP_MAX moved.
+  showDivergence(state.divergenceAngle);
+  showSweepSpeed(state.angleDriftSpeed);
 
   // DEV: the sweep advances state.divergenceAngle inside the render loop, which
   // knows nothing about the DOM. So the panel follows it the same way the
@@ -755,8 +794,10 @@ export function initPanel() {
     // control was wired up and not added to this list.
     showDivergence(DEFAULT_CONFIG.divergenceAngle);
     $('angle-drift').checked = DEFAULT_CONFIG.angleDrift;
-    $('angle-drift-speed').value = DEFAULT_CONFIG.angleDriftSpeed;
-    $('angle-drift-speed-display').textContent = DEFAULT_CONFIG.angleDriftSpeed.toFixed(1);
+    // Through the mapping, not straight into .value — the slider carries a
+    // position, not a speed. Assigning 1.0 here would park the handle at the
+    // far left and mean 0.01x.
+    showSweepSpeed(DEFAULT_CONFIG.angleDriftSpeed);
 
     // Reset module controls to defaults
     for (const [name, mod] of getModules()) {
