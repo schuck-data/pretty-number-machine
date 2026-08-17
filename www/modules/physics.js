@@ -1,7 +1,12 @@
 // PNM V5 — Physics Module
 // Spring-network drag + collision. Ported from V1 engine.js.
 import * as THREE from 'three';
-import { registerModule, state } from '../core/state.js';
+// DEFAULT_CONFIG is imported for one thing: the fallback dimension used before
+// the first build() has handed this module a state reference. It was the
+// literal 0.5, which was Disk under the old morph order and is String under the
+// new one — a magic number that silently changed meaning. Reading the default
+// means it cannot drift again.
+import { registerModule, state, DEFAULT_CONFIG } from '../core/state.js';
 import { getControls, getCamera, getRenderer, getNodes, resolveN } from '../core/renderer.js';
 import { interpolatedPos } from '../core/positions.js';
 import { SAMPLES_PER_SEG } from '../core/math.js';
@@ -141,7 +146,7 @@ function onPointerMove(e) {
 
     // Update offset
     const N = resolveN();
-    const dim = curveState?.dimension ?? 0.5;
+    const dim = curveState?.dimension ?? DEFAULT_CONFIG.dimension;
     const rest = interpolatedPos(draggedNode.n, N, dim);
     const off = offsets.get(draggedNode.n);
     if (off) {
@@ -237,7 +242,7 @@ function resolveCollisions() {
           posA.z -= dz * overlap;
           const offA = offsets.get(ndA.n);
           if (offA) {
-            const restA = interpolatedPos(ndA.n, resolveN(), curveState?.dimension ?? 0.5);
+            const restA = interpolatedPos(ndA.n, resolveN(), curveState?.dimension ?? DEFAULT_CONFIG.dimension);
             offA.set(posA.x - restA.x, posA.y - restA.y, posA.z - restA.z);
           }
         }
@@ -247,7 +252,7 @@ function resolveCollisions() {
           ndB.mesh.position.z += dz * overlap;
           const offB = offsets.get(ndB.n);
           if (offB) {
-            const restB = interpolatedPos(ndB.n, resolveN(), curveState?.dimension ?? 0.5);
+            const restB = interpolatedPos(ndB.n, resolveN(), curveState?.dimension ?? DEFAULT_CONFIG.dimension);
             offB.set(ndB.mesh.position.x - restB.x, ndB.mesh.position.y - restB.y, ndB.mesh.position.z - restB.z);
           }
         }
@@ -355,7 +360,7 @@ function deformCurves(dim) {
 // === RESET ===
 function resetPhysics() {
   const N = resolveN();
-  const dim = curveState?.dimension ?? 0.5;
+  const dim = curveState?.dimension ?? DEFAULT_CONFIG.dimension;
   for (const nd of nodesRef) {
     const off = offsets.get(nd.n);
     if (off) off.set(0, 0, 0);
