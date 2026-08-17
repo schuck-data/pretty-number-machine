@@ -371,6 +371,48 @@ function resetPhysics() {
 }
 
 // === MODULE DEFINITION ===
+// ============================================================
+// CAMERA INERTIA
+// ============================================================
+// EDU: OrbitControls does not stop the camera dead when you let go of a spin.
+// It keeps a velocity and multiplies it by (1 − dampingFactor) every frame, so
+// the speed decays geometrically: a fixed FRACTION is lost per frame rather
+// than a fixed amount. That is exponential decay, the same law as a cooling cup
+// of tea, and it is why the glide has no definite end — it approaches rest
+// asymptotically instead of arriving.
+//
+// The consequence worth knowing: dampingFactor is not "how much inertia", it is
+// how fast inertia is taken away. A SMALL factor means a long glide. The slider
+// is therefore inverted against it, so that moving the control rightward does
+// the thing the label says.
+//
+// DEV: the mapping is geometric, for the same reason as the sweep speed. The
+// interesting range spans a factor of sixteen and the perceptual difference
+// between 0.30 and 0.28 is nothing while the difference between 0.03 and 0.02
+// is obvious, so equal steps of the slider should be equal RATIOS of damping.
+//
+//   damping = 0.32 × (1/16)^t     t = 0 → 0.32, heavily damped, stops quickly
+//                                 t = 0.5 → 0.08, the value shipped since v1
+//                                 t = 1 → 0.02, a long slow drift to rest
+//
+// The midpoint landing exactly on the old constant is not a coincidence; 0.32
+// and 1/16 were chosen for it, since √(1/16) = 1/4 and 0.32 × 1/4 = 0.08.
+const DAMP_AT_ZERO = 0.32;
+const DAMP_RATIO = 1 / 16;
+
+// Held so build() can reassert it. OrbitControls is constructed once in
+// renderer.init() and survives every rebuild, so this is belt and braces —
+// but a control whose value silently reverts is a miserable thing to debug,
+// and the cost here is one assignment.
+let inertia = 0.5;
+
+function applyInertia(val) {
+  if (typeof val === 'number') inertia = val;
+  const controls = getControls();
+  if (!controls) return;
+  controls.dampingFactor = DAMP_AT_ZERO * Math.pow(DAMP_RATIO, inertia);
+}
+
 const mod = {
   name: 'physics',
   label: 'Physics',
@@ -393,6 +435,18 @@ const mod = {
       default: true,
       hot: true,
       onChange: (val) => { collisionEnabled = val; },
+    },
+    {
+      type: 'slider',
+      label: 'Inertia',
+      key: '_physicsInertia',
+      min: 0, max: 1, step: 0.05,
+      // 0.5 is the value the app has always behaved at — see applyInertia().
+      // The midpoint is the old constant on purpose: whoever moves this slider
+      // should be able to get back to the app they knew by centring it.
+      default: 0.5,
+      hot: true,
+      onChange: (val) => { applyInertia(val); },
     },
     {
       type: 'button',
@@ -419,6 +473,10 @@ const mod = {
     nodeByNRef = ctx.nodeByN;
     curveN = ctx.N;
     curveState = ctx.state;
+
+    // Reassert the inertia setting. See applyInertia() — OrbitControls outlives
+    // a rebuild today, so this is insurance rather than necessity.
+    applyInertia();
 
     if (!mod.enabled || ctx.N > DRAG_MAX_N) return;
     buildSprings(ctx.nodes, ctx.nodeByN, ctx.N, ctx.state);

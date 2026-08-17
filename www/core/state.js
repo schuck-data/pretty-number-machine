@@ -173,6 +173,13 @@ export const HOT_KEYS = new Set([
   // refreshing. See refreshDivergence() there — and note that putting this key
   // in the cold set instead would not be *wrong*, merely unusably slow.
   'divergenceAngle', 'angleDrift', 'angleDriftSpeed',
+  // Physics' inertia slider. A module-private key, which is unusual company for
+  // this set, but the alternative is worse: update() calls buildScene()
+  // synchronously for any key it does not find here, so a slider dragged across
+  // its range would rebuild every mesh in the scene on every input event. This
+  // value only ever reaches OrbitControls.dampingFactor — no geometry depends
+  // on it — so a rebuild would be pure waste even if it were affordable.
+  '_physicsInertia',
   // The transport's play/pause. The render loop reads it every frame; nothing
   // about the geometry changes, so rebuilding the scene on it would be an
   // expensive no-op.
