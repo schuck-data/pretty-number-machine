@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- The adaptive icon's background layer. Matches the bg custom property in
+         www/index.html, which is also the background baked into the source art,
+         so the flat colour and the foreground PNG meet with no visible seam
+         whatever shape the launcher masks the icon into.
+
+         Was #FFFFFF, from the Capacitor template.
+
+         Note for editors: XML forbids a double hyphen inside a comment, so the
+         CSS variable above cannot be written with its leading dashes here. That
+         is not a typo, and writing it "properly" fails the resource merge with
+         an error that names Xerces and not this file. -->
+    <color name="ic_launcher_background">#0C0C0F</color>
 </resources>

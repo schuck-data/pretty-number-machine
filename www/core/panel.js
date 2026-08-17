@@ -284,6 +284,29 @@ export function setDimension(val) {
 // Module DOM refs for dynamic state updates
 const moduleRows = new Map(); // moduleName → { header, content, controlEls, capMsg }
 
+// Set one of a module's toggles, in the UI and in the module, as though a
+// person had tapped it.
+//
+// Addressed by LABEL rather than by index. `controlEls` runs parallel to
+// `mod.controls`, so an index would work today and would silently target the
+// wrong control the moment someone inserts a toggle above it — and the failure
+// would be a preset quietly changing the wrong setting, which nothing tests
+// for. The label is what the preset actually means.
+function setModuleToggle(moduleName, label, value) {
+  const mod = getModules().get(moduleName);
+  const refs = moduleRows.get(moduleName);
+  if (!mod || !refs) return;
+  const idx = (mod.controls || []).findIndex(c => c.label === label);
+  if (idx < 0) return;
+  const el = refs.controlEls[idx];
+  if (!el || el.type !== 'checkbox') return;
+  el.checked = value;
+  // The module holds its own copy of the flag, so writing the checkbox is only
+  // half of it — without this the control would read "off" while the behaviour
+  // stayed on.
+  mod.controls[idx].onChange?.(value);
+}
+
 function buildModuleSections() {
   const resetBtn = $('reset-btn');
   if (!resetBtn) return;
@@ -963,12 +986,34 @@ export function initPanel() {
     $('angle-drift').checked = true;
     showSweepSpeed(SWEEP_MIN);
 
+    // Physics off. Dazzle is a picture, not a toy: the value of it is a
+    // thousand nodes holding a precise arrangement, and the whole point of the
+    // physics module is to let you pull that arrangement out of shape. One
+    // stray drag across the field and the thing you came to look at is dented,
+    // with no obvious way back short of Reset — which would also undo Dazzle.
+    //
+    // Both toggles, not just Touch. Collision keeps simulating even when
+    // dragging is off, and at N=1000 that is a spring network doing work
+    // nobody asked for on top of a scene already running colour drift, two
+    // pulses and a camera orbit.
+    setModuleToggle('physics', 'Touch', false);
+    setModuleToggle('physics', 'Collision', false);
+
     update({
-      // A tenth of the way from Disk (0.5) toward Sphere (1.0). Straight down
-      // onto a true plane there is no depth cue at all and the rotation reads
-      // as a spinning image rather than an object, so the field domes — but
-      // only just. 0.6 was tried first and bulged too hard; this is half that.
-      dimension: 0.55,
+      // The dome, now a quarter of what it was.
+      //
+      // Disk is 0.5 and Sphere is 1.0, so the curvature here is the distance
+      // above 0.5 — this is 0.0125 of it. Straight down onto a true plane there
+      // is no depth cue at all and the rotation reads as a spinning image
+      // rather than an object, so the field still domes, but only just enough
+      // to say it is a surface.
+      //
+      // History, because the number has only ever moved one way: 0.6 bulged
+      // hard, 0.55 was half that and still read as a bowl seen from above, and
+      // this is a quarter of 0.55's curvature again. Each step has made the
+      // pattern flatter and the phyllotaxis easier to read, which is the thing
+      // Dazzle is for.
+      dimension: 0.5125,
       shapeDrift: false,     // the shape holds; everything else moves
       paused: false,
       pulse: true,
