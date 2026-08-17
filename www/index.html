@@ -85,24 +85,50 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; overflow: hidden; }
 
+  /* The side-panel layout. On the web this was the desktop case and phones
+     never saw it; in the app it is also what a phone gets in LANDSCAPE, because
+     the breakpoint below is on width and a phone on its side is ~914 CSS px
+     across. That makes safe-area insets matter here, which they never did
+     before: landscape on a Pixel 7 reports 29px at the top and 52px on the left,
+     and without accounting for them the panel's title sits under the status bar
+     and its content runs into the camera cutout.
+
+     The insets are added to the padding rather than to `left`, so the panel
+     still reaches the physical edge of the screen — its blurred background
+     should fill the corner, only the CONTENT needs to keep clear. */
   #panel {
-    position: absolute; top: 0; left: 0; width: 280px; height: 100vh;
+    position: absolute; top: 0; left: 0; height: 100vh;
+    width: calc(280px + env(safe-area-inset-left));
     background: var(--panel-bg); backdrop-filter: blur(20px);
     border-right: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.12);
     border-radius: 0 16px 16px 0;
-    padding: 20px 16px; overflow-y: auto; z-index: 10;
+    padding: calc(20px + env(safe-area-inset-top)) 16px
+             calc(20px + env(safe-area-inset-bottom))
+             calc(16px + env(safe-area-inset-left));
+    overflow-y: auto; z-index: 10;
     transition: transform 0.3s ease;
   }
-  #panel.collapsed { transform: translateX(-280px); }
+  /* Must travel its own full width, inset included, or a sliver of panel is
+     left stuck to the edge of the screen when it is meant to be away. */
+  #panel.collapsed { transform: translateX(calc(-280px - env(safe-area-inset-left))); }
   #panel-toggle {
-    position: absolute; top: 12px; left: 12px; z-index: 20;
-    width: 32px; height: 32px; border: 1px solid var(--border-ctrl);
+    position: absolute; z-index: 20;
+    top: calc(12px + env(safe-area-inset-top));
+    left: calc(12px + env(safe-area-inset-left));
+    width: 32px; height: 32px;
     background: var(--panel-bg); backdrop-filter: blur(20px);
-    color: var(--text-dim); font-size: 16px; cursor: pointer;
+    /* Accent, matching the drawer button the phone layout shows. This used to
+       be --border-ctrl and --text-dim, which read as a disabled grey chip next
+       to the cyan transport and corner controls — and because the two layouts
+       are now just portrait and landscape of the same app, rotating the phone
+       visibly changed the colour of the same button. */
+    border: 1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
+    color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
+    font-size: 16px; cursor: pointer;
     border-radius: 8px; display: flex; align-items: center; justify-content: center;
     transition: left 0.3s ease, border-color 0.2s, color 0.2s;
   }
-  #panel:not(.collapsed) ~ #panel-toggle { left: 292px; }
+  #panel:not(.collapsed) ~ #panel-toggle { left: calc(292px + env(safe-area-inset-left)); }
   #panel h1 {
     font-size: 13px; color: var(--text); font-weight: 300;
     letter-spacing: 0.2em; margin-bottom: 14px; text-transform: uppercase;
@@ -342,12 +368,18 @@
      ========================================================== */
   #transport {
     position: absolute; z-index: 20;
-    left: 296px; right: 16px; bottom: 16px;
+    /* Insets on all three edges it touches. In landscape the bottom carries the
+       gesture bar and the left carries the cutout, and the transport is the one
+       control that spans the whole width — so it is the one most obviously
+       wrong when they are ignored. */
+    left: calc(296px + env(safe-area-inset-left));
+    right: calc(16px + env(safe-area-inset-right));
+    bottom: calc(16px + env(safe-area-inset-bottom));
     height: 44px; display: flex; align-items: center;
     transition: left 0.3s ease;
     pointer-events: none;              /* only the track and handle are live */
   }
-  #panel.collapsed ~ #transport { left: 16px; }
+  #panel.collapsed ~ #transport { left: calc(16px + env(safe-area-inset-left)); }
 
   #transport-track {
     position: relative; flex: 1; height: 44px;
@@ -551,7 +583,10 @@
        Dazzle wins the tap (z-index 20 against this one's 19), so the handle
        became unusable exactly where you finish the drag.
        12 top inset + the Reset's 34 + an 8 gap + Dazzle's 34 + an 8 gap. */
-    top: calc(96px + env(safe-area-inset-top)); left: 0;
+    /* The left inset matters in landscape, where a phone reports ~52px of
+       cutout on that edge. At left:0 the handle sat underneath it. */
+    top: calc(96px + env(safe-area-inset-top));
+    left: env(safe-area-inset-left);
     width: 34px; height: 46px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; gap: 4px;
     /* A faint fill as well as the border. The handle sits over the scene at
