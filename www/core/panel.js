@@ -1000,20 +1000,22 @@ export function initPanel() {
     setModuleToggle('physics', 'Collision', false);
 
     update({
-      // The dome, now a quarter of what it was.
+      // Disk, with the faintest dome toward Sphere.
       //
-      // Disk is 0.5 and Sphere is 1.0, so the curvature here is the distance
-      // above 0.5 — this is 0.0125 of it. Straight down onto a true plane there
-      // is no depth cue at all and the rotation reads as a spinning image
-      // rather than an object, so the field still domes, but only just enough
-      // to say it is a surface.
+      // Disk now sits at 2.0, the top of the travel, and Sphere at 1.5 — so a
+      // nudge toward Sphere is DOWNWARD from Disk, where it used to be upward.
+      // The blend is unchanged: 0.0125 out of the 0.5 between them, the same
+      // 2.5% of the way it has always been. Only the sign moved, because the
+      // morph order did (core/positions.js).
       //
-      // History, because the number has only ever moved one way: 0.6 bulged
-      // hard, 0.55 was half that and still read as a bowl seen from above, and
-      // this is a quarter of 0.55's curvature again. Each step has made the
-      // pattern flatter and the phyllotaxis easier to read, which is the thing
-      // Dazzle is for.
-      dimension: 0.5125,
+      // Straight down onto a true plane there is no depth cue at all and the
+      // rotation reads as a spinning image rather than an object, so the field
+      // still domes, but only just enough to say it is a surface.
+      //
+      // History, because the number has only ever moved one way: the dome was
+      // 0.1 of the gap, then 0.05, and is now 0.0125. Flatter each time, and
+      // the phyllotaxis easier to read each time, which is what Dazzle is for.
+      dimension: 1.9875,
       shapeDrift: false,     // the shape holds; everything else moves
       paused: false,
       pulse: true,

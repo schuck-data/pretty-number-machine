@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
-import { state, emit, getModules, HOT_KEYS } from './state.js';
+import { state, emit, getModules, HOT_KEYS, DEFAULT_CONFIG } from './state.js';
 import { initDebugHud, sampleDebugHud } from './debug-hud.js';
 import {
   getVisibleNodes, getPrimeRGB, nodeColor, shouldShowNode,
@@ -13,7 +13,7 @@ import {
   SAMPLES_PER_SEG, buildParastichy, buildLineArcs, catmullRom,
 } from './math.js';
 import {
-  interpolatedPos, getMaxDim, getMinDim,
+  interpolatedPos, getMaxDim, getMinDim, getShapes,
   flatPolar, flatFromPolar, spherePolar, sphereFromPolar, lineNodePos,
   chordPos, chordPolar, chordFromPolar, chordRadius,
   springPos,
@@ -370,28 +370,54 @@ function buildStringArcs(p, N, samplesPerSeg = 20) {
 // ============================================================
 // LERP HELPERS (for curves — lerp between shape arrays)
 // ============================================================
-function lerpShapeArrays(linePts, diskPts, spherePts, chordPts, springPts, stringPts, dim, out) {
-  if (dim <= 0.5) {
-    const t = Math.max(0, dim) * 2;
-    for (let i = 0; i < out.length; i++)
-      out[i] = linePts[i] + t * (diskPts[i] - linePts[i]);
-  } else if (dim <= 1.0) {
-    const t = (dim - 0.5) * 2;
-    for (let i = 0; i < out.length; i++)
-      out[i] = diskPts[i] + t * (spherePts[i] - diskPts[i]);
-  } else if (dim <= 1.5) {
-    const t = (dim - 1.0) * 2;
-    for (let i = 0; i < out.length; i++)
-      out[i] = spherePts[i] + t * (chordPts[i] - spherePts[i]);
-  } else if (dim <= 2.0) {
-    const t = (dim - 1.5) * 2;
-    for (let i = 0; i < out.length; i++)
-      out[i] = chordPts[i] + t * (springPts[i] - chordPts[i]);
-  } else {
-    const t = (dim - 2.0) * 2;
-    for (let i = 0; i < out.length; i++)
-      out[i] = springPts[i] + t * (stringPts[i] - springPts[i]);
+// Blend a curve between the two registered shapes bracketing `dim`.
+//
+// DEV: this used to be a hardcoded if/else chain — Line at 0, Disk at 0.5,
+// Sphere at 1.0, and so on, with the 0.5 spacing baked into every branch. That
+// was a trap, and it was invisible until someone tried to use it. The NODES get
+// their positions from interpolatedPos(), which walks the shape registry, so
+// reordering the registry moves them correctly. The CURVES came through here,
+// which knew nothing about the registry — so a reorder would have moved the
+// nodes to the new arrangement and left the parastichy curves describing the
+// old one. The figure would have torn in half, with no error anywhere.
+//
+// `entries` is [{ dim, pts }, …] in registry order, built in buildScene(). This
+// function is now the same algorithm as interpolatedPos(), applied to whole
+// point arrays instead of single positions, and the two stay in step because
+// both read the same source of truth.
+function lerpShapeArrays(entries, dim, out) {
+  if (entries.length === 0) return;
+  if (entries.length === 1) {
+    out.set(entries[0].pts.subarray(0, out.length));
+    return;
   }
+
+  // Clamp to the registered range, matching interpolatedPos().
+  if (dim <= entries[0].dim) {
+    out.set(entries[0].pts.subarray(0, out.length));
+    return;
+  }
+  const last = entries[entries.length - 1];
+  if (dim >= last.dim) {
+    out.set(last.pts.subarray(0, out.length));
+    return;
+  }
+
+  let lo = entries[0], hi = entries[1];
+  for (let i = 0; i < entries.length - 1; i++) {
+    if (dim >= entries[i].dim && dim <= entries[i + 1].dim) {
+      lo = entries[i]; hi = entries[i + 1];
+      break;
+    }
+  }
+
+  // Spacing is read from the registry rather than assumed to be 0.5, so shapes
+  // can sit at uneven intervals if that is ever wanted — a long dwell-free
+  // stretch between two arrangements is a legitimate thing to ask for.
+  const span = hi.dim - lo.dim;
+  const t = span > 0 ? (dim - lo.dim) / span : 0;
+  const a = lo.pts, b = hi.pts;
+  for (let i = 0; i < out.length; i++) out[i] = a[i] + t * (b[i] - a[i]);
 }
 
 // ============================================================
@@ -751,8 +777,27 @@ export function buildScene() {
       const stringPts = stringArcPts.length === numPts * 3
         ? stringArcPts : stringArcPts.slice(0, numPts * 3);
 
+      // DEV: the ordered list the curve interpolator reads, assembled from the
+      // shape registry so the curves travel in exactly the order the nodes do.
+      // Each shape's curve is built its own way above — a parastichy spline for
+      // the three that wind, purpose-built arc builders for the three that do
+      // not — so the mapping from name to array has to be written out. What
+      // must NOT be written out is the ORDER, which is why this reads
+      // getShapes() rather than listing them.
+      //
+      // The filter matters: a shape that has been unregistered simply is not in
+      // getShapes(), so its array is built and then dropped. That is how Line
+      // leaves the morph without any of the code above needing to know it has.
+      const byName = {
+        Line: linePts, Disk: diskPts, Sphere: spherePts,
+        Chord: chordPts, Spring: springPts, String: stringPts,
+      };
+      const shapeEntries = getShapes()
+        .map(([shapeDim, shape]) => ({ dim: shapeDim, pts: byName[shape.name] }))
+        .filter((e) => e.pts);
+
       const positions = new Float32Array(numPts * 3);
-      lerpShapeArrays(linePts, diskPts, spherePts, chordPts, springPts, stringPts, dim, positions);
+      lerpShapeArrays(shapeEntries, dim, positions);
 
       const geo = new LineGeometry();
       geo.setPositions(positions);
@@ -774,7 +819,12 @@ export function buildScene() {
         // drift writes here rather than to material.color so the two effects
         // compose instead of overwriting each other every frame.
         liveColor: baseColor.clone(),
+        // The named arrays are kept because refreshDivergenceCurves() writes
+        // into them by name. `shapeEntries` holds references to those SAME
+        // Float32Arrays, not copies, so an angle refresh is visible to the
+        // interpolator without touching this list.
         linePts, diskPts, spherePts, chordPts, springPts, stringPts, numPts,
+        shapeEntries,
         lerpBuf: new Float32Array(numPts * 3),
       };
       scene.add(line);
@@ -874,7 +924,16 @@ export function buildScene() {
     if (state.shapeDrift && !state.paused) {
       if (!morphActive) {
         morphPos = state.dimension;
-        morphDir = Math.random() < 0.5 ? 1 : -1;
+        // Rightward on the very first run, random on later ones. The opening
+        // arrangement is String, sitting one step in from the bottom of the
+        // travel, and the intended first move is UP through Chord and Sphere
+        // toward Disk. A coin flip would have sent half of all launches
+        // straight down to Spring instead — a shape that reads as a single
+        // vertical line, which is a poor first impression of a spiral.
+        //
+        // Later activations are un-pauses, where a direction was already
+        // established and the randomness is harmless.
+        morphDir = initialDwellPending ? 1 : (Math.random() < 0.5 ? 1 : -1);
         // Long on the very first activation, ordinary on every later one —
         // which is what distinguishes "the app just opened" from "the user
         // just pressed play". See INITIAL_DWELL_SECONDS.
@@ -887,8 +946,14 @@ export function buildScene() {
       // `const dt = 1 / 60` that used to sit here shadowed it, which would have
       // made this whole change a silent no-op.
       const speed = state.shapeDriftSpeed * 0.15;
-      const maxDim = 2.5;
-      const keyframes = [0, 0.5, 1.0, 1.5, 2.0, 2.5];
+      // DEV: read from the registry, not written out. These were the literals
+      // `2.5` and `[0, 0.5, 1.0, 1.5, 2.0, 2.5]`, which meant the dwell points
+      // and the travel limits were a second, silent copy of the shape order —
+      // change the registry and the figure would pause at positions where no
+      // shape sat, and travel past the last one into empty space.
+      const keyframes = getShapes().map(([d]) => d);
+      const minDim = getMinDim();
+      const maxDim = getMaxDim();
 
       if (morphPauseTimer > 0) {
         morphPauseTimer -= dt;
@@ -898,11 +963,11 @@ export function buildScene() {
 
         // Bounce at boundaries
         if (morphPos >= maxDim) { morphPos = maxDim; morphDir = -1; morphPauseTimer = DWELL_SECONDS; }
-        if (morphPos <= 0.0) { morphPos = 0.0; morphDir = 1; morphPauseTimer = DWELL_SECONDS; }
+        if (morphPos <= minDim) { morphPos = minDim; morphDir = 1; morphPauseTimer = DWELL_SECONDS; }
 
         // Pause at intermediate keyframes — detect crossing
         for (const kf of keyframes) {
-          if (kf === 0 || kf === maxDim) continue;
+          if (kf === minDim || kf === maxDim) continue;
           if (morphDir > 0 && morphPos >= kf && prevPos < kf) {
             morphPos = kf; morphPauseTimer = DWELL_SECONDS; break;
           } else if (morphDir < 0 && morphPos <= kf && prevPos > kf) {
@@ -943,8 +1008,8 @@ export function buildScene() {
       }
       // Update curve positions
       for (const line of curveLines) {
-        const { linePts, diskPts, spherePts, chordPts, springPts, stringPts, numPts, lerpBuf } = line.userData;
-        lerpShapeArrays(linePts, diskPts, spherePts, chordPts, springPts, stringPts, dim, lerpBuf);
+        const { shapeEntries, numPts, lerpBuf } = line.userData;
+        lerpShapeArrays(shapeEntries, dim, lerpBuf);
         const attr = line.geometry.getAttribute('instanceStart');
         if (!attr) continue;
         const arr = attr.data.array;
@@ -1484,7 +1549,11 @@ export function setCameraTopDown() {
 }
 
 export function resetMorph() {
-  morphPos = 0;
+  // The opening arrangement, read from DEFAULT_CONFIG rather than written as a
+  // literal. This was `0`, which was correct only while Line sat at the bottom
+  // of the travel and was also the shape the app opened on. Both of those have
+  // changed; a literal here would have sent Reset to Spring.
+  morphPos = DEFAULT_CONFIG.dimension;
   morphDir = 1;
   // A Reset earns the long dwell, for the same reason opening the app does:
   // the whole point of the action is to look at the default arrangement, and

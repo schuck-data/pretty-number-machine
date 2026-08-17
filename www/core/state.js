@@ -56,10 +56,20 @@ export const AUTO_N_MAX = 500;     // cap when N is derived from the primes
 export const DEFAULT_CONFIG = {
   primes: [2, 3, 5],
   N: null,
-  // 0 is the 'Line' shape — nodes in a straight row with the parastichy
-  // curves arcing off to the right. It is the clearest starting read of the
-  // structure, and the morph travels rightward from there.
-  dimension: 0,
+  // 0.5 is 'String' — a vertical line of nodes at the centre. See the morph
+  // order at the bottom of core/positions.js, which is the only place these
+  // values are decided.
+  //
+  // It opens here rather than at the end of the travel on purpose: String sits
+  // one step in from the bottom, so the first movement climbs through Chord and
+  // Sphere to Disk, and a viewer sees a line open into a tube, close into a
+  // sphere, and flatten into the spiral. Starting at either extreme would spend
+  // the first half of the cycle travelling away from that.
+  //
+  // DEV: a literal, and it has to be — importing positions.js here to ask the
+  // registry would pull Three.js into a module that is deliberately free of it.
+  // If the order at the bottom of positions.js changes, this changes with it.
+  dimension: 0.5,
   colorScheme: 'rgb',
   nodeSize: 1.0,
   lineWidth: 2,

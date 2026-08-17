@@ -228,6 +228,7 @@ build adds and removes.
 | Camera home, or what Reset does to the view | `core/renderer.js` → `HOME_CAM_POS`, `resetCamera()` |
 | Morph dwell or travel speed | `core/renderer.js` → `DWELL_SECONDS`; `core/state.js` → `shapeDriftSpeed` (and `SPEED_DEFAULT` in `core/transport.js`, which **must match**) |
 | The shapes themselves, or how they interpolate | `core/positions.js` |
+| **The morph ORDER** — which shape follows which | `core/positions.js`, the `registerShape` calls at the bottom. That block is the single source of truth: the renderer derives its dwell keyframes and travel limits from it, the transport derives the scrub range from it, and the curve interpolator reads the same list. Two things outside it must be changed by hand and are commented as such — `DEFAULT_CONFIG.dimension` (the opening shape) and Dazzle's pinned `dimension` in `panel.js` |
 | Factorisation, colour derivation, which nodes are visible | `core/math.js` |
 | The phone bottom sheet | `core/sheet.js` |
 | The play/pause/scrub bar | `core/transport.js` |
@@ -284,6 +285,16 @@ and not a renderer change — it would migrate four files at once.
 chance to forget one. "Reset does not reset everything" has been a bug twice.
 The Constants controls were added to that list when they were built; the next
 control must be too.
+
+**Nodes and curves used to disagree about the morph order, and could again.**
+Node positions come from `interpolatedPos()`, which walks the shape registry.
+Curve positions come from `lerpShapeArrays()`, which until 2026-08-15 was a
+hardcoded if/else chain with the old order and its 0.5 spacing baked into every
+branch. Changing the registry would have moved the nodes to the new arrangement
+and left the parastichy curves describing the old one — the figure tearing in
+half, with no error raised anywhere. Both now read `getShapes()`. Anything else
+added that interpolates between shapes must read it too, and a hardcoded `0.5`
+step is the smell to watch for.
 
 **A slider in a scrolling panel needs `touch-action: pan-y`.** Without it a range
 input claims the whole gesture the moment a finger lands on it, so scrolling the

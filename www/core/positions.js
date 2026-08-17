@@ -316,10 +316,43 @@ export function stringPos(n, N) {
   return new THREE.Vector3(0, y, 0);
 }
 
-// Register core shapes
-registerShape(0, 'Line', (n, N) => lineNodePos(n, N));
-registerShape(0.5, 'Disk', (n, N) => scaledFlatPos(n, N));
-registerShape(1.0, 'Sphere', (n, N) => spherePos(n, N));
-registerShape(1.5, 'Chord', (n, N) => chordPos(n, N));
-registerShape(2.0, 'Spring', (n, N) => springPos(n, N));
-registerShape(2.5, 'String', (n, N) => stringPos(n, N));
+// ============================================================
+// THE MORPH ORDER
+// ============================================================
+// These values are the axis the morph travels, and the positions on the
+// transport scrub bar. The morph bounces between the lowest and the highest and
+// dwells at each one on the way, so the ORDER decides what visibly turns into
+// what — and adjacency is the whole design. Two shapes next to each other
+// should look like one becoming the other, not like a cut.
+//
+//   Spring  0.0   every node at one angle on the cylinder wall: a vertical line
+//   String  0.5   a vertical line at the centre. Spring's twin, minus the radius
+//   Chord   1.0   the cylinder itself — String's line opened out into a tube
+//   Sphere  1.5   the tube closed at both ends
+//   Disk    2.0   the sphere flattened: the phyllotactic spiral, seen whole
+//
+// Reordered 2026-08-15, and the reasoning is the screen. A phone is tall, so
+// the arrangements that use height — Spring, String, Chord — earn the space,
+// and the app opens on String rather than on a horizontal row.
+//
+// The app opens at 0.5 and travels UP, so the first thing a viewer sees is a
+// line becoming a tube becoming a sphere becoming a spiral. Running the other
+// way, past String, reaches Spring at the far end.
+//
+// LINE IS DEREGISTERED, not deleted. It is the one arrangement that wants width
+// rather than height, which is exactly the wrong shape for a phone held
+// upright. lineNodePos() and buildLineArcs() are still here and still correct;
+// putting Line back into the travel is one call, and it may be worth doing for
+// landscape one day (see docs/HANDOFF.md).
+//
+// Anything reading these values reads them FROM HERE. The renderer derives its
+// keyframes and travel limits from getShapes(), and the curve interpolator
+// reads the same list, so a change on these lines moves everything together.
+// That was not true before this reorder: the curve interpolation had its own
+// hardcoded copy of the order, and nodes and curves would have gone different
+// ways.
+registerShape(0.0, 'Spring', (n, N) => springPos(n, N));
+registerShape(0.5, 'String', (n, N) => stringPos(n, N));
+registerShape(1.0, 'Chord', (n, N) => chordPos(n, N));
+registerShape(1.5, 'Sphere', (n, N) => spherePos(n, N));
+registerShape(2.0, 'Disk', (n, N) => scaledFlatPos(n, N));
