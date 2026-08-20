@@ -523,6 +523,59 @@
   #ach-list { max-height: 42vh; overflow-y: auto; margin-top: 6px; }
   #ach-progress { font-size: 0.7rem; color: var(--text-dim); margin: 4px 0 2px; }
 
+  /* A locked row shows its hint; an earned one shows its subtitle, and its
+     blurb only once tapped open. The explanation is part of the reward. */
+  .ach-hint { font-size: 0.66rem; color: var(--text-dim); font-style: italic; }
+  .ach-blurb {
+    display: none;
+    font-size: 0.68rem; color: var(--text-dim); line-height: 1.45;
+    margin-top: 5px; padding-left: 8px;
+    border-left: 2px solid rgba(212, 175, 55, 0.35);
+  }
+  .ach-row.open .ach-blurb { display: block; }
+  .ach-row.expandable { cursor: pointer; }
+  .ach-text { min-width: 0; }
+
+  /* ==========================================================
+     ACHIEVEMENT TOAST — top centre, clear of the panel on the
+     left, the corner controls on the right and the transport at
+     the bottom. Fixed rather than absolute so it does not ride
+     the panel's scroll.
+
+     It is a queue, not a slot: achievements arrive in batches
+     (selecting 37 and 73 earns BEST! and EMIRP! at once), and a
+     single overwritten element would drop half of them.
+     ========================================================== */
+  #ach-toast {
+    position: fixed; z-index: 60;
+    top: calc(18px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translate(-50%, -14px);
+    opacity: 0; pointer-events: none;
+    min-width: 190px; max-width: min(78vw, 340px);
+    padding: 9px 18px 10px;
+    text-align: center;
+    background: rgba(12, 12, 15, 0.9);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 12px;
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.55), 0 0 22px rgba(212, 175, 55, 0.12);
+    transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  #ach-toast.visible { opacity: 1; transform: translate(-50%, 0); }
+  /* The OS asked for less movement, so it fades in place. It still appears —
+     reduced motion is not reduced information. */
+  #ach-toast.no-motion { transition: opacity 0.24s ease; transform: translate(-50%, 0); }
+  .ach-toast-kicker {
+    font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: rgba(212, 175, 55, 0.7); margin-bottom: 3px;
+  }
+  .ach-toast-name {
+    font-size: 0.95rem; font-weight: 600; letter-spacing: 0.05em;
+    color: rgba(233, 200, 100, 0.98);
+  }
+  .ach-toast-sub { font-size: 0.68rem; color: var(--text-dim); font-style: italic; margin-top: 2px; }
+
   /* ==========================================================
      DAZZLE — Reset with a different normal. Sits directly under
      the corner Reset and is styled identically, because it is

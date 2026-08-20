@@ -26,7 +26,7 @@
 //              ever fires for it and polling in animate() is the only option.
 
 import * as THREE from 'three';
-import { registerModule, state, on, emit, MAX_N } from '../core/state.js';
+import { registerModule, state, on, emit, MAX_N, prefersReducedMotion } from '../core/state.js';
 import { resolveN, update } from '../core/renderer.js';
 import { interpolatedPos } from '../core/positions.js';
 import { platform } from '../platform/index.js';
@@ -338,6 +338,118 @@ function countDisplaced(ctx) {
 }
 
 
+
+// ============================================================
+// THE DING
+// ============================================================
+// Synthesised, not sampled. No audio file means no asset, no licence, no bytes
+// in the APK, and — the part that matters here — no CSP allowance: Web Audio is
+// computation, not a resource load, so it needs nothing added to a policy this
+// project is careful about. It also matches how the rest of the codebase
+// behaves, computing the golden angle and the number sequences rather than
+// shipping literals of them.
+//
+// EDU: the three notes are tuned 4 : 5 : 6, which is a major chord in JUST
+// INTONATION — the tuning where every interval is a ratio of small whole
+// numbers. That is not decoration in an app about factorisation: the primes 2,
+// 3 and 5 are exactly what those ratios are built from, and tuning that admits
+// no prime above 5 has a name, 5-limit. A number's factorisation and a chord
+// are the same kind of object. Colour is factorisation here; so is this sound.
+let audioCtx = null;
+let soundOn = true;
+
+// An AudioContext cannot start without a user gesture, so it is created lazily
+// on the first one and reused. The master toggle is itself a tap, which means
+// the context is always live by the time any achievement can fire.
+function ensureAudio() {
+  if (audioCtx) { if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; }
+  try {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return null;
+    audioCtx = new C();
+  } catch { audioCtx = null; }
+  return audioCtx;
+}
+
+export function setSound(on) { soundOn = !!on; if (on) ensureAudio(); }
+export function isSoundOn() { return soundOn; }
+
+function ding() {
+  if (!soundOn) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const base = 523.25;                      // C5
+  const ratios = [1, 5 / 4, 3 / 2];         // 4:5:6 — the just major triad
+  const now = ctx.currentTime;
+  ratios.forEach((r, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    // Triangle rather than sine: a sine alone is so pure it reads as a test
+    // tone. A triangle has odd harmonics that fall off fast, which is about as
+    // close to "bell" as one oscillator gets.
+    osc.type = 'triangle';
+    osc.frequency.value = base * r;
+    const t = now + i * 0.055;              // a quick roll, not a block chord
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.11, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.9);
+  });
+}
+
+// ============================================================
+// THE TOAST
+// ============================================================
+// A QUEUE, not a single slot, and that is not defensive coding — achievements
+// genuinely arrive in batches. Selecting {37, 73} fires BEST! and EMIRP!
+// together; {5, 11} fires GERMAIN! and SEXY!. A single element that got
+// overwritten would silently drop half of everything the player earned.
+const toastQueue = [];
+let toastShowing = false;
+let toastEl = null;
+
+function ensureToastEl() {
+  if (toastEl) return toastEl;
+  toastEl = document.createElement('div');
+  toastEl.id = 'ach-toast';
+  toastEl.setAttribute('role', 'status');       // announced without stealing focus
+  toastEl.setAttribute('aria-live', 'polite');
+  document.body.appendChild(toastEl);
+  return toastEl;
+}
+
+function showNext() {
+  if (toastShowing || !toastQueue.length) return;
+  const a = toastQueue.shift();
+  toastShowing = true;
+
+  const el = ensureToastEl();
+  el.innerHTML =
+    `<div class="ach-toast-kicker">Achievement</div>` +
+    `<div class="ach-toast-name">${a.name}</div>` +
+    `<div class="ach-toast-sub">${a.subtitle}</div>`;
+
+  // prefersReducedMotion is already worked out in core/state.js, so honour it
+  // rather than asking again. The toast still appears — it just fades instead
+  // of travelling, which is what that preference actually asks for.
+  el.classList.toggle('no-motion', prefersReducedMotion);
+  void el.offsetWidth;                          // restart the transition
+  el.classList.add('visible');
+  ding();
+
+  const dwell = toastQueue.length ? 1500 : 2600; // hurry up if more are waiting
+  setTimeout(() => {
+    el.classList.remove('visible');
+    setTimeout(() => { toastShowing = false; showNext(); }, 260);
+  }, dwell);
+}
+
+function queueToast(a) {
+  toastQueue.push(a);
+  showNext();
+}
+
 // ============================================================
 // GILDING THE FIGURE
 // ============================================================
@@ -501,6 +613,12 @@ function buildSection() {
                    '<span class="toggle-track"></span>Show gilding';
   content.appendChild(gild);
 
+  const snd = document.createElement('label');
+  snd.className = 'toggle';
+  snd.innerHTML = '<input type="checkbox" id="ach-sound-toggle" checked>' +
+                  '<span class="toggle-track"></span>Sound';
+  content.appendChild(snd);
+
   // No "Trophy room" button here: the cup in the corner is that control, and
   // duplicating it in the panel would be two things doing one job.
 
@@ -520,6 +638,12 @@ function buildSection() {
     if (ledger.on) sweepState();
     renderList();
   });
+
+  const sndCb = snd.querySelector('input');
+  sndCb.checked = isSoundOn();
+  // Reading the checkbox on a real tap also gives the AudioContext the user
+  // gesture it needs to start, so switching sound on is itself the unlock.
+  sndCb.addEventListener('change', () => setSound(sndCb.checked));
 
   const gildCb = gild.querySelector('input');
   gildCb.checked = state._gildView === true;
@@ -561,17 +685,30 @@ function renderList() {
     });
 
     const text = document.createElement('div');
-    // A locked row shows the TITLE AND NOTHING ELSE. Not the criterion, not the
-    // subtitle — the mystery is the point, and a list that tells you exactly
-    // what to do has spent it. Everything else appears on unlock.
+    text.className = 'ach-text';
+    // Two layers per row. What shows by DEFAULT: the subtitle once earned, the
+    // hint while locked. What shows when TAPPED: the blurb, and only once
+    // earned — the explanation is part of the reward.
     //
-    // DEV: `criteria` is still carried on every definition. It is needed for the
-    // Play Console entry, which requires a description per achievement, and for
-    // the earned row. It is simply not rendered while locked. Do not "tidy" it
-    // away on the grounds that nothing displays it.
+    // DEV: `criteria` is never rendered anywhere in this list. It is the exact
+    // instruction, and the mystery is the point. It stays on the definitions
+    // because the Play Console requires a description per achievement; do not
+    // tidy it away on the grounds that nothing displays it.
     text.innerHTML =
       `<div class="ach-name">${a.name}</div>` +
-      (got ? `<div class="ach-sub">${a.subtitle}</div>` : '');
+      (got ? `<div class="ach-sub">${a.subtitle}</div>`
+           : `<div class="ach-hint">${a.hint}</div>`) +
+      (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '');
+
+    if (got && a.blurb) {
+      row.classList.add('expandable');
+      row.addEventListener('click', (e) => {
+        // The checkbox is a control in its own right and must not double as a
+        // disclosure toggle.
+        if (e.target.tagName === 'INPUT') return;
+        row.classList.toggle('open');
+      });
+    }
 
     row.appendChild(cb);
     row.appendChild(text);
@@ -637,7 +774,7 @@ export function register() {
   // The gilding view is a HOT key, so it never reaches buildScene(). Repainting
   // is this module's job — see the note beside _gildView in core/state.js.
   on('stateChange', ({ key }) => { if (key === '_gildView') refreshGilding(); });
-  on('achievement:unlocked', () => { refreshGilding(); renderList(); });
+  on('achievement:unlocked', (a) => { queueToast(a); refreshGilding(); renderList(); });
 
   // ---- bus-event predicates ----
   for (const a of ACHIEVEMENTS) {

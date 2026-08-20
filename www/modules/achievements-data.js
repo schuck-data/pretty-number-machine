@@ -428,3 +428,111 @@ const CRITERIA = {
 };
 
 for (const a of ACHIEVEMENT_DEFS) a.criteria = CRITERIA[a.id] || '';
+
+// ============================================================
+// BLURBS
+// ============================================================
+// The explanation, shown when an EARNED achievement is tapped open. Written at
+// a fifth-grade reading level except where the row is marked college in the
+// design sheet — MERSENNE!'s successor PERFECT!, HAPPY! and EULER! carry the
+// real argument, because those three have one worth making.
+const BLURBS = {
+  'fibonacci': "The Fibonacci numbers are 1, 1, 2, 3, 5, 8, 13, 21 and so on. Add the last two to get the next. Can be found on the spirals on a pinecone.",
+  'perfect': "A perfect number equals the sum of its proper divisors: 6 = 1+2+3, and 28 = 1+2+4+7+14. Euclid proved that 2^(p-1)(2^p - 1) is perfect whenever 2^p - 1 is prime, and Euler proved every even perfect number has that form. So each one is built from a Mersenne prime: 6 = 2x3, 28 = 4x7, 496 = 16x31. Only three exist below 1000; the next is 8128. Whether any odd perfect number exists is still open after two thousand years.",
+  'ramanujan': "A highly composite number has more divisors than every number below it. 840 has thirty-two, more than any number under a thousand. Ramanujan named and catalogued them in 1915. They are the exact opposite of primes: primes have no factors at all, and these have as many as it is possible to have.",
+  'lucas': "The Lucas numbers follow the same rule as the Fibonacci numbers -- add the last two to get the next -- but start 2, 1 instead of 1, 1. You get a completely different sequence that still grows at the golden ratio. The two are twins: change only where you begin.",
+  'squares': "Nodes are placed so that node n sits at a distance proportional to the square root of n. That means the square numbers -- 4, 9, 16, 25 and so on -- land at distances 2, 3, 4, 5: evenly spaced, marching straight outward, while everything around them crowds together. It only looks like that because of how this figure is built.",
+  'emirp': "Write a prime backwards. If you get a different prime, it is an emirp -- which is 'prime' spelled backwards. There are four pairs here: 13 and 31, 17 and 71, 37 and 73, 79 and 97.",
+  'twinning': "Twin primes are only 2 apart, like 11 and 13. Nobody knows whether they ever stop. People have been trying to find out since 1849.",
+  'cousins': "Primes 4 apart are called cousins. That is the real name.",
+  'sexy': "Primes 6 apart are called sexy primes. Sex is Latin for six. Mathematicians named these and nobody stopped them.",
+  'germain': "Pick a prime, double it, add 1. If that is prime too, the first one is a Sophie Germain prime. Sophie Germain had to sign her work with a man's name to get anyone to read it. She was one of the best mathematicians of her time.",
+  'happy': "Iterate the map sending a number to the sum of the squares of its digits. Every orbit is eventually periodic: above 1000 the map strictly decreases, so all trajectories fall into a bounded region and must cycle. In base 10 there are exactly two outcomes -- the fixed point 1, or the eight-cycle 4, 16, 37, 58, 89, 145, 42, 20. Numbers reaching 1 are called happy. Note this is a fact about base 10, not about the integers.",
+  'euler': "Euler's polynomial n^2 + n + 41 is prime for every n from 0 to 39. This is not luck. Rabinowitsch's theorem makes it exact: n^2 + n + p is prime for all n < p - 1 precisely when the imaginary quadratic field of discriminant 1 - 4p has class number 1. Here 1 - 4(41) = -163, and 163 is the largest Heegner number, so 41 is the largest p for which this can happen at all. It fails at n = 40, where 40^2 + 40 + 41 = 41(40 + 1) = 41^2.",
+  'unity': "1 is not prime, and it is not built out of primes either. It is called the unit -- the thing you count with. You get it last because you have to get everything else first.",
+  'first': "2 is the only even prime. Every other prime is odd.",
+  'louder': "11 is a repunit: written with nothing but 1s. It is the smallest two-digit prime, and the only two-digit prime that reads the same backwards.",
+  'rawr': "Ask people to pick a random number from 1 to 20 and more of them say 17 than anything else. Ask for 1 to 100 and they say 37.",
+  'best': "73 is the 21st prime. 21 is 7 times 3. Flip 73 around and you get 37, which is the 12th prime -- and 12 is 21 flipped around.",
+  'neat': "Each node sits a little further round the circle than the one before. Turn that far 89 times and you land almost exactly back where you started. So all the multiples of 89 stack up in a nearly straight line.",
+  'trek': "A writer on Star Trek had been at a college with a running joke that 47 turns up more often than chance allows. He started putting it in scripts, and it never left.",
+  'sixseven': "67 has no twin. Neither 65 nor 69 is prime, so it sits on its own.",
+  'smart': "101 reads the same forwards and backwards. It is the smallest three-digit prime.",
+  'localhost': "127 is the biggest number a computer can hold in one byte if it also needs room for a minus sign. It is also the address a computer uses to talk to itself.",
+  'ouch': "0 is the Sun. Every number divides into 0.",
+  'void': "Turn off every prime and two numbers are left: 0 and 1. They are the only ones not built out of primes.",
+  'empty-set': "Nothing at all. In maths that is a real thing with its own name and its own symbol.",
+  'night': "Twelve lunar months come to about 354 days, eleven short of a solar year. That gap is why calendars that follow the Moon drift through the seasons.",
+  'boing': "Spring is the bottom of the shape range. The app starts one step above it, so you have to wait for it to come back down.",
+  'trippy': "Dazzle turns on everything at once: every prime, a thousand numbers, pulse and colour drift together.",
+  'oops': "The springs can start pushing each other in rhythm and the whole shape begins to bounce. That is called resonance. It is the same thing that makes a swing go higher.",
+  'zoomies': "88 miles an hour, and 1.21 gigawatts.",
+  'maximalist': "The slider stops at 2,500. A slider covering the whole range would be too twitchy to use down where the interesting shapes are.",
+  'ceiling': "10,000 is as far as it goes. The slider stops at 2,500 because a slider that long would be too twitchy to use down where the interesting shapes are.",
+  'exhaustive': "Normally you only see multiples of the primes you picked. This fills in every number in between.",
+  'parawhat': "A parastichy is one of the spiral arms you see in a sunflower. In a real sunflower the arms are not really there -- your eye just joins up seeds that happen to line up. Here they are real: each line joins up the multiples of one prime.",
+  'nerd': "42.",
+  'art': "4 minutes 33 seconds of silence, written by John Cage in 1952. The piece is whatever you hear while nobody plays.",
+  'bophades': "2 is the only even prime, which makes it the oddest one of all.",
+  'nice': "nice.",
+  'dude': "What was this one for again?",
+  'meme': "The two greatest numbers of memery.",
+};
+
+// ============================================================
+// HINTS
+// ============================================================
+// Shown on a LOCKED row. The brief was "point in the direction, not too hard or
+// easy", so the test applied to each was: could someone who knows a little
+// mathematics work it out from this, and would someone who knows none at least
+// know where in the app to look?
+//
+// None of them names the exact numbers or the exact control. CRITERIA does
+// that, and CRITERIA is never shown while locked.
+const HINTS = {
+  'fibonacci': "Nature's counting sequence holds only five primes. Find exactly those, and nothing else.",
+  'perfect': "Some numbers equal the sum of their own parts. Choose the primes that build the small ones.",
+  'ramanujan': "Somewhere below a thousand sits the number with more factors than anything smaller. Set the range there.",
+  'lucas': "Fibonacci's rule, started somewhere else. Its primes are in the grid.",
+  'squares': "The largest perfect square that still fits makes a good ceiling.",
+  'emirp': "Two primes that are one another, written backwards.",
+  'twinning': "Two primes with a single even number between them.",
+  'cousins': "Two primes, four apart.",
+  'sexy': "Two primes, six apart. The name really is Latin.",
+  'germain': "One prime, and a second that is double the first plus one.",
+  'happy': "Square the digits and add, over and over. Some primes end at 1. Gather them.",
+  'euler': "One famous formula makes forty primes in a row. Ten of them live in this grid.",
+  'unity': "Everything else, first.",
+  'first': "You are one tap from it.",
+  'louder': "A prime written with nothing but ones.",
+  'rawr': "Ask someone for a random number under twenty. Pick whatever they say.",
+  'best': "The twenty-first prime, together with its reflection.",
+  'neat': "One prime stacks its multiples almost in a straight line. Show it on its own, with room to run.",
+  'trek': "A number that follows a certain starship absolutely everywhere.",
+  'sixseven': "You already know this one.",
+  'smart': "A three-digit prime that reads the same both ways. Look at it through the classroom.",
+  'localhost': "There is no place like it \u2014 and the range should agree.",
+  'ouch': "The Sun is a node like any other. Take hold of it.",
+  'void': "Take all of them away.",
+  'empty-set': "Take everything away, then take away what was left.",
+  'night': "Put out the Sun.",
+  'boing': "Wait for the shape to reach the very bottom of its travel.",
+  'trippy': "There is a button for this.",
+  'oops': "Get the springs disagreeing with each other until the whole thing bucks.",
+  'zoomies': "Faster. All the way.",
+  'maximalist': "Push the slider as far as it will go.",
+  'ceiling': "The slider is not the real limit.",
+  'exhaustive': "Show the numbers you never asked for.",
+  'parawhat': "Those curving arms have a name. Change how they look.",
+  'nerd': "Drag the classroom across.",
+  'art': "Change how it looks, not what it is.",
+  'bophades': "Bigger. As big as it goes.",
+  'nice': "Two primes whose product is a number people find funny.",
+  'dude': "Four small primes multiply to a number with a certain reputation.",
+  'meme': "Two numbers the internet will not stop saying. One is prime, one is not.",
+};
+
+for (const a of ACHIEVEMENT_DEFS) {
+  a.blurb = BLURBS[a.id] || '';
+  a.hint = HINTS[a.id] || '';
+}
