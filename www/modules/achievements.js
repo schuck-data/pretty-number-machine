@@ -27,13 +27,13 @@
 
 import * as THREE from 'three';
 import { registerModule, state, on, emit, MAX_N } from '../core/state.js';
-import { resolveN } from '../core/renderer.js';
+import { resolveN, update } from '../core/renderer.js';
 import { interpolatedPos } from '../core/positions.js';
 import { platform } from '../platform/index.js';
 // The number sets and the gilding rule. Kept in a separate, Three-free file so
 // they can be checked headlessly — see tools/check-achievements.mjs.
 import {
-  ACHIEVEMENT_DEFS, FAM, reverseNum,
+  ACHIEVEMENT_DEFS, FAM, reverseNum, TROPHY_N,
   computeGild as gildFor, isNodeGilded as gildedByRule,
 } from './achievements-data.js';
 
@@ -144,12 +144,17 @@ const BY_ID = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
 // ============================================================
 const LEDGER_KEY = 'pnm-achievements-v1';
 
-let ledger = { unlocked: {}, counters: {} };
+// `on` is the master switch. Achievements are OPT-IN: nothing is recorded until
+// the player turns them on, and turning them on is itself the first achievement.
+// That is a deliberate design choice, not a privacy hedge — FIRST! has to be
+// earnable, and it cannot be if tracking was already running.
+let ledger = { unlocked: {}, counters: {}, on: false };
 let ready = false;
 
 function countUnlocked() { return Object.keys(ledger.unlocked).length; }
 
 export function isUnlocked(id) { return !!ledger.unlocked[id]; }
+export function isTracking() { return !!ledger.on; }
 export function getLedger() { return { unlocked: { ...ledger.unlocked }, counters: { ...ledger.counters } }; }
 
 function readLocal() {
@@ -157,7 +162,7 @@ function readLocal() {
     const raw = localStorage.getItem(LEDGER_KEY);
     if (!raw) return null;
     const v = JSON.parse(raw);
-    return (v && typeof v === 'object') ? { unlocked: v.unlocked || {}, counters: v.counters || {} } : null;
+    return (v && typeof v === 'object') ? { unlocked: v.unlocked || {}, counters: v.counters || {}, on: !!v.on } : null;
   } catch { return null; }
 }
 
@@ -171,7 +176,9 @@ function writeLocal() {
 // withdrawn by a merge — losing an achievement because a device was offline is
 // the single worst failure this system could have.
 function mergeLedgers(a, b) {
-  const out = { unlocked: { ...a.unlocked }, counters: { ...a.counters } };
+  // `on` is sticky across a merge: a device that had tracking switched on is
+  // the one carrying the intent, and a fresh install should inherit it.
+  const out = { unlocked: { ...a.unlocked }, counters: { ...a.counters }, on: !!(a.on || b.on) };
   for (const [id, at] of Object.entries(b.unlocked || {})) {
     if (!out.unlocked[id] || at < out.unlocked[id]) out.unlocked[id] = at;
   }
@@ -187,8 +194,14 @@ async function unlock(id) {
 
   ledger.unlocked[id] = new Date().toISOString();
   writeLocal();
-  emit('achievement:unlocked', { id, name: a.name, subtitle: a.subtitle, xp: a.xp });
+  // Invalidate BEFORE announcing. Listeners on achievement:unlocked repaint the
+  // figure and redraw the trophy list, and both ask getGild() — so emitting
+  // first hands every one of them the cache computed a moment ago, without the
+  // achievement that just fired. It showed up as "1 of 40 earned, 0 numbers
+  // gilded" and would have shown up on the figure as gilding that lagged one
+  // unlock behind.
   invalidateGild();
+  emit('achievement:unlocked', { id, name: a.name, subtitle: a.subtitle, xp: a.xp });
 
   // Fire and forget. A failure to reach Play Games must not roll back the local
   // ledger — reconciliation on the next start will push it again, and unlocks
@@ -290,7 +303,7 @@ function onTrusted(selector, events, fn) {
 //                 announce itself. Forty cheap predicates five times a second
 //                 is nothing next to a render frame.
 function sweepState() {
-  if (!ready) return;
+  if (!ready || !ledger.on) return;
   for (const a of ACHIEVEMENTS) {
     if (a.trigger !== 'state' || ledger.unlocked[a.id]) continue;
     let hit = false;
@@ -324,6 +337,255 @@ function countDisplaced(ctx) {
   return count;
 }
 
+
+// ============================================================
+// GILDING THE FIGURE
+// ============================================================
+// DEV: this lives here, not in core/renderer.js, and that is the point. The
+// architecture claim is that nothing else in the app knows an achievement
+// exists, and a `if (isGilded(n))` branch inside buildScene() would end it.
+// Instead the module takes the nodes it is handed in build() and repaints the
+// ones it cares about. The renderer stays ignorant.
+//
+// Each node's original colour is stashed on first touch so the view can be
+// switched off without a rebuild. `nd.moduleData` exists for exactly this.
+const GOLD = { r: 1.0, g: 0.78, b: 0.28 };
+const DIM = 0.16;   // what a non-gilded node fades to while the view is on
+
+let nodesRef = [];
+
+function stash(nd) {
+  if (nd.moduleData.achStash) return nd.moduleData.achStash;
+  const m = nd.mesh?.material;
+  nd.moduleData.achStash = {
+    color: nd.baseColor ? nd.baseColor.clone() : null,
+    emissive: m?.emissive ? m.emissive.clone() : null,
+    emissiveIntensity: m?.emissiveIntensity ?? 0,
+  };
+  return nd.moduleData.achStash;
+}
+
+// Dakota's brief: "all gold nodes and lines should be fully overpowering when
+// in that mode." So gilded nodes are not merely tinted — they are pushed to a
+// flat gold and given emissive of their own, and everything else is dropped
+// most of the way to black so the gold is the only thing left in the picture.
+function paintGilding(on) {
+  for (const nd of nodesRef) {
+    const mesh = nd.mesh;
+    if (!mesh || !mesh.material) continue;
+    const orig = stash(nd);
+    if (nd.n === 0) continue;                    // the Sun is never repainted
+
+    if (!on) {
+      if (orig.color) { mesh.material.color.copy(orig.color); nd.baseColor?.copy(orig.color); }
+      if (orig.emissive) mesh.material.emissive.copy(orig.emissive);
+      mesh.material.emissiveIntensity = orig.emissiveIntensity;
+      continue;
+    }
+
+    if (isNodeGilded(nd.n)) {
+      mesh.material.color.setRGB(GOLD.r, GOLD.g, GOLD.b);
+      nd.baseColor?.setRGB(GOLD.r, GOLD.g, GOLD.b);
+      if (mesh.material.emissive) {
+        mesh.material.emissive.setRGB(GOLD.r * 0.55, GOLD.g * 0.42, GOLD.b * 0.12);
+        mesh.material.emissiveIntensity = 0.85;
+      }
+    } else {
+      const c = orig.color;
+      const r = (c ? c.r : 0.2) * DIM, g = (c ? c.g : 0.2) * DIM, b = (c ? c.b : 0.2) * DIM;
+      mesh.material.color.setRGB(r, g, b);
+      nd.baseColor?.setRGB(r, g, b);
+      if (mesh.material.emissive) {
+        mesh.material.emissive.setRGB(0, 0, 0);
+        mesh.material.emissiveIntensity = 0;
+      }
+    }
+  }
+}
+
+function refreshGilding() {
+  paintGilding(state._gildView === true);
+}
+
+// ============================================================
+// THE TROPHY ROOM
+// ============================================================
+// A preset, in the same shape as Dazzle: it assigns the knobs and does not
+// stash what it replaced. That is deliberate and was decided rather than
+// defaulted — see docs/achievements-design.xlsx, "Trophy room" tab.
+//
+// N is pinned to 1000 and not to whatever the player left the slider at. Three
+// reasons: it is the only N with a measured frame rate (90.6 fps with all
+// integers on, on a Pixel 7); it sits exactly on the physics cap, so the
+// module-cap machinery never fires its synthetic DOM events; and everyone's
+// trophy room is then the same size, which is what makes two screenshots
+// comparable.
+function applyTrophyRoom() {
+  const $ = id => document.getElementById(id);
+  const setEl = (id, val, prop = 'value') => { const el = $(id); if (el) el[prop] = val; };
+
+  setEl('auto-n', false, 'checked');
+  const nIn = $('n-input');
+  if (nIn) { nIn.disabled = false; nIn.value = TROPHY_N; }
+  setEl('n-slider', Math.min(TROPHY_N, +($('n-slider')?.max || TROPHY_N)));
+  setEl('show-all-integers', true, 'checked');
+  setEl('show-curves', true, 'checked');
+  setEl('line-width', 0.5);
+  setEl('node-size', 0.7);
+  setEl('pulse', false, 'checked');
+  setEl('line-pulse', false, 'checked');
+  setEl('color-drift', false, 'checked');
+  setEl('angle-drift', false, 'checked');
+  setEl('auto-rotate', true, 'checked');
+  setEl('drift-speed', 0.15);
+
+  // Displays next to the sliders are written by hand, exactly as Dazzle does.
+  const disp = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  disp('node-size-display', '0.7');
+  disp('line-width-display', '0.5');
+  disp('drift-speed-display', '0.15');
+  disp('n-display', String(TROPHY_N));
+
+  // Nearly a sphere, nudged toward the disk, and held there rather than
+  // morphing: the rotation is the movement in this view.
+  update({
+    N: TROPHY_N, showAllIntegers: true, showCurves: true, lineWidth: 0.5,
+    nodeSize: 0.7, pulse: false, linePulse: false, colorDrift: false,
+    angleDrift: false, autoRotate: true, driftSpeed: 0.15,
+    dimension: 1.6, shapeDrift: false, _gildView: true,
+  });
+
+  const g = $('gilding-toggle'); if (g) g.checked = true;
+}
+
+// ============================================================
+// THE PANEL SECTION
+// ============================================================
+// Built by hand rather than through panel.js's `controls` array, because this
+// needs real element ids (FIRST! listens on #achievements-toggle) and a list of
+// forty rows, and that array renders anonymous toggles and sliders only. The
+// module sets `hidden` so panel.js skips it and does not leave an empty header
+// behind — which it did, and which is what an empty Achievements tab on the
+// phone turned out to be.
+let listEl = null;
+let progressEl = null;
+
+function buildSection() {
+  const anchor = document.getElementById('reset-btn');
+  if (!anchor || document.getElementById('ach-list')) return;
+
+  const header = document.createElement('h2');
+  header.className = 'section-header';
+  header.id = 'section-achievements';
+  header.textContent = 'Achievements';
+  header.addEventListener('click', () => header.classList.toggle('open'));
+
+  const content = document.createElement('div');
+  content.className = 'section-content';
+
+  // Master switch. Achievements are opt-in: nothing is recorded until this is
+  // on, and turning it on is itself the first achievement.
+  const master = document.createElement('label');
+  master.className = 'toggle';
+  master.innerHTML = '<input type="checkbox" id="achievements-toggle">' +
+                     '<span class="toggle-track"></span>Track achievements';
+  content.appendChild(master);
+
+  progressEl = document.createElement('div');
+  progressEl.id = 'ach-progress';
+  content.appendChild(progressEl);
+
+  const gild = document.createElement('label');
+  gild.className = 'toggle';
+  gild.innerHTML = '<input type="checkbox" id="gilding-toggle">' +
+                   '<span class="toggle-track"></span>Show gilding';
+  content.appendChild(gild);
+
+  const trophy = document.createElement('button');
+  trophy.id = 'trophy-room-btn';
+  trophy.type = 'button';
+  trophy.textContent = 'Trophy room';
+  trophy.style.cssText = 'width:100%; padding:5px; margin-top:6px; background:transparent;' +
+    'border:1px solid var(--border); color:var(--text-faint); font-size:10px;' +
+    'font-family:inherit; cursor:pointer; border-radius:6px; letter-spacing:0.05em;';
+  content.appendChild(trophy);
+
+  listEl = document.createElement('div');
+  listEl.id = 'ach-list';
+  content.appendChild(listEl);
+
+  anchor.parentNode.insertBefore(header, anchor);
+  anchor.parentNode.insertBefore(content, anchor);
+
+  // ---- wiring ----
+  const masterCb = master.querySelector('input');
+  masterCb.checked = !!ledger.on;
+  masterCb.addEventListener('change', () => {
+    ledger.on = masterCb.checked;
+    writeLocal();
+    if (ledger.on) sweepState();
+    renderList();
+  });
+
+  const gildCb = gild.querySelector('input');
+  gildCb.checked = state._gildView === true;
+  gildCb.addEventListener('change', () => update({ _gildView: gildCb.checked }));
+
+  trophy.addEventListener('click', () => { applyTrophyRoom(); renderList(); });
+
+  renderList();
+}
+
+function renderList() {
+  if (!listEl) return;
+  const enabled = getEnabled();
+  const earned = countUnlocked();
+  const gilt = getGild().litNodes.size;
+  if (progressEl) {
+    progressEl.textContent = ledger.on
+      ? `${earned} of ${ACHIEVEMENTS.length} earned · ${gilt} ${gilt === 1 ? 'number' : 'numbers'} gilded`
+      : 'Not tracking. Switch on to start.';
+  }
+
+  listEl.innerHTML = '';
+  for (const a of ACHIEVEMENTS) {
+    const got = !!ledger.unlocked[a.id];
+    const row = document.createElement('div');
+    row.className = 'ach-row ' + (got ? 'earned' : 'locked');
+
+    // The checkbox is the mix-and-match control: it decides whether this
+    // achievement's gilding is SHOWN, not whether it is earned. Locked rows
+    // have nothing to show, so theirs is disabled.
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = got && enabled.has(a.id);
+    cb.disabled = !got;
+    cb.addEventListener('change', () => {
+      const next = new Set(getEnabled());
+      cb.checked ? next.add(a.id) : next.delete(a.id);
+      setEnabled(next);
+      refreshGilding();
+      renderList();
+    });
+
+    const text = document.createElement('div');
+    // A locked row shows what to DO; an earned one shows what it meant. The
+    // locked list is meant to read as a puzzle book rather than a wall of
+    // question marks, which is also why none of these are PGS "hidden".
+    text.innerHTML =
+      `<div class="ach-name">${a.name}</div>` +
+      (got ? `<div class="ach-sub">${a.subtitle}</div>`
+           : `<div class="ach-crit">${a.criteria || a.subtitle}</div>`);
+
+    row.appendChild(cb);
+    row.appendChild(text);
+    listEl.appendChild(row);
+  }
+
+  const btn = document.getElementById('achievements-btn');
+  if (btn) btn.classList.toggle('has-progress', earned > 0);
+}
+
 // ============================================================
 // MODULE
 // ============================================================
@@ -331,14 +593,24 @@ const mod = {
   name: 'achievements',
   label: 'Achievements',
   enabled: true,
-  // No panel controls yet. The achievements tab, the gilding toggle and the
-  // trophy-room preset are a separate piece of work; this module is the ledger
-  // they will read from. FIRST! is wired to #achievements-toggle and simply
-  // never fires until that control exists.
+  // panel.js builds a section for every registered module unless it opts out,
+  // and it renders `controls` only. This module needs real element ids and a
+  // forty-row list, so it builds its own section in buildSection() and opts out
+  // here. Without the opt-out panel.js produced an "Achievements" header with
+  // nothing underneath it — which is exactly what an empty tab on the phone was.
+  hidden: true,
   controls: [],
 
+  // Every rebuild hands over a fresh set of meshes, so the gilding has to be
+  // repainted onto them. Cheap: one material touch per node, only when the view
+  // is on.
+  build(ctx) {
+    nodesRef = ctx.nodes || [];
+    refreshGilding();
+  },
+
   animate(ctx) {
-    if (!ready) return;
+    if (!ready || !ledger.on) return;
     sampleAcc += ctx.dt || 0;
     if (sampleAcc < 1 / SAMPLE_HZ) return;
     sampleAcc = 0;
@@ -366,11 +638,16 @@ export function register() {
   on('stateChange', sweepState);
   on('build', sweepState);
 
+  // The gilding view is a HOT key, so it never reaches buildScene(). Repainting
+  // is this module's job — see the note beside _gildView in core/state.js.
+  on('stateChange', ({ key }) => { if (key === '_gildView') refreshGilding(); });
+  on('achievement:unlocked', () => { refreshGilding(); renderList(); });
+
   // ---- bus-event predicates ----
   for (const a of ACHIEVEMENTS) {
     if (a.trigger !== 'event' || !a.busEvent) continue;
     on(a.busEvent, (d) => {
-      if (!ready || ledger.unlocked[a.id]) return;
+      if (!ready || !ledger.on || ledger.unlocked[a.id]) return;
       let hit = false;
       try { hit = !!a.test(d); } catch (e) { console.error(`[PNM] Achievement "${a.id}" handler threw:`, e); }
       if (hit) unlock(a.id);
@@ -382,10 +659,25 @@ export function register() {
   // before then would find nothing. Bound on document with capture, so the
   // handlers survive the panel rebuilding a control.
   on('panelReady', () => {
+    buildSection();
+
+    // The corner button opens the panel and expands the section, rather than
+    // being a second place that does things. One home for achievements.
+    const btn = document.getElementById('achievements-btn');
+    btn?.addEventListener('click', () => {
+      document.getElementById('panel')?.classList.remove('collapsed');
+      const h = document.getElementById('section-achievements');
+      h?.classList.add('open');
+      h?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
     for (const a of ACHIEVEMENTS) {
       if (a.trigger !== 'dom' || !a.dom) continue;
       onTrusted(a.dom.selector, a.dom.event, (el) => {
+        // FIRST! is the exception, and has to be: its trigger IS the master
+        // switch, so gating it on the switch would make it unearnable.
         if (!ready || ledger.unlocked[a.id]) return;
+        if (!ledger.on && a.id !== 'first') return;
         let hit = false;
         try { hit = !!a.test(el); } catch (e) { console.error(`[PNM] Achievement "${a.id}" DOM predicate threw:`, e); }
         if (hit) unlock(a.id);
@@ -404,7 +696,7 @@ export function register() {
 // the whole ledger every start is both safe and the cheapest way to make every
 // reinstall and cross-device case fall out for nothing.
 async function bootstrap() {
-  ledger = readLocal() || { unlocked: {}, counters: {} };
+  ledger = readLocal() || { unlocked: {}, counters: {}, on: false };
 
   try {
     const snapshot = await platform.saves.read();
@@ -414,7 +706,7 @@ async function bootstrap() {
   try {
     const remote = await platform.achievements.loadUnlocked();
     if (remote && remote.size) {
-      const asLedger = { unlocked: {}, counters: {} };
+      const asLedger = { unlocked: {}, counters: {}, on: true };
       const now = new Date().toISOString();
       for (const id of remote) if (BY_ID.has(id)) asLedger.unlocked[id] = now;
       ledger = mergeLedgers(ledger, asLedger);
@@ -444,7 +736,7 @@ async function bootstrap() {
 // The trophy room will need a reset; until it exists this is how you test that
 // unlocks actually persist and survive a reload.
 export function resetLedger() {
-  ledger = { unlocked: {}, counters: {} };
+  ledger = { unlocked: {}, counters: {}, on: ledger.on };
   writeLocal();
   invalidateGild();
   emit('achievements:ready', { unlocked: 0, total: ACHIEVEMENTS.length, native: platform.isNative });

@@ -473,6 +473,57 @@
   @media (pointer: coarse) { #corner-reset { width: 44px; height: 44px; } }
 
   /* ==========================================================
+     ACHIEVEMENTS — sits to the LEFT of the corner Reset rather
+     than under it, because it is not the same kind of control:
+     Reset and Dazzle both change everything in one tap, and this
+     opens a panel. Same faint styling so it does not shout, and
+     the same inline-SVG rule — a trophy emoji would carry colour
+     presentation and Android would ignore `color` outright, the
+     trap that turned the transport buttons orange.
+
+     It fills in when there is something to show, so an untouched
+     install has three identical faint circles and a played one
+     has a gold-rimmed cup.
+     ========================================================== */
+  #achievements-btn {
+    position: absolute; z-index: 20;
+    top: calc(12px + env(safe-area-inset-top));
+    /* 12 right inset + the Reset's 34 + an 8 gap. */
+    right: calc(54px + env(safe-area-inset-right));
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--border-corner);
+    color: var(--text-corner);
+    cursor: pointer; padding: 0;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  #achievements-btn svg { width: 17px; height: 17px; display: block; }
+  #achievements-btn.has-progress {
+    color: rgba(212, 175, 55, 0.75);
+    border-color: rgba(212, 175, 55, 0.35);
+  }
+  @media (pointer: coarse) {
+    /* Reset grows to 44, so the gap beside it moves with it. */
+    #achievements-btn { width: 44px; height: 44px; right: calc(64px + env(safe-area-inset-right)); }
+  }
+
+  /* The achievements list. Built by modules/achievements.js, styled here so
+     it follows the panel's theme rather than carrying its own colours. */
+  .ach-row {
+    display: flex; align-items: flex-start; gap: 7px;
+    padding: 5px 0; border-bottom: 1px solid var(--border);
+  }
+  .ach-row:last-child { border-bottom: none; }
+  .ach-row.locked { opacity: 0.42; }
+  .ach-row input[type=checkbox] { margin-top: 3px; flex: none; }
+  .ach-name { font-size: 0.72rem; letter-spacing: 0.04em; color: var(--text-faint); }
+  .ach-row.earned .ach-name { color: rgba(212, 175, 55, 0.9); }
+  .ach-sub { font-size: 0.66rem; color: var(--text-dim); font-style: italic; }
+  .ach-crit { font-size: 0.64rem; color: var(--text-dim); }
+  #ach-list { max-height: 42vh; overflow-y: auto; margin-top: 6px; }
+  #ach-progress { font-size: 0.7rem; color: var(--text-dim); margin: 4px 0 2px; }
+
+  /* ==========================================================
      DAZZLE — Reset with a different normal. Sits directly under
      the corner Reset and is styled identically, because it is
      the same kind of control: one tap, everything changes.
@@ -1051,6 +1102,20 @@
 <!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
      across platforms and some render as colour emoji, which is exactly how
      the transport button ended up orange on Android. -->
+<!-- A cup on a stem, drawn rather than typed, for the reason given in the CSS
+     and repeated everywhere in this file: emoji carry colour presentation and
+     Android substitutes its own glyph. -->
+<button id="achievements-btn" type="button" title="Achievements" aria-label="Achievements">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M7 4h10v5a5 5 0 0 1-10 0z"/>
+    <path d="M7 6H4.5a2.5 2.5 0 0 0 2.5 2.5"/>
+    <path d="M17 6h2.5A2.5 2.5 0 0 1 17 8.5"/>
+    <path d="M12 14v3"/>
+    <path d="M9 20h6"/>
+    <path d="M10 17h4l.5 3h-5z"/>
+  </svg>
+</button>
 <button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

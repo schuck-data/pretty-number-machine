@@ -126,6 +126,10 @@ export const DEFAULT_CONFIG = {
   angleDrift: false,
   angleDriftSpeed: 1.0,
 
+  // Gilding: whether earned achievements paint their numbers gold. Off by
+  // default — it is a lens over the figure, not the figure.
+  _gildView: false,
+
   autoRotate: true,
   driftSpeed: 0.3,
   sceneBackground: 0x0c0c0f,
@@ -190,6 +194,15 @@ export const HOT_KEYS = new Set([
   // value only ever reaches OrbitControls.dampingFactor — no geometry depends
   // on it — so a rebuild would be pure waste even if it were affordable.
   '_physicsInertia',
+  // The achievements module's gilding view. Same unusual company and the same
+  // reasoning as _physicsInertia above: it changes only node COLOUR, no
+  // geometry depends on it, and modules/achievements.js repaints the affected
+  // meshes itself when it sees the change. Routing it through buildScene()
+  // would dispose and recreate every mesh in the scene to alter a tint — and
+  // that is measured, not guessed: a rebuild at N=1000 costs 312 ms on a
+  // Pixel 7, which is a visible stutter on a toggle you are meant to flick
+  // back and forth.
+  '_gildView',
   // The transport's play/pause. The render loop reads it every frame; nothing
   // about the geometry changes, so rebuilding the scene on it would be an
   // expensive no-op.
