@@ -6,7 +6,7 @@ import * as THREE from 'three';
 // literal 0.5, which was Disk under the old morph order and is String under the
 // new one — a magic number that silently changed meaning. Reading the default
 // means it cannot drift again.
-import { registerModule, state, DEFAULT_CONFIG } from '../core/state.js';
+import { registerModule, state, emit, DEFAULT_CONFIG } from '../core/state.js';
 import { getControls, getCamera, getRenderer, getNodes, resolveN } from '../core/renderer.js';
 import { interpolatedPos } from '../core/positions.js';
 import { SAMPLES_PER_SEG } from '../core/math.js';
@@ -125,6 +125,10 @@ function onPointerDown(e) {
 
   draggedNode = nd;
   physicsActive = true;
+
+  // The only signal this module publishes. modules/achievements.js listens for
+  // it; nothing else does, and nothing here depends on anyone listening.
+  emit('physics:dragStart', { n: nd.n });
 
   // Disable orbit controls during drag — stop propagation so OrbitControls doesn't see this event
   const controls = getControls();

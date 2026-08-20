@@ -8,6 +8,20 @@
 
 export const FIRST_PRIMES = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137];
 
+// The primes the panel actually offers, and therefore the only ones any feature
+// can assume a user is able to switch on. 137 is omitted so the fully expanded
+// grid ends exactly on All / None / Less instead of spilling one lone button
+// onto a sixth row. FIRST_PRIMES itself stays intact — info.js derives prime
+// ordinals from it by index, and truncating it would silently break the readout
+// for 137.
+//
+// DEV: this lives here rather than in panel.js because it is no longer only the
+// panel's business. modules/achievements.js reasons about which primes are
+// reachable, and a second copy of `slice(0, 32)` in another file is precisely
+// the kind of silently-drifting duplicate this project has been bitten by
+// before. One definition, two importers.
+export const SELECTABLE_PRIMES = FIRST_PRIMES.slice(0, 32);
+
 // EDU: the golden angle, in radians. Written as π(3 − √5) rather than as a
 // decimal because it is an exact algebraic expression and a decimal would be a
 // rounded copy of it. The identity is worth seeing:

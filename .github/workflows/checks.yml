@@ -36,6 +36,14 @@ jobs:
       - name: Static checks
         run: node tools/check.mjs
 
+      # The achievement design: the number sets and the gilding rule. Same
+      # shape of failure as everything else here — a mis-derived family means an
+      # achievement that silently never fires, and a gilding rule that says
+      # "any factor" instead of "every factor" still runs and just quietly
+      # gives away the whole board. Neither shows up as an error in a browser.
+      - name: Achievement design checks
+        run: node tools/check-achievements.mjs
+
       # Every module must at least parse. Cheap, and it catches the class of
       # typo that only shows up as a blank screen in a browser.
       - name: Parse every module

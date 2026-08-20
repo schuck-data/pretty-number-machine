@@ -3,7 +3,7 @@ import {
   state, emit, getModules, MAX_N, SLIDER_MAX_N, AUTO_N_MAX,
   HOT_KEYS, DEFAULT_CONFIG,
 } from './state.js';
-import { FIRST_PRIMES, getPrimeRGB, GOLDEN_ANGLE } from './math.js';
+import { FIRST_PRIMES, SELECTABLE_PRIMES, getPrimeRGB, GOLDEN_ANGLE } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
 import {
   update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown, resetCamera,
@@ -11,12 +11,9 @@ import {
 
 const $ = id => document.getElementById(id);
 
-// The grid offers 32 of the 33 primes math.js knows about. 137 is omitted so
-// the fully expanded grid ends exactly on All / None / Less instead of
-// spilling one lone button onto a sixth row. FIRST_PRIMES itself is left
-// intact — info.js derives prime ordinals from it by index, and truncating it
-// would silently break the readout for 137.
-const SELECTABLE_PRIMES = FIRST_PRIMES.slice(0, 32);
+// The grid offers 32 of the 33 primes math.js knows about. The list and the
+// reasoning moved to math.js when modules/achievements.js became a second
+// consumer of it; see the note there.
 
 // How many prime buttons are visible at each expansion step. Chosen so that
 // each step plus the three trailing buttons fills whole rows of seven, which
