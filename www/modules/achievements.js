@@ -561,13 +561,17 @@ function renderList() {
     });
 
     const text = document.createElement('div');
-    // A locked row shows what to DO; an earned one shows what it meant. The
-    // locked list is meant to read as a puzzle book rather than a wall of
-    // question marks, which is also why none of these are PGS "hidden".
+    // A locked row shows the TITLE AND NOTHING ELSE. Not the criterion, not the
+    // subtitle — the mystery is the point, and a list that tells you exactly
+    // what to do has spent it. Everything else appears on unlock.
+    //
+    // DEV: `criteria` is still carried on every definition. It is needed for the
+    // Play Console entry, which requires a description per achievement, and for
+    // the earned row. It is simply not rendered while locked. Do not "tidy" it
+    // away on the grounds that nothing displays it.
     text.innerHTML =
       `<div class="ach-name">${a.name}</div>` +
-      (got ? `<div class="ach-sub">${a.subtitle}</div>`
-           : `<div class="ach-crit">${a.criteria || a.subtitle}</div>`);
+      (got ? `<div class="ach-sub">${a.subtitle}</div>` : '');
 
     row.appendChild(cb);
     row.appendChild(text);

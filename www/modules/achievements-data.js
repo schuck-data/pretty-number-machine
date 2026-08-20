@@ -366,11 +366,20 @@ export function gildForAll(defs = ACHIEVEMENT_DEFS) {
 // ============================================================
 // CRITERIA
 // ============================================================
-// What the player has to DO, in their words. Shown on a LOCKED row in the
-// trophy room, where the earned row shows the subtitle instead — so the list
-// reads as a puzzle book rather than a wall of question marks. That is also
-// why none of these are PGS "hidden" achievements: the name plus the criterion
-// is meant to be enough of a hint to go and try something.
+// What the player has to DO, in their words.
+//
+// NOT shown in the app while an achievement is locked — a locked row carries
+// its title and nothing else, because the mystery is the point and a list that
+// spells out the answer has spent it. These strings exist for two other
+// reasons: the Play Console requires a description per achievement, and the
+// earned row needs something to say. Do not delete them on the grounds that
+// nothing renders them.
+//
+// NOTE for §6: Play Games shows a standard achievement's description to
+// players BEFORE they earn it. If the concealment matters as much on the Play
+// Games side as it does in-app, these need to be the `hidden` kind there —
+// which is a real trade, since achievement hunters generally dislike a list
+// that is mostly hidden. Decide before creating them in the console.
 const CRITERIA = {
   'art': "Manually change any appearance setting.",
   'best': "Select exactly 37 and 73.",
