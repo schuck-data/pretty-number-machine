@@ -65,8 +65,6 @@ const badStep = D.ACHIEVEMENT_DEFS.filter(a => a.xp % 5 !== 0);
 badStep.length ? fail(`XP not a multiple of 5: ${badStep.map(a => a.id)}`) : ok('every XP value is a multiple of 5');
 const ids = D.ACHIEVEMENT_DEFS.map(a => a.id);
 new Set(ids).size === ids.length ? ok('all ids unique') : fail('duplicate id');
-const badRule = D.ACHIEVEMENT_DEFS.filter(a => !['factorisation','multiples','explicit','none'].includes(a.gildRule));
-badRule.length ? fail(`unknown gildRule: ${badRule.map(a => a.id)}`) : ok('every gildRule is known');
 
 console.log('\n[design] store-id map agrees with the list');
 const platformSrc = readFileSync(join(root, 'www/platform/index.js'), 'utf8');
@@ -76,63 +74,104 @@ missingFromMap.length
   ? fail(`ids absent from the platform store-id map: ${missingFromMap}`)
   : ok(`all ${ids.length} ids appear in the platform store-id map`);
 
+const noNodes = D.ACHIEVEMENT_DEFS.filter(a => !Array.isArray(a.gildNodes));
+noNodes.length ? fail(`gildNodes missing: ${noNodes.map(a => a.id)}`) : ok('every definition has a gildNodes array');
+const outOfRange = D.ACHIEVEMENT_DEFS.flatMap(a => a.gildNodes.filter(n => n < 1 || n > D.TROPHY_N));
+outOfRange.length
+  ? fail(`gilded nodes outside 1..${D.TROPHY_N}: ${[...new Set(outOfRange)]}`)
+  : ok(`every gilded node lies inside 1..${D.TROPHY_N}`);
+
 console.log('\n[design] every selectable prime is reachable');
-const owned = new Set();
-for (const a of D.ACHIEVEMENT_DEFS) for (const p of a.gildPrimes) owned.add(p);
-const unreachablePrimes = SELECTABLE_PRIMES.filter(p => !owned.has(p));
-unreachablePrimes.length
-  ? fail(`primes no achievement gilds: ${unreachablePrimes}`)
+const ROUTES = D.primeRoutes();
+const noRoute = SELECTABLE_PRIMES.filter(p => !(ROUTES.get(p) || []).length);
+noRoute.length
+  ? fail(`primes no achievement gilds: ${noRoute}`)
   : ok(`all ${SELECTABLE_PRIMES.length} selectable primes have at least one route`);
+const routeCounts = SELECTABLE_PRIMES.map(p => ROUTES.get(p).length);
+eq('route counts run from', [Math.min(...routeCounts), Math.max(...routeCounts)], [2, 7]);
 
 console.log('\n[gilding] the finished picture at N = 1000');
-const gild = D.gildForAll();
-let gold = 0, orphan = 0;
-const explicitOnly = [];
 const PSET = new Set(SELECTABLE_PRIMES);
+const outsideGrid = (n) => {
+  let m = n;
+  for (let dd = 2; dd * dd <= m; dd++) while (m % dd === 0) { if (!PSET.has(dd)) return true; m /= dd; }
+  return m > 1 && !PSET.has(m);
+};
+const gild = D.gildForAll();
+let gold = 0, dark = 0;
+const rescued = [];
 for (let n = 2; n <= D.TROPHY_N; n++) {
   const lit = D.isNodeGilded(n, gild);
-  if (lit) gold++; else orphan++;
-  // A node with a prime factor outside the grid can only ever be reached by an
-  // explicit gild. These are the design's headline claim and the reason
-  // FIBONACCI! and LUCAS! earn their place.
-  const beyondGrid = [...String(n)] && hasFactorOutsideGrid(n);
-  if (lit && beyondGrid) explicitOnly.push(n);
+  if (lit) gold++; else dark++;
+  if (lit && outsideGrid(n)) rescued.push(n);
 }
-function hasFactorOutsideGrid(n) {
-  let m = n;
-  for (let d = 2; d * d <= m; d++) while (m % d === 0) { if (!PSET.has(d)) return true; m /= d; }
-  return m > 1 && !PSET.has(m);
-}
-eq('gold nodes (2..1000)', gold, 726);
-eq('dark nodes (2..1000)', orphan, 273);
-eq('reachable ONLY by an explicit gild', explicitOnly, [199, 233, 521, 843]);
+eq('gold nodes (2..1000)', gold, 733);
+eq('dark nodes (2..1000)', dark, 266);
+// Nodes carrying a prime factor above 131. No amount of prime-ownership can
+// reach these, so a direct gild is their only route and each one is a
+// deliberate choice — see the RESCUE comments in achievements-data.js.
+eq('rescued from the dark', rescued, [137, 149, 199, 233, 314, 419, 433, 521, 641, 843, 997]);
 
-console.log('\n[gilding] the rule is "every factor", not "any"');
-// The single most important assertion in this file. With only prime 2 owned,
-// 4, 8 and 16 must light because 2 is their whole factorisation — but 6, 10 and
-// 14 must NOT, because each needs a prime the player does not have. If this
-// ever inverts, the collection is over on the first unlock and nothing in the
-// app will complain.
-const only2 = { ownedPrimes: new Set([2]), explicitNodes: new Set(), multiplePrimes: new Set() };
-for (const n of [2, 4, 8, 16, 32, 64]) {
-  D.isNodeGilded(n, only2) ? ok(`owning 2 lights ${n}`) : fail(`owning 2 should light ${n}`);
-}
-for (const n of [6, 10, 12, 14, 18, 20]) {
-  D.isNodeGilded(n, only2) ? fail(`owning 2 must NOT light ${n}`) : ok(`owning 2 does not light ${n}`);
-}
+console.log('\n[gilding] ownership is a CONJUNCTION, not a disjunction');
+// THE assertion this file exists for. Under the first design these three
+// achievements owned 31 of the 32 primes and lit 715 of 726 nodes — 98% of the
+// finished board from three of forty, with the other thirty-seven worth eleven
+// nodes between them. Measured in a browser, not predicted. If this number ever
+// climbs back into the hundreds, that regression has returned.
+const three = D.computeGild(['twinning', 'sexy', 'germain']);
+let goldThree = 0;
+for (let n = 2; n <= D.TROPHY_N; n++) if (D.isNodeGilded(n, three)) goldThree++;
+eq('twinning + sexy + germain light only', goldThree, 31);
+eq('...and own this many primes', three.ownedPrimes.size, 1);
 
-console.log('\n[gilding] the three exceptions');
-const noneOwned = { ownedPrimes: new Set(), explicitNodes: new Set(), multiplePrimes: new Set() };
-D.isNodeGilded(0, noneOwned) ? fail('node 0 must never gild — it is the Sun') : ok('node 0 never gilds');
-D.isNodeGilded(1, noneOwned) ? fail('node 1 must not gild by rule') : ok('node 1 does not gild by rule (empty factorisation)');
-const withUnity = { ...noneOwned, explicitNodes: new Set([1]) };
-D.isNodeGilded(1, withUnity) ? ok('node 1 gilds when explicitly granted (UNITY!)') : fail('UNITY! must light node 1');
-// NEAT! gilds every multiple of 89 outright, including 178 = 2 x 89 whose other
-// factor the player does not own.
-const neat = { ownedPrimes: new Set([89]), explicitNodes: new Set(), multiplePrimes: new Set([89]) };
-D.isNodeGilded(178, neat) ? ok('multiples rule lights 178 = 2 x 89 without owning 2') : fail('multiples rule failed');
-const noMult = { ownedPrimes: new Set([89]), explicitNodes: new Set(), multiplePrimes: new Set() };
-D.isNodeGilded(178, noMult) ? fail('178 must stay dark under the factorisation rule') : ok('178 stays dark under the factorisation rule');
+const soloLouder = D.computeGild(['louder']);
+soloLouder.ownedPrimes.has(11)
+  ? fail('LOUDER! alone must NOT own prime 11 — it is one of six routes')
+  : ok('LOUDER! alone lights node 11 without owning prime 11');
+soloLouder.litNodes.has(11)
+  ? ok('...but node 11 is lit')
+  : fail('LOUDER! must at least light node 11');
+const allRoutes11 = D.computeGild(ROUTES.get(11));
+allRoutes11.ownedPrimes.has(11)
+  ? ok(`prime 11 needs all ${ROUTES.get(11).length} routes, and they suffice`)
+  : fail('the full route set for prime 11 must own it');
+// Derivation still means EVERY factor, not any. Tested against a synthetic
+// gild rather than a real achievement set: the seven routes to prime 2 also
+// light plenty of other nodes DIRECTLY (PERFECT! and RAMANUJAN! both gild 6),
+// so a real set cannot isolate the derivation. That is a fact about the design,
+// not a limitation — and the first version of this check got it wrong.
+const only2 = { litNodes: new Set(), ownedPrimes: new Set([2]) };
+for (const n of [2, 4, 8, 16, 32, 64, 128, 256, 512]) {
+  D.isNodeGilded(n, only2) ? ok(`owning only 2 lights ${n}`) : fail(`owning 2 should light ${n}`);
+}
+for (const n of [6, 10, 12, 14, 18, 20, 22]) {
+  D.isNodeGilded(n, only2)
+    ? fail(`owning only 2 must NOT light ${n} — it needs another prime`)
+    : ok(`owning only 2 does not light ${n}`);
+}
+// And the real route set does own the prime.
+D.computeGild(ROUTES.get(2)).ownedPrimes.has(2)
+  ? ok(`prime 2 needs all ${ROUTES.get(2).length} routes, and they suffice`)
+  : fail('the full route set for prime 2 must own it');
+
+console.log('\n[gilding] the UNITY! override stabilises the trophy-room toggles');
+const allIds = D.ACHIEVEMENT_DEFS.map(a => a.id);
+const offNoUnity = D.computeGild(allIds.filter(i => i !== 'sexy' && i !== 'unity'));
+const offWithUnity = D.computeGild(allIds.filter(i => i !== 'sexy'));
+let a1 = 0, a2 = 0;
+for (let n = 2; n <= D.TROPHY_N; n++) {
+  if (D.isNodeGilded(n, offNoUnity)) a1++;
+  if (D.isNodeGilded(n, offWithUnity)) a2++;
+}
+a2 > a1
+  ? ok(`switching a family off costs ${a2 - a1} fewer nodes with UNITY! on (${a2} vs ${a1})`)
+  : fail('the UNITY! override should keep derivation alive when a route is disabled');
+
+console.log('\n[gilding] node 0 and node 1');
+const none = D.computeGild([]);
+D.isNodeGilded(0, none) ? fail('node 0 must never gild — it is the Sun') : ok('node 0 never gilds');
+D.isNodeGilded(1, none) ? fail('node 1 must not gild by rule') : ok('node 1 does not gild by rule (empty factorisation)');
+D.isNodeGilded(1, D.computeGild(['unity'])) ? ok('node 1 gilds via UNITY! alone') : fail('UNITY! must light node 1');
 
 console.log(`\n${failed ? 'FAILED' : 'All achievement checks passed.'}  (${pass} passed, ${failed} failed)\n`);
 process.exit(failed ? 1 : 0);

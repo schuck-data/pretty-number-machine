@@ -33,7 +33,8 @@ import { platform } from '../platform/index.js';
 // The number sets and the gilding rule. Kept in a separate, Three-free file so
 // they can be checked headlessly — see tools/check-achievements.mjs.
 import {
-  ACHIEVEMENT_DEFS, FAM, reverseNum, isNodeGilded as gildedByRule,
+  ACHIEVEMENT_DEFS, FAM, reverseNum,
+  computeGild as gildFor, isNodeGilded as gildedByRule,
 } from './achievements-data.js';
 
 // ============================================================
@@ -212,20 +213,23 @@ async function unlock(id) {
 let gildCache = null;
 function invalidateGild() { gildCache = null; }
 
-function computeGild() {
-  const ownedPrimes = new Set();
-  const explicitNodes = new Set();
-  const multiplePrimes = new Set();
-  for (const a of ACHIEVEMENTS) {
-    if (!ledger.unlocked[a.id]) continue;
-    for (const p of a.gildPrimes) ownedPrimes.add(p);
-    for (const n of a.gildNodes) explicitNodes.add(n);
-    if (a.gildRule === 'multiples') for (const p of a.gildPrimes) multiplePrimes.add(p);
-  }
-  return { ownedPrimes, explicitNodes, multiplePrimes };
+// Which achievements are switched ON for display. Defaults to everything the
+// player has unlocked; the trophy room narrows it so the player can mix and
+// match, which is why the rule takes an enabled set rather than reading the
+// ledger itself. Passing null restores the default.
+let enabledOverride = null;
+
+export function setEnabled(ids) {
+  enabledOverride = ids ? new Set(ids) : null;
+  invalidateGild();
+  emit('achievements:gildChanged', { enabled: [...getEnabled()] });
 }
 
-export function getGild() { return (gildCache ??= computeGild()); }
+export function getEnabled() {
+  return enabledOverride ?? new Set(Object.keys(ledger.unlocked));
+}
+
+export function getGild() { return (gildCache ??= gildFor(getEnabled())); }
 export function isPrimeGilded(p) { return getGild().ownedPrimes.has(p); }
 export function isNodeGilded(n) { return gildedByRule(n, getGild()); }
 
