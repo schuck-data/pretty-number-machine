@@ -501,14 +501,8 @@ function buildSection() {
                    '<span class="toggle-track"></span>Show gilding';
   content.appendChild(gild);
 
-  const trophy = document.createElement('button');
-  trophy.id = 'trophy-room-btn';
-  trophy.type = 'button';
-  trophy.textContent = 'Trophy room';
-  trophy.style.cssText = 'width:100%; padding:5px; margin-top:6px; background:transparent;' +
-    'border:1px solid var(--border); color:var(--text-faint); font-size:10px;' +
-    'font-family:inherit; cursor:pointer; border-radius:6px; letter-spacing:0.05em;';
-  content.appendChild(trophy);
+  // No "Trophy room" button here: the cup in the corner is that control, and
+  // duplicating it in the panel would be two things doing one job.
 
   listEl = document.createElement('div');
   listEl.id = 'ach-list';
@@ -530,8 +524,6 @@ function buildSection() {
   const gildCb = gild.querySelector('input');
   gildCb.checked = state._gildView === true;
   gildCb.addEventListener('change', () => update({ _gildView: gildCb.checked }));
-
-  trophy.addEventListener('click', () => { applyTrophyRoom(); renderList(); });
 
   renderList();
 }
@@ -661,10 +653,20 @@ export function register() {
   on('panelReady', () => {
     buildSection();
 
-    // The corner button opens the panel and expands the section, rather than
-    // being a second place that does things. One home for achievements.
+    // The corner button IS the trophy room, in the same sense that #dazzle-btn
+    // is Dazzle: one tap, the whole figure changes. It sits beside Reset and
+    // Dazzle because it is the same kind of control, and it is destructive in
+    // the same way — it assigns the knobs and does not stash what it replaced.
+    //
+    // It also opens the panel onto the achievements section, because the list
+    // is the other half of the view: the per-achievement checkboxes are what
+    // let you mix and match what the gold is showing. The section stays
+    // reachable by scrolling the panel normally, so checking progress without
+    // disturbing your figure is still possible — you just do not use the cup.
     const btn = document.getElementById('achievements-btn');
     btn?.addEventListener('click', () => {
+      applyTrophyRoom();
+      renderList();
       document.getElementById('panel')?.classList.remove('collapsed');
       const h = document.getElementById('section-achievements');
       h?.classList.add('open');
