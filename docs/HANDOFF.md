@@ -93,15 +93,18 @@ and once a native shell exists Capacitor is the standard way to have one.
 
 ## 1. The next action
 
-**`ANDROID-BUILD.md` §5 step 3 — the adapter and the achievement ledger.**
-Steps 1 and 2 were both executed on 2026-08-15. The app builds, installs and
-runs well on a Pixel 9 and a Pixel 7; the web-only machinery is gone from the
-app copy; the checks guard the app build on its own terms.
+**`ANDROID-BUILD.md` §5 step 4 — Play Games Services.** Steps 1, 2 and 3 are
+done; step 3 landed 2026-08-20 along with the achievement design it depended on.
 
-Step 3 is `platform/` with its no-op fallback and `modules/achievements.js`, and
-it has a prerequisite that is **not** code: the achievement list must be
-designed first (`ANDROID-BUILD.md` §3, ten of them, 2000 XP to share out). That
-is a joint task and nothing else blocks it.
+Step 4 means choosing a PGS plugin (§4 lists candidates and the escape hatch),
+then filling in `getGamesPlugin()` in `www/platform/index.js` and pasting the
+console-issued ids into the `STORE_IDS` map there. Nothing else in the app
+should need to change: everything already runs against the adapter, and the
+in-memory fallback keeps a browser working.
+
+**The achievement design is settled** — 40 of them, 1,800 of the 2,000 XP with
+200 held back, recorded in `docs/achievements-design.xlsx`. The Play Console
+still has to be told about them, which is §6 and Dakota's.
 
 **Work done after step 2, all on `capacitor-spike` and all in `www/` only.**
 The branch has moved on since the strip, and none of it is part of the numbered
@@ -119,9 +122,10 @@ plan — it came from using the app on a phone and fixing what was wrong:
   physics; landscape made safe-area aware
 - A real bug fixed: sliders were **stealing scroll gestures** on touch
 
-**Still owed from step 1: a performance measurement.** Nothing has been measured
-on device — see §5 below. It has not blocked anything so far and does not block
-step 3, but no claim about WebView performance may be made until it is done.
+**Settled 2026-08-20: the performance measurement.** Taken on the Pixel 7 over
+`chrome://inspect`. §5 below has the numbers. Short version: the app is pinned
+to the display's 90 Hz refresh everywhere below N=2500, and only N=10000 costs
+anything real.
 
 Everything after that is laid out in `ANDROID-BUILD.md` §5 (technical) and §6
 (Play Console).
@@ -202,13 +206,35 @@ Console after Play App Signing is on, not from the local keystore.
 
 ## 5. Still unknown
 
-- **Performance in Android System WebView** on the Pixel and on anything cheaper.
-  Chrome numbers: **1002 draw calls at N=1000**, one per node, instancing
-  deferred. WebView is Chromium and should match; measure, don't assume.
-  **Still unmeasured as of 2026-08-15.** The app is known to *run* on the
-  Pixel 9 and to look right, and it was judged good by hand — but "working
-  great" is not a number, and no fps or draw-call figure has been taken.
-  `ANDROID-BUILD.md` §5 step 1 says how to attach the HUD in a shell
+- ~~**Performance in Android System WebView.**~~ **MEASURED 2026-08-20**, on a
+  Pixel 7 (panther), Android System WebView Chrome 150, 411x914 at dpr 2.625,
+  debug APK. Method: `adb forward` to the WebView's DevTools socket, then
+  `Runtime.evaluate` over the CDP websocket — the HUD needs `?debug` and a shell
+  has no address bar, so the numbers were read straight off `renderer.info` and
+  a `requestAnimationFrame` sampler instead.
+
+  | configuration | nodes | draw calls | triangles | fps | frame p95 | rebuild |
+  |---|---|---|---|---|---|---|
+  | default, N=30 | 24 | 22 | 13k | **90.5** | 12.7 ms | — |
+  | N=1000, primes 2/3/5 | 736 | 510 | 377k | **90.5** | 12.8 ms | 489 ms |
+  | **N=1000 + all integers (trophy room)** | 1001 | 675 | 411k | **90.6** | 12.6 ms | 312 ms |
+  | N=2500 + all integers (MAXIMALIST!) | 2501 | 1632 | 1.01M | **89.6** | 13.4 ms | 436 ms |
+  | N=10000 + all integers (CEILING!) | 10001 | 7226 | 4.19M | **26.7** | 42.3 ms | 1507 ms |
+  | N=10000, no all-integers | 7336 | 6440 | 4.10M | **29.3** | 37.0 ms | 1701 ms |
+
+  Read it carefully. Everything at or below N=2500 sits **exactly on the panel's
+  90 Hz refresh cap**, which means those figures are a floor, not a ceiling —
+  the app is waiting on vsync and the real headroom is unknown and larger. The
+  **trophy room at N=1000 is comfortably safe**, which was the open risk in the
+  gilding design and is now closed.
+
+  The one real cost is **CEILING! at N=10000: 27 fps and a 1.5-second freeze
+  while the scene rebuilds.** Not broken, clearly degraded, and CEILING! is an
+  achievement that deliberately sends players there. On anything cheaper than a
+  Pixel 7 it will be worse. Decide whether that is acceptable before shipping,
+  and note that instancing would be the fix if it is not.
+
+  Still unmeasured: **anything cheaper than a Pixel 7**, and the Pixel 9
 - **Plugin fitness.** Which community Capacitor plugins for PGS v2 and Play
   Billing 8+ are actually maintained. `ANDROID-BUILD.md` §4 makes evaluating
   them the first native task and gives the escape hatch

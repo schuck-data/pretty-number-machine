@@ -123,8 +123,26 @@ listens on the event bus). It owns:
 - Writing the ledger to `platform.saves` after each change, and reading it on
   start if local storage is empty (fresh install on a second device)
 
-Nothing else in the app knows an achievement exists. Other modules and `core/`
-just emit the events they already emit; the ledger's predicates listen.
+Nothing else in the app knows an achievement exists.
+
+**Correction, 2026-08-20 — this next sentence was wrong and cost a test run.**
+It used to read "other modules and `core/` just emit the events they already
+emit; the ledger's predicates listen." They do not, in two separate ways:
+
+- `info.js`, `physics.js` and `lens.js` emit **nothing at all**. The whole bus
+  surface was `stateChange`, `build`, `init`, `panelReady`, `moduleCrash`,
+  `contextLost`, `contextRestored`. `physics.js` now emits `physics:dragStart`;
+  the rest are covered by state or by DOM listeners.
+- Worse, **`stateChange` does not fire for the panel.** `core/panel.js`
+  `scheduleRebuild()` assigns about fifteen keys onto the `state` singleton
+  directly and calls `buildScene()` itself, never going through `update()`. So
+  prime selection, N, and every filter — the source of nearly every achievement
+  condition — announce nothing. Measured: choosing exactly `{11}` gave
+  `state.primes === [11]`, one `build` event, and **zero** `stateChange` events.
+
+The ledger therefore sweeps from three places: `stateChange`, `build`, and a
+5 Hz backstop in `animate()`. The backstop is the one that makes it correct
+rather than merely prompt — it cannot be forgotten by a future writer.
 
 ### `modules/fake-ads.js`
 
@@ -266,9 +284,26 @@ appear to `adb`. Cost fifteen minutes to work out, 2026-08-15.
    `versionCode`, and an ABSENCE guard that fails if `sw.js` or a manifest ever
    reappears under `www/` — the cheapest insurance against the bug that has cost
    this project the most
-3. **Adapter + ledger.** `platform/` with the no-op fallback, `modules/achievements.js`
-   with the designed list. Verify in a browser: unlocks fire, persist, survive
-   reload
+3. ~~**Adapter + ledger.**~~ **Done 2026-08-20.** `www/platform/index.js` with
+   the in-memory fallback; `www/modules/achievements.js` (ledger, predicates,
+   gilding, reconciliation); `www/modules/achievements-data.js` (the number sets
+   and the gilding rule, deliberately free of Three.js and the renderer so it
+   can be checked headlessly); `tools/check-achievements.mjs`, 56 assertions,
+   wired into `npm run check` and CI. Design record: `docs/achievements-design.xlsx`.
+
+   **Verified in a browser and on a Pixel 7:** unlocks fire, persist, survive
+   reload, and reconcile through `platform.saves`. `isNative` reports true in
+   the shell. The "manually" achievements are guarded by `event.isTrusted`
+   rather than by enumerating exceptions — pressing Dazzle sets all-integers,
+   node size and the full prime grid programmatically and awards nothing.
+
+   **One design bug caught only by running it.** The first gilding rule let a
+   family own its primes outright. Three achievements — TWINNING!, SEXY!,
+   GERMAIN!, six taps — then owned 31 of 32 primes and lit 715 of 726 gold
+   nodes: 98% of the finished trophy room, with the other 37 achievements worth
+   eleven nodes between them. The spreadsheet could not show it; it had
+   per-achievement counts and the problem was in the union. Ownership is now a
+   conjunction (every route to a prime must be earned) and those three light 31
 4. **PGS.** Choose/evaluate the plugin. Wire unlock, load, saved games. Verify on
    device: sign-in happens, an unlock appears in the Play Games app, uninstall →
    reinstall restores the ledger from the snapshot
@@ -362,7 +397,15 @@ Avoid these now so the second shell is only paperwork:
 - **App-signing certificate, not upload key**, for the PGS Android credential —
   the same class of mistake as the old asset-links fingerprint
 - **`?debug` on real hardware** before believing any performance claim. The
-  Cowork browser pane never runs the render loop
+  Cowork browser pane never runs the render loop. **Measurement taken
+  2026-08-20 — see §5 step 1 and `HANDOFF.md` §5. The debt is paid.**
+- **The recorded "1002 draw calls at N=1000, one per node" was wrong.** Measured
+  on device: N=1000 with primes {2,3,5} is 736 nodes and **510** draw calls;
+  with all integers on it is 1001 nodes and **675**. Draw calls are fewer than
+  nodes, not equal to them. The instancing argument still holds, but not on
+  those figures
+- **The panel bypasses `update()`.** See §3. Anything that needs to react to a
+  config change cannot rely on `stateChange` alone
 - **Reset writes ~40 DOM values by hand** in `panel.js`; new controls for
   achievements or ads are each a chance to forget one
 - **`state` is a mutable singleton and `HOT_KEYS` is unenforced.** New config
