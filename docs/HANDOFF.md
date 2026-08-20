@@ -234,7 +234,28 @@ Console after Play App Signing is on, not from the local keystore.
   Pixel 7 it will be worse. Decide whether that is acceptable before shipping,
   and note that instancing would be the fix if it is not.
 
-  Still unmeasured: **anything cheaper than a Pixel 7**, and the Pixel 9
+  **Pixel 9 (tokay), measured 2026-08-20**, WebView Chrome 151, 411x923 at
+  dpr 2.625. Its panel runs at 120 Hz, so the ceiling is higher and the app
+  still reaches it:
+
+  | configuration | nodes | draw calls | fps | frame p95 |
+  |---|---|---|---|---|
+  | default, N=30 | 24 | 21 | **119.8** | 10.0 ms |
+  | trophy room (N=1000, all integers, gilding on) | 1001 | 1005 | **120.2** | 10.2 ms |
+  | N=10000 + all integers (CEILING!) | 10001 | 10005 | **34.6** | 32.6 ms |
+
+  So the trophy room is pinned to the refresh cap on both phones — 90 Hz on
+  the 7, 120 Hz on the 9 — with gilding and curves on. It has headroom to
+  spare and is not a risk on either.
+
+  CEILING! is the only configuration that costs anything, and it costs less
+  here than on the 7: **34.6 fps against 26.7**. Still a third of refresh,
+  still worth deciding about, but the newer phone absorbs it better. Note the
+  draw calls exceed the node count once curves are on — 10,005 for 10,001
+  nodes — so the parastichy lines are a real share of the cost at high N, not
+  a rounding error.
+
+  Still unmeasured: **anything cheaper than a Pixel 7**
 - **Plugin fitness.** Which community Capacitor plugins for PGS v2 and Play
   Billing 8+ are actually maintained. `ANDROID-BUILD.md` §4 makes evaluating
   them the first native task and gives the escape hatch
