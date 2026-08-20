@@ -563,6 +563,18 @@
     transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   }
   #ach-toast.visible { opacity: 1; transform: translate(-50%, 0); }
+  /* Tappable only when there is a blurb behind it to reveal. pointer-events
+     goes back to auto for exactly that case, so the banner never eats a tap
+     meant for the scene when it has nothing to offer. */
+  #ach-toast.tappable { pointer-events: auto; cursor: pointer; }
+  .ach-toast-blurb {
+    display: none;
+    font-size: 0.68rem; color: var(--text-dim); line-height: 1.5;
+    margin-top: 8px; padding-top: 8px; text-align: left;
+    border-top: 1px solid rgba(212, 175, 55, 0.25);
+  }
+  #ach-toast.open { max-width: min(88vw, 400px); }
+  #ach-toast.open .ach-toast-blurb { display: block; }
   /* The OS asked for less movement, so it fades in place. It still appears —
      reduced motion is not reduced information. */
   #ach-toast.no-motion { transition: opacity 0.24s ease; transform: translate(-50%, 0); }

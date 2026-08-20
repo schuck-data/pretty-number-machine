@@ -201,7 +201,7 @@ async function unlock(id) {
   // gilded" and would have shown up on the figure as gilding that lagged one
   // unlock behind.
   invalidateGild();
-  emit('achievement:unlocked', { id, name: a.name, subtitle: a.subtitle, xp: a.xp });
+  emit('achievement:unlocked', { id, name: a.name, subtitle: a.subtitle, blurb: a.blurb, xp: a.xp });
 
   // Fire and forget. A failure to reach Play Games must not roll back the local
   // ledger — reconciliation on the next start will push it again, and unlocks
@@ -425,10 +425,13 @@ function showNext() {
   toastShowing = true;
 
   const el = ensureToastEl();
+  el.classList.remove('open');
   el.innerHTML =
     `<div class="ach-toast-kicker">Achievement</div>` +
     `<div class="ach-toast-name">${a.name}</div>` +
-    `<div class="ach-toast-sub">${a.subtitle}</div>`;
+    `<div class="ach-toast-sub">${a.subtitle}</div>` +
+    (a.blurb ? `<div class="ach-toast-blurb">${a.blurb}</div>` : '');
+  el.classList.toggle('tappable', !!a.blurb);
 
   // prefersReducedMotion is already worked out in core/state.js, so honour it
   // rather than asking again. The toast still appears — it just fades instead
@@ -438,11 +441,24 @@ function showNext() {
   el.classList.add('visible');
   ding();
 
-  const dwell = toastQueue.length ? 1500 : 2600; // hurry up if more are waiting
-  setTimeout(() => {
-    el.classList.remove('visible');
+  // Tapping the banner opens the blurb and stops the clock — the explanation is
+  // worth more than the two seconds the toast was going to get, and a banner
+  // that vanished mid-read would be worse than not offering it. A second tap
+  // dismisses. Rebound each time, because innerHTML replaced the contents.
+  let dismissTimer = null;
+  const finish = () => {
+    el.classList.remove('visible', 'open');
     setTimeout(() => { toastShowing = false; showNext(); }, 260);
-  }, dwell);
+  };
+  el.onclick = () => {
+    if (!a.blurb) { clearTimeout(dismissTimer); finish(); return; }
+    if (el.classList.contains('open')) { clearTimeout(dismissTimer); finish(); return; }
+    clearTimeout(dismissTimer);
+    el.classList.add('open');
+  };
+
+  const dwell = toastQueue.length ? 1500 : 2600; // hurry up if more are waiting
+  dismissTimer = setTimeout(finish, dwell);
 }
 
 function queueToast(a) {
@@ -535,6 +551,24 @@ function refreshGilding() {
 function applyTrophyRoom() {
   const $ = id => document.getElementById(id);
   const setEl = (id, val, prop = 'value') => { const el = $(id); if (el) el[prop] = val; };
+
+  // RESET FIRST, exactly as applyDazzle() does. Without this the preset only
+  // moves the knobs it names and everything else — colour scheme, filters,
+  // glow, the divergence angle, the CAMERA — is inherited from whatever the
+  // player was looking at, so no two trophy rooms look alike.
+  //
+  // DEV: it clicks #reset-btn rather than calling resetToDefaults(), which is
+  // nested inside initPanel() and not exported. That is not a workaround so
+  // much as the right dependency: reset writes about forty DOM values by hand
+  // and also calls resetMorph() and resetCamera(), and "reset does not reset
+  // everything" has been a bug in this project twice. Hand-rolling a second
+  // copy here would make it a third place to forget one. Clicking the real
+  // control cannot drift from it.
+  //
+  // Safe with respect to the ledger: a programmatic .click() produces an event
+  // with isTrusted false, and every DOM-triggered achievement checks that. The
+  // trophy room therefore cannot award anything on its way in.
+  $('reset-btn')?.click();
 
   setEl('auto-n', false, 'checked');
   const nIn = $('n-input');
