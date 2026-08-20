@@ -95,13 +95,29 @@ and once a native shell exists Capacitor is the standard way to have one.
 
 **`ANDROID-BUILD.md` §5 step 3 — the adapter and the achievement ledger.**
 Steps 1 and 2 were both executed on 2026-08-15. The app builds, installs and
-runs well on the Pixel 9; the web-only machinery is gone from the app copy; the
-checks guard the app build on its own terms.
+runs well on a Pixel 9 and a Pixel 7; the web-only machinery is gone from the
+app copy; the checks guard the app build on its own terms.
 
 Step 3 is `platform/` with its no-op fallback and `modules/achievements.js`, and
 it has a prerequisite that is **not** code: the achievement list must be
 designed first (`ANDROID-BUILD.md` §3, ten of them, 2000 XP to share out). That
 is a joint task and nothing else blocks it.
+
+**Work done after step 2, all on `capacitor-spike` and all in `www/` only.**
+The branch has moved on since the strip, and none of it is part of the numbered
+plan — it came from using the app on a phone and fixing what was wrong:
+
+- A **Constants** panel section exposing the phyllotaxis divergence angle: a
+  slider over a full turn, tap to restore the exact golden angle, and an
+  optional sweep whose floor is one turn per ~1000 minutes
+- The **morph order reordered** for a tall screen — `Spring · String · Chord ·
+  Sphere · Disk`, opening on String and climbing. **Line is deregistered**, not
+  deleted; it suits landscape and may come back for it
+- **DEV/EDU comment layers** through `www/` — see `CODE-NOTES.md`
+- The **launcher icon**, which had been shipping as Capacitor's placeholder
+- An **inertia slider** in Physics; Dazzle now runs the sweep and disables
+  physics; landscape made safe-area aware
+- A real bug fixed: sliders were **stealing scroll gestures** on touch
 
 **Still owed from step 1: a performance measurement.** Nothing has been measured
 on device — see §5 below. It has not blocked anything so far and does not block
