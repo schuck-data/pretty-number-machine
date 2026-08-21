@@ -194,6 +194,20 @@ async function unlock(id) {
 
   ledger.unlocked[id] = new Date().toISOString();
   writeLocal();
+  // A newly earned achievement is SHOWN by default, even once the player has
+  // started hand-picking which ones to display.
+  //
+  // DEV: without this, enabledOverride is a snapshot taken the first time
+  // anything touched the selection — a checkbox, or Show all / Show none — and
+  // it never grew again. Everything earned after that moment was invisible: not
+  // gilding its nodes, and not counting toward the conjunction that gilds a
+  // prime's line. It presented as "I unlocked TWINNING! and still no lines",
+  // with the ledger holding TWINNING! and the enabled set not.
+  //
+  // The mix-and-match dial is for hiding things you HAVE; it was never meant to
+  // silently withhold things you have just got.
+  if (enabledOverride) enabledOverride.add(id);
+
   // Invalidate BEFORE announcing. Listeners on achievement:unlocked repaint the
   // figure and redraw the trophy list, and both ask getGild() — so emitting
   // first hands every one of them the cache computed a moment ago, without the
