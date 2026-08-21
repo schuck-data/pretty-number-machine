@@ -169,9 +169,9 @@ function nodeTooltipHTML(nd) {
   html += `${n}</div>`;
 
   // Type
-  const tealStyle = 'color: rgba(61,219,217,0.85); font-size: 13px;';
+  const accentStyle = 'color: rgba(191,199,209,0.85); font-size: 13px;';
   const typeLabel = isPrimeNumber(n) ? 'Prime' : isPrimePower(n) ? 'Power' : 'Composite';
-  html += `<div style="${tealStyle}">${typeLabel}</div>`;
+  html += `<div style="${accentStyle}">${typeLabel}</div>`;
 
   // Factorization (skip for primes — redundant)
   if (!isPrimeNumber(n)) {
@@ -228,14 +228,14 @@ function curveTooltipHTML(prime) {
   const subStyle = 'color: #9a9890; font-size: 13px;';
   const numStyle = 'color: #e0ddd5; font-weight: 600;';
 
-  const tealStyle = 'color: rgba(61,219,217,0.85); font-size: 13px;';
+  const accentStyle = 'color: rgba(191,199,209,0.85); font-size: 13px;';
   let html = `<div style="font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #e0ddd5;">${prime}</div>`;
 
   // Ordinal position among primes
   const ordinal = FIRST_PRIMES.indexOf(prime) + 1;
   if (ordinal > 0) {
     const suffix = ordinal === 1 ? 'st' : ordinal === 2 ? 'nd' : ordinal === 3 ? 'rd' : 'th';
-    html += `<div style="${tealStyle}">${ordinal}${suffix} prime</div>`;
+    html += `<div style="${accentStyle}">${ordinal}${suffix} prime</div>`;
   }
 
   const multiples = [];

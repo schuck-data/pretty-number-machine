@@ -43,13 +43,22 @@ eq('89 multiples', D.NEAT_NODES.length, 11);
 eq('840 divisor count', D.divisorCount(840), 32);
 
 console.log('\n[sets] the prime families');
-eq('twins', D.FAM.twins.length, 19);
-eq('cousins', D.FAM.cousins.length, 23);
-eq('sexy', D.FAM.sexy.length, 27);
-eq('Sophie Germain', D.FAM.germain, [2,3,5,11,23,29,41,53,83,89,113,131]);
-eq('happy', D.FAM.happy, [7,13,19,23,31,79,97,103,109]);
-eq('emirp', D.FAM.emirp, [13,17,31,37,71,73,79,97]);
-eq('Euler n^2+n+41', D.FAM.euler, [41,43,47,53,61,71,83,97,113,131]);
+// FAM is what a predicate may ASK FOR — the members inside the selectable grid.
+// SERIES is what gets GILDED — every member up to 1000.
+eq('twins   (grid / series)', [D.FAM.twins.length, D.SERIES.twins.length], [19, 69]);
+eq('cousins (grid / series)', [D.FAM.cousins.length, D.SERIES.cousins.length], [23, 81]);
+eq('sexy    (grid / series)', [D.FAM.sexy.length, D.SERIES.sexy.length], [28, 120]);
+eq('germain (grid / series)', [D.FAM.germain.length, D.SERIES.germain.length], [12, 37]);
+eq('happy   (grid / series)', [D.FAM.happy.length, D.SERIES.happy.length], [9, 35]);
+eq('emirp   (grid / series)', [D.FAM.emirp.length, D.SERIES.emirp.length], [10, 36]);
+eq('euler   (grid / series)', [D.FAM.euler.length, D.SERIES.euler.length], [10, 31]);
+eq('Sophie Germain (grid)', D.FAM.germain, [2,3,5,11,23,29,41,53,83,89,113,131]);
+eq('happy (grid)', D.FAM.happy, [7,13,19,23,31,79,97,103,109]);
+// 107 and 113 are emirps because 701 and 311 are prime. The earlier definition
+// required the REVERSAL to be inside the grid too, which was a fact about the
+// panel rather than about the numbers.
+eq('emirp (grid)', D.FAM.emirp, [13,17,31,37,71,73,79,97,107,113]);
+eq('Euler n^2+n+41 (grid)', D.FAM.euler, [41,43,47,53,61,71,83,97,113,131]);
 eq('Fibonacci primes', D.FAM.fibPrimes, [2,3,5,13,89]);
 eq('Lucas primes', D.FAM.lucasPrimes, [2,3,7,11,29,47]);
 // The primes building every perfect number below 1000 are 2 plus the Mersenne
@@ -105,12 +114,17 @@ for (let n = 2; n <= D.TROPHY_N; n++) {
   if (lit) gold++; else dark++;
   if (lit && outsideGrid(n)) rescued.push(n);
 }
-eq('gold nodes (2..1000)', gold, 733);
-eq('dark nodes (2..1000)', dark, 266);
+eq('gold nodes (2..1000)', gold, 853);
+eq('dark nodes (2..1000)', dark, 146);
 // Nodes carrying a prime factor above 131. No amount of prime-ownership can
-// reach these, so a direct gild is their only route and each one is a
-// deliberate choice — see the RESCUE comments in achievements-data.js.
-eq('rescued from the dark', rescued, [137, 149, 199, 233, 314, 419, 433, 521, 641, 843, 997]);
+// reach these, so a direct gild is their only route. Once the families gild
+// their whole SERIES rather than just the grid members, most of these arrive in
+// bulk rather than one at a time, so the count is asserted and a few named
+// members spot-checked.
+eq('rescued from the dark (count)', rescued.length, 131);
+for (const n of [137, 149, 199, 233, 314, 419, 433, 521, 641, 843, 997]) {
+  rescued.includes(n) ? ok(`  ${n} is reachable`) : fail(`  ${n} should be reachable`);
+}
 
 console.log('\n[gilding] ownership is a CONJUNCTION, not a disjunction');
 // THE assertion this file exists for. Under the first design these three
@@ -121,7 +135,12 @@ console.log('\n[gilding] ownership is a CONJUNCTION, not a disjunction');
 const three = D.computeGild(['twinning', 'sexy', 'germain']);
 let goldThree = 0;
 for (let n = 2; n <= D.TROPHY_N; n++) if (D.isNodeGilded(n, three)) goldThree++;
-eq('twinning + sexy + germain light only', goldThree, 31);
+// Under the first design these three owned 31 of 32 primes and lit 715 of 726
+// — 98% of the board from three of forty. They now light 145 of 853, or 17%,
+// and still own exactly one prime. The number grew when the families started
+// gilding their full series; what matters is that it is DIRECT gilding and the
+// ownership conjunction is untouched.
+eq('twinning + sexy + germain light only', goldThree, 145);
 eq('...and own this many primes', three.ownedPrimes.size, 1);
 
 const soloLouder = D.computeGild(['louder']);

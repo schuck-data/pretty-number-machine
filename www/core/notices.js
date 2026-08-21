@@ -16,7 +16,7 @@
 // failed, so it must not import anything that could be the thing that failed.
 // Adding an import here is almost always a mistake.
 
-const ACCENT = 'rgba(61, 219, 217, 0.9)';
+const ACCENT = 'rgba(191, 199, 209, 0.9)';
 const BG = 'rgba(12, 12, 15, 0.92)';
 const TEXT = '#e0ddd5';
 const FONT = "'Space Grotesk', system-ui, -apple-system, sans-serif";

@@ -131,28 +131,62 @@ export const NEAT_NODES    = multiplesOf(89, TROPHY_N);
 // ============================================================
 // PRIME FAMILIES
 // ============================================================
-// All derived from SELECTABLE_PRIMES, so widening or narrowing the panel's grid
-// changes every one of these with it rather than leaving them stale.
-export const FAM = {
-  twins:   P.filter(p => PSET.has(p - 2) || PSET.has(p + 2)),
-  cousins: P.filter(p => PSET.has(p - 4) || PSET.has(p + 4)),
-  sexy:    P.filter(p => PSET.has(p - 6) || PSET.has(p + 6)),
-  // EDU: p is a Sophie Germain prime when 2p+1 is also prime. The partner need
-  // not be inside the grid — 131 qualifies because 263 is prime, even though
-  // 263 is not selectable. The family is defined by the property, not by what
-  // the panel happens to offer.
-  germain: P.filter(p => isPrimeNumber(2 * p + 1)),
-  happy:   P.filter(isHappy),
+// TWO sets per family, and the distinction matters.
+//
+//   SERIES.x  — every prime up to 1000 with the property. This is what gets
+//               GILDED: a series should light all of its members that fit on
+//               the figure, not just the handful the panel happens to offer.
+//   FAM.x     — the members inside the selectable grid. This is what TRIGGERS
+//               an achievement, because a predicate like isExactly() can only
+//               ask for primes a player is able to switch on.
+//
+// DEV: computing the property over the full range rather than within the grid
+// also changes which IN-GRID primes qualify, and that is a correction rather
+// than a side effect. 131 is a sexy prime — 137 is six away and prime — but the
+// old within-the-grid definition denied it, because 137 is the one prime the
+// panel does not offer. Same for 107 and 113 as emirps: 701 and 311 are prime,
+// they were simply out of view. The property belongs to the number, not to the
+// user interface.
+const P1000 = [];
+for (let n = 2; n <= TROPHY_N; n++) if (isPrimeNumber(n)) P1000.push(n);
+const P1000SET = new Set(P1000);
+
+const gap = (d) => P1000.filter(p => P1000SET.has(p - d) || P1000SET.has(p + d));
+
+export const SERIES = {
+  twins:   gap(2),
+  cousins: gap(4),
+  sexy:    gap(6),
+  // EDU: p is a Sophie Germain prime when 2p+1 is also prime. 2p+1 may be well
+  // past the end of the figure — that is fine, the property is about p.
+  germain: P1000.filter(p => isPrimeNumber(2 * p + 1)),
+  happy:   P1000.filter(isHappy),
   // EDU: an emirp is a prime whose digits reversed give a DIFFERENT prime.
   // "Emirp" is "prime" spelled backwards.
-  emirp:   P.filter(p => reverseNum(p) !== p && isPrimeNumber(reverseNum(p)) && PSET.has(reverseNum(p))),
+  emirp:   P1000.filter(p => reverseNum(p) !== p && isPrimeNumber(reverseNum(p))),
   // EDU: Euler's polynomial n^2 + n + 41 is prime for every n from 0 to 39.
-  // Feeding it 0..9 lands exactly ten primes, and n = 10 gives 151, which falls
-  // off the end of the grid — the run terminates on its own.
-  euler:   Array.from({ length: 10 }, (_, n) => n * n + n + 41),
-  fibPrimes:     FIB_NODES.filter(n => PSET.has(n) && isPrimeNumber(n)),
-  lucasPrimes:   LUCAS_NODES.filter(n => PSET.has(n) && isPrimeNumber(n)),
-  perfectPrimes: [...new Set(PERFECT_NODES.flatMap(primeFactorsOf))].sort((a, b) => a - b),
+  // Thirty-one of those values fit under 1000; the run does not break until
+  // n = 40, well past the edge of the figure.
+  euler:   Array.from({ length: 40 }, (_, n) => n * n + n + 41).filter(v => v <= TROPHY_N),
+  fib:     FIB_NODES.filter(isPrimeNumber),
+  lucas:   LUCAS_NODES.filter(isPrimeNumber),
+  perfect: [...new Set(PERFECT_NODES.flatMap(primeFactorsOf))].sort((a, b) => a - b),
+};
+
+// The selectable members — what a predicate is allowed to ask for.
+const inGrid = xs => xs.filter(p => PSET.has(p));
+
+export const FAM = {
+  twins:   inGrid(SERIES.twins),
+  cousins: inGrid(SERIES.cousins),
+  sexy:    inGrid(SERIES.sexy),
+  germain: inGrid(SERIES.germain),
+  happy:   inGrid(SERIES.happy),
+  emirp:   inGrid(SERIES.emirp),
+  euler:   inGrid(SERIES.euler),
+  fibPrimes:     inGrid(SERIES.fib),
+  lucasPrimes:   inGrid(SERIES.lucas),
+  perfectPrimes: inGrid(SERIES.perfect),
 };
 
 // ============================================================
@@ -193,17 +227,17 @@ export const ACHIEVEMENT_DEFS = [
   // ---- families: named number sets, marked on the figure ----
   d('fibonacci', 'FIBONACCI!', 'How nature counts.', 'state', FIB_NODES),
   d('perfect', 'PERFECT!', 'Equal to the sum of its own parts.', 'state',
-    [...FAM.perfectPrimes, ...PERFECT_NODES]),
+    [...SERIES.perfect, ...PERFECT_NODES]),
   d('ramanujan', 'RAMANUJAN!', 'More factors than anything smaller.', 'state', HCN_NODES),
   d('lucas', 'LUCAS!', 'Same rule, different start.', 'state', LUCAS_NODES),
   d('squares', 'SQUARES!', 'Evenly spaced, all the way out.', 'state', SQUARE_NODES),
-  d('emirp', 'EMIRP!', 'Prime, backwards.', 'state', FAM.emirp),
-  d('twinning', 'TWINNING!', 'Two apart, forever.', 'state', FAM.twins),
-  d('cousins', 'COUSINS!', 'Close, but not that close.', 'state', FAM.cousins),
-  d('sexy', 'SEXY!', "It's Latin. Honestly.", 'state', FAM.sexy),
-  d('germain', 'GERMAIN!', 'p, and twice p plus one.', 'state', FAM.germain),
-  d('happy', 'HAPPY!', 'Square the digits. Repeat.', 'state', FAM.happy),
-  d('euler', 'EULER!', "He's everywhere!", 'state', FAM.euler),
+  d('emirp', 'EMIRP!', 'Prime, backwards.', 'state', SERIES.emirp),
+  d('twinning', 'TWINNING!', 'Two apart, forever.', 'state', SERIES.twins),
+  d('cousins', 'COUSINS!', 'Close, but not that close.', 'state', SERIES.cousins),
+  d('sexy', 'SEXY!', "It's Latin. Honestly.", 'state', SERIES.sexy),
+  d('germain', 'GERMAIN!', 'p, and twice p plus one.', 'state', SERIES.germain),
+  d('happy', 'HAPPY!', 'Square the digits. Repeat.', 'state', SERIES.happy),
+  d('euler', 'EULER!', "He's everywhere!", 'state', SERIES.euler),
 
   // ---- the capstone ----
   // DEV: node 1 has an empty factorisation, so the derivation rule would light
