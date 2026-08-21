@@ -316,6 +316,7 @@ function sweepState() {
 const SAMPLE_HZ = 5;
 let sampleAcc = 0;
 const _scratch = new THREE.Vector3();
+const _v = new THREE.Vector3();
 
 // OOPS!. Counts nodes further than twice their rest distance from the Sun.
 // lengthSq throughout, so no square roots: comparing d^2 > 4 * r^2 is the same
@@ -471,16 +472,20 @@ function queueToast(a) {
 // ============================================================
 // DEV: this lives here, not in core/renderer.js, and that is the point. The
 // architecture claim is that nothing else in the app knows an achievement
-// exists, and a `if (isGilded(n))` branch inside buildScene() would end it.
-// Instead the module takes the nodes it is handed in build() and repaints the
-// ones it cares about. The renderer stays ignorant.
-//
-// Each node's original colour is stashed on first touch so the view can be
-// switched off without a rebuild. `nd.moduleData` exists for exactly this.
+// exists, and an `if (isGilded(n))` branch inside buildScene() would end it.
+// The module repaints the meshes it is handed instead. The renderer stays
+// ignorant.
 const GOLD = { r: 1.0, g: 0.78, b: 0.28 };
-const DIM = 0.16;   // what a non-gilded node fades to while the view is on
+// Non-gilded nodes go COLOURLESS rather than dimmed-in-their-own-hue. A dark
+// red 2-node and a dark blue 5-node still read as red and blue, and the whole
+// point of the view is that colour now means "earned" and nothing else.
+const GREY = 0.085;
+// Thick enough to read as deliberate against hairline neighbours at lineWidth 0.
+const GILDED_LINE_WIDTH = 2.2;
 
 let nodesRef = [];
+let curveRefs = [];
+let focusId = null;          // the achievement currently being inspected
 
 function stash(nd) {
   if (nd.moduleData.achStash) return nd.moduleData.achStash;
@@ -489,14 +494,25 @@ function stash(nd) {
     color: nd.baseColor ? nd.baseColor.clone() : null,
     emissive: m?.emissive ? m.emissive.clone() : null,
     emissiveIntensity: m?.emissiveIntensity ?? 0,
+    scale: nd.mesh ? nd.mesh.scale.x : 1,
   };
   return nd.moduleData.achStash;
 }
 
-// Dakota's brief: "all gold nodes and lines should be fully overpowering when
-// in that mode." So gilded nodes are not merely tinted — they are pushed to a
-// flat gold and given emissive of their own, and everything else is dropped
-// most of the way to black so the gold is the only thing left in the picture.
+// The parastichy curves are Line2 objects the renderer adds straight to the
+// scene; they are not in ctx.nodes and nothing exports them. They do carry
+// userData.prime, which is enough to find them without touching core/.
+function collectCurves(scene) {
+  curveRefs = [];
+  if (!scene) return;
+  for (const o of scene.children) {
+    const p = o.userData?.prime;
+    if (typeof p === 'number' && o.material && o.userData.baseColor) {
+      curveRefs.push({ line: o, prime: p, origWidth: o.material.linewidth });
+    }
+  }
+}
+
 function paintGilding(on) {
   for (const nd of nodesRef) {
     const mesh = nd.mesh;
@@ -508,6 +524,7 @@ function paintGilding(on) {
       if (orig.color) { mesh.material.color.copy(orig.color); nd.baseColor?.copy(orig.color); }
       if (orig.emissive) mesh.material.emissive.copy(orig.emissive);
       mesh.material.emissiveIntensity = orig.emissiveIntensity;
+      mesh.scale.setScalar(orig.scale);
       continue;
     }
 
@@ -519,20 +536,129 @@ function paintGilding(on) {
         mesh.material.emissiveIntensity = 0.85;
       }
     } else {
-      const c = orig.color;
-      const r = (c ? c.r : 0.2) * DIM, g = (c ? c.g : 0.2) * DIM, b = (c ? c.b : 0.2) * DIM;
-      mesh.material.color.setRGB(r, g, b);
-      nd.baseColor?.setRGB(r, g, b);
+      mesh.material.color.setRGB(GREY, GREY, GREY);
+      nd.baseColor?.setRGB(GREY, GREY, GREY);
       if (mesh.material.emissive) {
         mesh.material.emissive.setRGB(0, 0, 0);
         mesh.material.emissiveIntensity = 0;
       }
     }
   }
+
+  // Curves. A prime's line goes gold only when the prime is FULLY OWNED — every
+  // achievement that gilds it earned — which is the same conjunction the nodes
+  // use. Thickness is set here because the renderer only rewrites line COLOUR
+  // per frame, never width, so a value written at build time survives.
+  const g = getGild();
+  for (const c of curveRefs) {
+    const owned = on && g.ownedPrimes.has(c.prime);
+    c.line.material.linewidth = owned ? GILDED_LINE_WIDTH : c.origWidth;
+  }
+}
+
+// DEV: the colour half of curve gilding has to run EVERY FRAME, and that is not
+// laziness. core/renderer.js rewrites every line's material.color from its
+// liveColor and then applies the thickness fade — and at lineWidth 0, which is
+// what the trophy room sets, that fade multiplies everything down to 0.05 of
+// its brightness. A gold written at build time would be black by the next
+// frame. Module animate() runs after that pass and before render(), so this is
+// the one place the value survives. At most 32 lines, so the cost is nothing.
+function paintCurvesNow() {
+  if (state._gildView !== true) return;
+  const g = getGild();
+  for (const c of curveRefs) {
+    if (!g.ownedPrimes.has(c.prime)) continue;
+    c.line.material.color.setRGB(GOLD.r, GOLD.g, GOLD.b);
+    // Width belongs here too, not only in paintGilding(). The trophy room
+    // clicks prime buttons on its way in, and each click queues a rebuild that
+    // recreates every line material at the GLOBAL thickness — which the room
+    // has just set to zero. A width written once at build time is gone by the
+    // next rebuild; written here it cannot be.
+    c.line.material.linewidth = GILDED_LINE_WIDTH;
+  }
 }
 
 function refreshGilding() {
   paintGilding(state._gildView === true);
+}
+
+// ============================================================
+// FOCUS — inspecting one achievement
+// ============================================================
+// Tapping an earned row asks "which numbers is this one responsible for?" and
+// the answer is drawn on the figure: its nodes swell, take an aura, and are
+// labelled. Everything else stays where it is.
+//
+// DEV: scale and emissive are re-asserted every frame for the same reason the
+// curve colour is — the renderer's pulse and colour-drift passes own those
+// properties and would win otherwise. The focused set is small by construction
+// (the largest is SQUARES! at thirty), so this is a short loop.
+let labelLayer = null;
+const _proj = { x: 0, y: 0 };
+
+function ensureLabelLayer() {
+  if (labelLayer) return labelLayer;
+  labelLayer = document.createElement('div');
+  labelLayer.id = 'ach-labels';
+  document.body.appendChild(labelLayer);
+  return labelLayer;
+}
+
+export function setFocus(id) {
+  if (focusId === id) id = null;               // tapping the same row again clears it
+  focusId = id;
+  if (!focusId && labelLayer) labelLayer.innerHTML = '';
+  refreshGilding();
+  emit('achievements:focusChanged', { id: focusId });
+  return focusId;
+}
+
+export function getFocus() { return focusId; }
+
+function focusNodeSet() {
+  if (!focusId) return null;
+  const a = BY_ID.get(focusId);
+  if (!a) return null;
+  return new Set(a.gildNodes);
+}
+
+function paintFocusNow(ctx) {
+  const set = focusNodeSet();
+  const layer = labelLayer;
+  if (!set) return;
+  if (!ctx?.camera || !nodesRef.length) return;
+
+  const layerEl = ensureLabelLayer();
+  const cam = ctx.camera;
+  const el = document.getElementById('viewport');
+  const W = el ? el.clientWidth : innerWidth;
+  const H = el ? el.clientHeight : innerHeight;
+
+  // A gentle breathing pulse so the highlighted set reads as selected rather
+  // than merely large.
+  const beat = 1.35 + Math.sin((ctx.time || 0) * 3.2) * 0.12;
+
+  const wanted = [];
+  for (const nd of nodesRef) {
+    if (!set.has(nd.n) || !nd.mesh) continue;
+    const orig = stash(nd);
+    nd.mesh.scale.setScalar(orig.scale * beat);
+    if (nd.mesh.material.emissive) {
+      nd.mesh.material.emissive.setRGB(1.0, 0.9, 0.5);
+      nd.mesh.material.emissiveIntensity = 1.5;
+    }
+    nd.mesh.material.color.setRGB(1.0, 0.94, 0.72);
+
+    _v.copy(nd.mesh.position).project(cam);
+    if (_v.z > 1) continue;                                   // behind the camera
+    wanted.push({ n: nd.n, x: (_v.x * 0.5 + 0.5) * W, y: (-_v.y * 0.5 + 0.5) * H });
+  }
+
+  // Rebuilt rather than diffed: the set is at most thirty elements and it turns
+  // over completely whenever the focus changes.
+  layerEl.innerHTML = wanted
+    .map(p => `<span class="ach-label" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px">${p.n}</span>`)
+    .join('');
 }
 
 // ============================================================
@@ -576,8 +702,8 @@ function applyTrophyRoom() {
   setEl('n-slider', Math.min(TROPHY_N, +($('n-slider')?.max || TROPHY_N)));
   setEl('show-all-integers', true, 'checked');
   setEl('show-curves', true, 'checked');
-  setEl('line-width', 0.5);
-  setEl('node-size', 0.7);
+  setEl('line-width', 0);
+  setEl('node-size', 0.6);
   setEl('pulse', false, 'checked');
   setEl('line-pulse', false, 'checked');
   setEl('color-drift', false, 'checked');
@@ -587,21 +713,63 @@ function applyTrophyRoom() {
 
   // Displays next to the sliders are written by hand, exactly as Dazzle does.
   const disp = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-  disp('node-size-display', '0.7');
-  disp('line-width-display', '0.5');
+  disp('node-size-display', '0.6');
+  disp('line-width-display', '0');
   disp('drift-speed-display', '0.15');
   disp('n-display', String(TROPHY_N));
 
   // Nearly a sphere, nudged toward the disk, and held there rather than
   // morphing: the rotation is the movement in this view.
   update({
-    N: TROPHY_N, showAllIntegers: true, showCurves: true, lineWidth: 0.5,
-    nodeSize: 0.7, pulse: false, linePulse: false, colorDrift: false,
+    N: TROPHY_N, showAllIntegers: true, showCurves: true, lineWidth: 0,
+    nodeSize: 0.6, pulse: false, linePulse: false, colorDrift: false,
     angleDrift: false, autoRotate: true, driftSpeed: 0.15,
     dimension: 1.6, shapeDrift: false, _gildView: true,
   });
 
   const g = $('gilding-toggle'); if (g) g.checked = true;
+
+  // SELECT THE OWNED PRIMES. This is not cosmetic: core/renderer.js only builds
+  // a parastichy curve for a prime that is SELECTED, so a fully-owned prime
+  // whose button is off has no line in the scene and there is nothing to gild.
+  // Reset leaves {2,3,5}, which is why the 89 line was missing when the whole
+  // point of NEAT! is that 89's line goes gold.
+  //
+  // Done by clicking the real buttons rather than by setting classes, because
+  // updateSelectedPrimes() is private to panel.js and clicking is what drives
+  // it. A programmatic click is untrusted, so SIXSEVEN! cannot fire from this.
+  //
+  // The grid is expanded first for the reason panel.js already gives about its
+  // All button: a prime switched on but hidden colours the figure with no way
+  // to see or unset it.
+  const owned = getGild().ownedPrimes;
+  if (owned.size) {
+    const more = $('more-btn');
+    for (let i = 0; i < 6 && more && more.textContent !== 'Less'; i++) more.click();
+    for (const b of document.querySelectorAll('#prime-grid .prime-btn')) {
+      const p = +b.dataset.prime;
+      const want = owned.has(p);
+      if (b.classList.contains('active') !== want) b.click();
+    }
+  }
+
+  // NODE SIZE IS CLAIMED LAST, and it has to be. panel.js derives node size
+  // from N automatically until the user touches the slider, and every prime
+  // click above runs updateN(), which re-derives it — landing on 0.4 for
+  // N=1000 and quietly overwriting the 0.6 set earlier in this function. That
+  // is the same trap applyDazzle() documents ("claim the node size BEFORE
+  // updateN() runs"); the trophy room needs the opposite order because its
+  // prime clicks come after.
+  //
+  // Dispatching `input` rather than assigning .value is the point: the panel's
+  // own handler is what sets its private nodeSizeUserSet flag, and without that
+  // the auto curve takes the value back on the next rebuild. Untrusted, so
+  // BOPHADES! cannot fire from it — and it wants 2.0 anyway, not 0.6.
+  const ns = $('node-size');
+  if (ns) {
+    ns.value = 0.6;
+    ns.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 }
 
 // ============================================================
@@ -646,6 +814,26 @@ function buildSection() {
   gild.innerHTML = '<input type="checkbox" id="gilding-toggle">' +
                    '<span class="toggle-track"></span>Show gilding';
   content.appendChild(gild);
+
+  const bulk = document.createElement('div');
+  bulk.style.cssText = 'display:flex; gap:6px; margin-top:6px;';
+  // DEV: these drive the GILD selection — which earned achievements are being
+  // shown — not the highlight. Tapping a row is the highlight, and the two are
+  // deliberately separate controls for two separate questions.
+  for (const [label, all] of [['Show all', true], ['Show none', false]]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.className = 'ach-bulk';
+    b.addEventListener('click', () => {
+      const earnedIds = ACHIEVEMENTS.filter(a => ledger.unlocked[a.id]).map(a => a.id);
+      setEnabled(all ? earnedIds : []);
+      refreshGilding();
+      renderList();
+    });
+    bulk.appendChild(b);
+  }
+  content.appendChild(bulk);
 
   const snd = document.createElement('label');
   snd.className = 'toggle';
@@ -701,7 +889,8 @@ function renderList() {
   for (const a of ACHIEVEMENTS) {
     const got = !!ledger.unlocked[a.id];
     const row = document.createElement('div');
-    row.className = 'ach-row ' + (got ? 'earned' : 'locked');
+    row.className = 'ach-row ' + (got ? 'earned' : 'locked')
+      + (focusId === a.id ? ' focused open' : '');
 
     // The checkbox is the mix-and-match control: it decides whether this
     // achievement's gilding is SHOWN, not whether it is earned. Locked rows
@@ -734,13 +923,20 @@ function renderList() {
            : `<div class="ach-hint">${a.hint}</div>`) +
       (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '');
 
-    if (got && a.blurb) {
+    if (got) {
       row.classList.add('expandable');
       row.addEventListener('click', (e) => {
         // The checkbox is a control in its own right and must not double as a
-        // disclosure toggle.
+        // disclosure toggle: ticking it decides whether this achievement's gold
+        // is SHOWN, tapping the row decides which one is being INSPECTED.
         if (e.target.tagName === 'INPUT') return;
-        row.classList.toggle('open');
+        const nowFocused = setFocus(a.id);
+        row.classList.toggle('open', nowFocused === a.id);
+        // Only one row is ever open, because only one can be highlighted.
+        for (const other of listEl.querySelectorAll('.ach-row')) {
+          if (other !== row) other.classList.remove('open', 'focused');
+        }
+        row.classList.toggle('focused', nowFocused === a.id);
       });
     }
 
@@ -773,10 +969,16 @@ const mod = {
   // is on.
   build(ctx) {
     nodesRef = ctx.nodes || [];
+    collectCurves(ctx.scene);
     refreshGilding();
   },
 
   animate(ctx) {
+    // These two run every frame, ahead of the tracking gate: they are display,
+    // not scoring, and they must survive the renderer's own per-frame passes.
+    paintCurvesNow();
+    if (focusId) paintFocusNow(ctx);
+
     if (!ready || !ledger.on) return;
     sampleAcc += ctx.dt || 0;
     if (sampleAcc < 1 / SAMPLE_HZ) return;
