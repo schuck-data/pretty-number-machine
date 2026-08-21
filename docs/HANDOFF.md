@@ -4,10 +4,28 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15, revised the same day when the scaffold spike landed.
-**The web app is feature-complete, and it now also builds and runs as an Android
-app. The work ahead is turning that into a Play Store game — see
-`ANDROID-BUILD.md`.**
+**Written:** 2026-08-15. **Last revised: 2026-08-21**, when the achievement
+layer was finished.
+
+**The web app is feature-complete; it builds and runs as an Android app; and the
+achievement layer is built, working and verified on a Pixel 7 and a Pixel 9. The
+work ahead is connecting it to Play Games Services and getting it into the
+store — see `ANDROID-BUILD.md`.**
+
+**Reading order for someone picking this up cold:**
+
+1. This document, all of it. It is short and it is the only thing that claims to
+   be current.
+2. `ANDROID-BUILD.md` **§9** — the trap list. Every entry cost real time. Read it
+   before debugging anything that looks like a build not taking effect.
+3. `ACHIEVEMENTS.md` if the work is achievement-shaped, which most of the
+   remaining work is. Its §4 is a second trap list, for that layer.
+4. `ANDROID-BUILD.md` §5 for the next technical step, §6 for the Play Console
+   sequence.
+
+Everything else in `docs/` is history. Appendix B says which parts of each are
+still true. **Where any document disagrees with the code, the code is right and
+the document should be fixed.**
 
 ---
 
