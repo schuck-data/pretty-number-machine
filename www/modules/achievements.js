@@ -480,8 +480,23 @@ const GOLD = { r: 1.0, g: 0.78, b: 0.28 };
 // red 2-node and a dark blue 5-node still read as red and blue, and the whole
 // point of the view is that colour now means "earned" and nothing else.
 const GREY = 0.085;
-// Thick enough to read as deliberate against hairline neighbours at lineWidth 0.
-const GILDED_LINE_WIDTH = 2.2;
+// A gilded line is a DELICATE THREAD, not a highlight. At 2.2 it overpowered
+// the figure it was drawn on — the gold is meant to trace the arithmetic, not
+// shout over it.
+//
+// So gilding does NOT touch thickness at all: a gilded curve is exactly as
+// thick as every other curve, and colour alone tells them apart. In the trophy
+// room that is the hairline minimum, because the room sets lineWidth 0 and
+// core/renderer.js floors it at LINE_MIN_THICKNESS — "never zero, or the line
+// vanishes". Forcing a width here instead would have made gilded lines THINNER
+// than their neighbours anywhere the slider was up, which is the opposite of
+// the intent.
+//
+// Darker than the node gold, and deliberately so: a line is a continuous run of
+// lit pixels where a node is an isolated dot, so the same value reads far
+// brighter stretched along a curve. Muted antique gold, legible against the
+// near-black of the ungilded lines without glowing.
+const GOLD_LINE = { r: 0.58, g: 0.42, b: 0.13 };
 
 let nodesRef = [];
 let curveRefs = [];
@@ -508,7 +523,7 @@ function collectCurves(scene) {
   for (const o of scene.children) {
     const p = o.userData?.prime;
     if (typeof p === 'number' && o.material && o.userData.baseColor) {
-      curveRefs.push({ line: o, prime: p, origWidth: o.material.linewidth });
+      curveRefs.push({ line: o, prime: p });
     }
   }
 }
@@ -549,11 +564,10 @@ function paintGilding(on) {
   // achievement that gilds it earned — which is the same conjunction the nodes
   // use. Thickness is set here because the renderer only rewrites line COLOUR
   // per frame, never width, so a value written at build time survives.
-  const g = getGild();
-  for (const c of curveRefs) {
-    const owned = on && g.ownedPrimes.has(c.prime);
-    c.line.material.linewidth = owned ? GILDED_LINE_WIDTH : c.origWidth;
-  }
+  // Nothing to do for curve WIDTH — see the note on GOLD_LINE. Colour is
+  // re-asserted every frame in paintCurvesNow(), because the renderer rewrites
+  // it from liveColor and then fades it.
+
 }
 
 // DEV: the colour half of curve gilding has to run EVERY FRAME, and that is not
@@ -568,13 +582,7 @@ function paintCurvesNow() {
   const g = getGild();
   for (const c of curveRefs) {
     if (!g.ownedPrimes.has(c.prime)) continue;
-    c.line.material.color.setRGB(GOLD.r, GOLD.g, GOLD.b);
-    // Width belongs here too, not only in paintGilding(). The trophy room
-    // clicks prime buttons on its way in, and each click queues a rebuild that
-    // recreates every line material at the GLOBAL thickness — which the room
-    // has just set to zero. A width written once at build time is gone by the
-    // next rebuild; written here it cannot be.
-    c.line.material.linewidth = GILDED_LINE_WIDTH;
+    c.line.material.color.setRGB(GOLD_LINE.r, GOLD_LINE.g, GOLD_LINE.b);
   }
 }
 
