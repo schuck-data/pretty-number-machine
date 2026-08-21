@@ -94,7 +94,11 @@ and once a native shell exists Capacitor is the standard way to have one.
 ## 1. The next action
 
 **`ANDROID-BUILD.md` §5 step 4 — Play Games Services.** Steps 1, 2 and 3 are
-done; step 3 landed 2026-08-20 along with the achievement design it depended on.
+done. Step 3 landed 2026-08-20, and on 2026-08-21 the achievement layer was
+finished well past what that step called for: the trophy room, the gilding
+render, the achievements panel, the unlock toast and sound, and a headless
+checker. **`docs/ACHIEVEMENTS.md` is the design record for all of it** — read
+that before touching anything achievement-shaped.
 
 Step 4 means choosing a PGS plugin (§4 lists candidates and the escape hatch),
 then filling in `getGamesPlugin()` in `www/platform/index.js` and pasting the
@@ -103,8 +107,15 @@ should need to change: everything already runs against the adapter, and the
 in-memory fallback keeps a browser working.
 
 **The achievement design is settled** — 40 of them, 1,800 of the 2,000 XP with
-200 held back, recorded in `docs/achievements-design.xlsx`. The Play Console
-still has to be told about them, which is §6 and Dakota's.
+200 held back. The Play Console still has to be told about them, which is §6
+and Dakota's, and there is **one decision to make before creating them**:
+standard achievements show their description to players before they are earned,
+which would undo the in-app concealment. See `ACHIEVEMENTS.md` §5.
+
+`docs/achievements-design.xlsx` is **history**. It was the working surface while
+the list was being designed and it predates the final gilding rule, so its
+numbers are stale. The code is the source of truth; `node tools/achievements-table.mjs`
+prints the current copy.
 
 **Work done after step 2, all on `capacitor-spike` and all in `www/` only.**
 The branch has moved on since the strip, and none of it is part of the numbered
@@ -325,6 +336,9 @@ two more of these.
 | `modules/physics.js` | 580 | Drag and spring simulation. The only module that **writes** node positions |
 | `modules/info.js` | 390 | Tap/right-click a node for its maths. Owns the tooltip |
 | `modules/lens.js` | 305 | The classroom lens: chalkboard layer, projected HTML labels, tap-for-info |
+| `modules/achievements.js` | ~800 | The ledger, predicates, panel section, toast, sound, gilding paint. See `ACHIEVEMENTS.md` |
+| `modules/achievements-data.js` | ~430 | The number sets, definitions and gilding rule. **No Three.js** — checkable headlessly |
+| `platform/index.js` | ~250 | The native adapter and the store-id map. Not a module; imported by achievements.js |
 
 A module is an object with any of `init(ctx)`, `beforeBuild(ctx)`, `build(ctx)`,
 `animate(ctx)`, `destroy()`, plus `enabled` and an optional `controls` array
@@ -408,7 +422,9 @@ by driving a real browser by hand, and two real bugs were found that way.
 | Document | Read it for | Status |
 |---|---|---|
 | `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Steps 1–2 executed 2026-08-15; §9 is the trap list and is worth reading first |
+| `ACHIEVEMENTS.md` | **The achievement layer.** The gilding rule and why it is a conjunction, the trophy room, how an unlock is detected, the traps, and the open questions | Current, 2026-08-21 |
 | `CODE-NOTES.md` | The two comment layers in `www/` — `DEV:` for implementation, `EDU:` for the mathematics — and where the mathematics actually lives | Current, 2026-08-15 |
+| `achievements-design.xlsx` | The list as it was being designed | **History.** Predates the final gilding rule; numbers are stale. Use `tools/achievements-table.mjs` |
 | `PLAN.md` | The charter, the project's history and reasoning, the gotchas learned building the web app | History. Predates v1; its Burst 6 (TWA via Bubblewrap) is superseded |
 | `V1-PLAN.md` | Why each v1 change was made; which performance claims were measured versus judged | History. All items closed. Its references to a paid TWA are superseded |
 | `archive/PLAY-STORE-HANDOFF.md` | The TWA / paid-app plan, in full | **Superseded 2026-08-15.** Kept for the asset-links and Play-deadline reasoning only |
