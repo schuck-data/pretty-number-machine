@@ -179,17 +179,18 @@ const CUSTOM = {
 
 // A declared trigger becomes a test without anybody writing one.
 //
-// DEV: a dial reads `state.N` and NOT resolveN(), and the difference is a real
-// bug that got caught on the way in. When the player has not set a range
-// explicitly, resolveN() returns the PRODUCT of the selected primes (capped at
-// 500) — so selecting {5, 61} makes resolveN() 305, and VICE! would have
-// unlocked with nobody dialling anything. {5, 83} did the same to BAY!. The
-// other nine dials were saved only by the 500 cap, which is luck rather than
-// design. `state.N` is null until the range is set by hand, which is exactly
-// what "dial it" means.
+// DEV: a dial reads resolveN(), which is the range the figure is ACTUALLY
+// drawn at, and that is a deliberate choice rather than an oversight. When the
+// player has not set a range by hand, resolveN() derives one from the product
+// of the selected primes (clamped at 500), so selecting {5, 61} puts the figure
+// at 305 and unlocks VICE! with nobody having dialled anything. Only two dials
+// are within reach that way — 305 and 415; every other dial number is either
+// prime or above the clamp — and stumbling into one is a fine way to find it.
+// tools/check-achievements.mjs pins which two, so if the list grows and a third
+// appears it is a decision rather than a surprise.
 function generatedTest(def) {
   if (def.sel) return () => isExactly(def.sel);
-  if (def.range != null) return () => state.N === def.range;
+  if (def.range != null) return () => resolveN() === def.range;
   return null;
 }
 
@@ -709,10 +710,46 @@ function ensureLabelLayer() {
   return labelLayer;
 }
 
+// Tapping a locked row is supposed to show you what it will gild. That only
+// works if the node is ON the figure, and at the default range of 30 it usually
+// is not: 64 of the 101 have nothing to show there, including every dial and
+// almost the whole Culture branch. Half the clue design is a preview that mostly
+// previewed nothing.
+//
+// So focusing raises the range far enough to reach the set, and clearing the
+// focus puts it back exactly as it was.
+//
+// DEV: NOT for range-triggered achievements. Their gilded node IS their trigger,
+// so raising the range to show you the answer would award the achievement you
+// were peeking at — you would tap HELP! to read its clue and be handed HELP!.
+// The eleven dials and SIT! therefore preview only when the figure already
+// reaches them, which is exactly the moment the player has done the thing
+// anyway. Everything else raises freely.
+// DEV: `undefined` means nothing saved; `null` is a SAVED value and a common
+// one, because state.N is null whenever the range is being auto-derived from
+// the selected primes. Conflating the two meant the range never went back.
+let rangeBeforeFocus;
+
+function fitRangeTo(a) {
+  if (!a || a.range != null) return;            // see the note above
+  const want = Math.max(...a.gildNodes, 0);
+  if (!want || want <= resolveN()) return;
+  if (rangeBeforeFocus === undefined) rangeBeforeFocus = state.N ?? null;
+  update({ N: Math.min(want, TROPHY_N) });
+}
+
+function restoreRange() {
+  if (rangeBeforeFocus === undefined) return;
+  const back = rangeBeforeFocus;
+  rangeBeforeFocus = undefined;
+  update({ N: back });
+}
+
 export function setFocus(id) {
   if (focusId === id) id = null;               // tapping the same row again clears it
   focusId = id;
   if (!focusId && labelLayer) labelLayer.innerHTML = '';
+  focusId ? fitRangeTo(BY_ID.get(focusId)) : restoreRange();
   refreshGilding();
   emit('achievements:focusChanged', { id: focusId });
   return focusId;

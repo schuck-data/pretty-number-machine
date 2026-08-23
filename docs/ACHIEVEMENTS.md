@@ -379,20 +379,36 @@ before concluding anything.
 
 **`resolveN()` is not the range the player set.** When `state.N` is null — and
 it is null until somebody sets the range by hand — `resolveN()` returns the
-**product of the selected primes**, capped at 500. A dial tested against it
-therefore fires with nobody dialling: `{5, 61}` makes 305 and handed out VICE!,
-`{5, 83}` makes 415 and handed out BAY!. The other nine dials escaped only
-because their numbers sit above the 500 cap, which is luck and not design. Dial
-predicates read `state.N`. `tools/check-achievements.mjs` records the blast
-radius so a future edit that swaps it back is caught.
+**product of the selected primes**, clamped at 500. Nothing else in the app
+makes that substitution and it is easy to write a predicate assuming otherwise.
 
-**A stale console will send you hunting a bug that is not there.** Opening the
-preview at the site root registers the *shipped* build's service worker at scope
-`/`, which then swallows `/www/`. Unregistering it and reloading fixes the page
-— but the captured console keeps the original error, with line numbers from a
-document that is no longer being served, and `console.clear()` does not clear
-it. Ten minutes went into chasing a null `addEventListener` that had stopped
-existing. **Open a fresh tab and read that tab's console.**
+For dials it is **accepted behaviour, decided 2026-08-23**: selecting `{5, 61}`
+puts the figure at 305 and unlocks VICE! with nobody having dialled, and
+stumbling into a dial that way is a fine way to find it. Only two are reachable
+— 305 and 415 — because every other dial number is prime or above the clamp.
+`tools/check-achievements.mjs` pins which two, so a third appearing later is a
+decision rather than a surprise.
+
+**A local preview will serve you the SHIPPED build while you think you are
+testing `www/`, and it will do it again every time you restart the server.**
+The repo root is the published site, so a preview server started at the root
+registers the shipped build's service worker at scope `/`. That worker then
+answers `/www/index.html` with the root build's cached HTML. The symptom is a
+page that looks broken in ways your changes cannot explain: an unguarded
+`addEventListener` throwing at a line number that is a CSS comment in the file
+you are editing, and no `[PNM] Failed to load module` alongside it.
+
+**The tell is the version string.** The footer reads `v0.14.5` when you are
+being served the root and `v1.0.0-dev.7` when you are actually on `www/`. Check
+it before believing anything else on the page.
+
+Unregistering the worker and clearing caches fixes it — until the next
+`preview_start`, which opens the root and registers it all over again. Doing
+that once per session is not enough; do it after every server restart.
+
+An hour went into this twice: once diagnosed correctly, once misdiagnosed as a
+stale console buffer, which sent the next debugging round in the wrong
+direction entirely.
 
 **Installing wipes the ledger.** `adb install -r` does not clear the WebView's
 HTTP cache, so `pm clear` is necessary — and it takes the ledger with it. To

@@ -117,16 +117,16 @@ eq('only the recorded exceptions break the factor convention', exceptions, [
 ]);
 
 // ============================================================
-console.log('\n[triggers] a dial must actually be dialled');
-// resolveN() falls back to the PRODUCT of the selected primes, capped at 500,
-// whenever the range has not been set by hand. So a dial tested against
-// resolveN() can fire with nobody dialling: {5,61} makes 305 and {5,83} makes
-// 415, which handed out VICE! and BAY! for free. The predicate reads state.N
-// instead, which is null until a human sets it.
+console.log('\n[triggers] which dials the auto-range can reach');
+// resolveN() falls back to the PRODUCT of the selected primes, clamped at 500,
+// whenever the range has not been set by hand. A dial therefore fires when the
+// figure happens to land on its number, with nobody having dialled — which is
+// ACCEPTED: stumbling into VICE! by selecting {5, 61} is a fine way to find it.
 //
-// This assertion does not test the predicate — it records which dials are
-// within reach of a bare selection, so that if anyone ever swaps state.N back
-// for resolveN() the blast radius is written down rather than rediscovered.
+// The assertion pins WHICH dials that is true of. Only two are in reach, and
+// only because every other dial number is prime or above the clamp. If the list
+// grows and a third appears, this fails and the freebie becomes a decision
+// somebody made rather than one nobody noticed.
 const reachable = [];
 for (const a of A) {
   if (a.range == null) continue;
@@ -142,7 +142,7 @@ for (const a of A) {
 }
 eq('dials a bare prime selection could reach', reachable,
    ['VICE! N=305 <- {5,61}', 'BAY! N=415 <- {5,83}']);
-ok('...which is why the dial predicate reads state.N, not resolveN()');
+ok('...accepted 2026-08-23: the auto-range is a legitimate way to trip a dial');
 
 // ============================================================
 console.log('\n[sets] the computed families');
