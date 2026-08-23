@@ -90,6 +90,9 @@ export const DOM_BINDINGS = {
   bophades:   { selector: '#node-size', event: 'input' },
   maximalist: { selector: '#n-slider',  event: 'input' },
   trippy:     { selector: '#dazzle-btn', event: 'click' },
+  // See the note on the definition: the golden angle is the DEFAULT, so a state
+  // test would award PHI! before the player had done anything at all.
+  phi:        { selector: '#divergence-reset', event: 'click' },
   // REST! is the only achievement that touches the transport. Bound to the
   // button rather than to `state.paused`, because scrubbing pauses the morph as
   // a side effect and Reset writes the flag directly — neither should award it.
@@ -165,7 +168,7 @@ const CUSTOM = {
   // ---- Greeks. Constants as ANGLES rather than decimal digits: more honest,
   // and the only thing that works, since pi, tau, e and alpha all carry a prime
   // factor above the grid and no selection can reach them.
-  phi: () => nearAngle(state.divergenceAngle, GOLDEN_ANGLE),
+  phi: () => true,                       // the button press IS the achievement
   pi:  () => nearAngle(state.divergenceAngle, Math.PI),
   tau: () => nearAngle(state.divergenceAngle, Math.PI * 2),
 
@@ -729,27 +732,50 @@ function ensureLabelLayer() {
 // one, because state.N is null whenever the range is being auto-derived from
 // the selected primes. Conflating the two meant the range never went back.
 let rangeBeforeFocus;
+let allIntBeforeFocus;
 
-function fitRangeTo(a) {
+function fitFigureTo(a) {
   if (!a || a.range != null) return;            // see the note above
   const want = Math.max(...a.gildNodes, 0);
-  if (!want || want <= resolveN()) return;
-  if (rangeBeforeFocus === undefined) rangeBeforeFocus = state.N ?? null;
-  update({ N: Math.min(want, TROPHY_N) });
+  if (!want) return;
+
+  // The figure only draws MULTIPLES OF THE SELECTED PRIMES, so raising the
+  // range is not enough on its own. Measured on a Pixel 7: focusing SEXY!,
+  // which gilds 120 primes, put exactly ONE of them on screen — the rest are
+  // primes nobody had selected, so no node existed to highlight. Switching all
+  // integers on is what makes a family preview mean anything.
+  //
+  // DEV: safe against awarding EXHAUSTIVE!, which is a dom trigger guarded by
+  // event.isTrusted. update() changes state without dispatching anything, so
+  // there is no event to be trusted. Verified on device.
+  if (!state.showAllIntegers) {
+    if (allIntBeforeFocus === undefined) allIntBeforeFocus = state.showAllIntegers;
+    update({ showAllIntegers: true });
+  }
+  if (want > resolveN()) {
+    if (rangeBeforeFocus === undefined) rangeBeforeFocus = state.N ?? null;
+    update({ N: Math.min(want, TROPHY_N) });
+  }
 }
 
-function restoreRange() {
-  if (rangeBeforeFocus === undefined) return;
-  const back = rangeBeforeFocus;
-  rangeBeforeFocus = undefined;
-  update({ N: back });
+function restoreFigure() {
+  if (rangeBeforeFocus !== undefined) {
+    const back = rangeBeforeFocus;
+    rangeBeforeFocus = undefined;
+    update({ N: back });
+  }
+  if (allIntBeforeFocus !== undefined) {
+    const back = allIntBeforeFocus;
+    allIntBeforeFocus = undefined;
+    update({ showAllIntegers: back });
+  }
 }
 
 export function setFocus(id) {
   if (focusId === id) id = null;               // tapping the same row again clears it
   focusId = id;
   if (!focusId && labelLayer) labelLayer.innerHTML = '';
-  focusId ? fitRangeTo(BY_ID.get(focusId)) : restoreRange();
+  focusId ? fitFigureTo(BY_ID.get(focusId)) : restoreFigure();
   refreshGilding();
   emit('achievements:focusChanged', { id: focusId });
   return focusId;

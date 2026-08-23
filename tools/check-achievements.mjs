@@ -145,6 +145,27 @@ eq('dials a bare prime selection could reach', reachable,
 ok('...accepted 2026-08-23: the auto-range is a legitimate way to trip a dial');
 
 // ============================================================
+console.log('\n[triggers] nothing may be true at the defaults');
+// An achievement that holds in the app's resting state awards itself the moment
+// tracking is switched on. Two did, and neither was visible without a phone and
+// a real ledger: SPARTA! declares {2,3,5} and DEFAULT_CONFIG.primes IS {2,3,5},
+// and PHI! tested for the golden angle, which is DEFAULT_CONFIG.divergenceAngle.
+//
+// PHI! now binds to the "Reset to φ" button — a thing somebody has to do. This
+// assertion covers the declarative half; a custom predicate that reads a
+// defaulted state key has to be caught by eye.
+const { DEFAULT_CONFIG } = await import(new URL('../www/core/state.js', import.meta.url));
+const defaultSel = [...DEFAULT_CONFIG.primes].sort((a, b) => a - b).join(',');
+const freeAtRest = A.filter(a => a.sel && a.sel.join(',') === defaultSel)
+                    .map(a => `${a.name} declares the default selection {${defaultSel}}`);
+eq('selections that equal the default selection', freeAtRest, [
+  // ACCEPTED: 300 is 2^2 x 3 x 5^2, so its factor trigger is the default and no
+  // other radical is available. Either the number changes or this is a freebie.
+  // Dakota's call — docs/ACHIEVEMENTS.md §12.
+  'SPARTA! declares the default selection {2,3,5}',
+]);
+
+// ============================================================
 console.log('\n[sets] the computed families');
 eq('Fibonacci nodes', D.FIB_NODES, [2,3,5,8,13,21,34,55,89,144,233,377,610,987]);
 eq('Lucas nodes', D.LUCAS_NODES, [2,3,4,7,11,18,29,47,76,123,199,322,521,843]);

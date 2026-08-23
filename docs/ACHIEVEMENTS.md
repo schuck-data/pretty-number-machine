@@ -377,6 +377,14 @@ device. Also: opening the preview at the site root registers the *shipped*
 build's service worker at scope `/`, which then swallows `/www/`. Unregister it
 before concluding anything.
 
+**An achievement that holds at the defaults awards itself.** The moment
+tracking is switched on, every `state` predicate is swept — so anything true of
+the app at rest is free. PHI! tested for the golden angle, which *is*
+`DEFAULT_CONFIG.divergenceAngle`, and awarded itself before the player touched
+anything; it binds to the "Reset to φ" button now. SPARTA! declares `{2,3,5}`,
+which is `DEFAULT_CONFIG.primes`. Neither was visible in a browser with an empty
+ledger — it took a phone with real progress on it.
+
 **`resolveN()` is not the range the player set.** When `state.N` is null — and
 it is null until somebody sets the range by hand — `resolveN()` returns the
 **product of the selected primes**, clamped at 500. Nothing else in the app
@@ -521,6 +529,11 @@ good moment to lift the ledger and enabled-set into a third Three-free file.
 - **`criteria` is the public string.** It is the Play Console description and is
   visible in the Play Games app; the in-app clue is separate and stays cryptic.
   A typo there ships
+- **SPARTA! is free.** 300 is 2²·3·5², so its factor trigger is `{2, 3, 5}` —
+  which is `DEFAULT_CONFIG.primes`, the selection every player starts with and
+  the one Reset restores. It awards itself the moment tracking is switched on.
+  No other radical is available for 300, so either the number changes or it is
+  a deliberate freebie. `tools/check-achievements.mjs` pins it either way
 - **The preview shows nothing when the node is out of range.** Tapping locked
   BEAST! at the default range paints no highlight, because 666 is not on the
   figure. Around half the list gilds a node above 500. Either the preview should

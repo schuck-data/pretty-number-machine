@@ -325,7 +325,14 @@ d(96, 'Dial', 'aloha',      'ALOHA!',      '-island time-',                'Set 
 d(97, 'Dial', 'nola',       'NOLA!',       '-the big easy-',               'Set the range to 504.', [504], range(504));
 
 // ---- CULTURE · GREEKS — constants as angles ----------------------------
-d(98,  'Greeks', 'phi', 'PHI!', '-the angle nature picks-', 'Set the divergence angle to the golden angle.', [161], custom());
+// DEV: PHI! is a DOM trigger and the other two Greeks are not, which looks
+// inconsistent until you check the default: DEFAULT_CONFIG.divergenceAngle IS
+// the golden angle, so a state test for it is true the instant achievements are
+// switched on. Caught on a Pixel 7 — PHI! had awarded itself before the player
+// touched anything. It binds to the "Reset to φ" button instead, which is a
+// thing somebody has to do. π and τ are safe as state tests because neither is
+// a default.
+d(98,  'Greeks', 'phi', 'PHI!', '-the angle nature picks-', 'Set the divergence angle back to the golden angle.', [161], custom('dom'));
 d(99,  'Greeks', 'pi',  'PI!',  '-half a turn-',            'Set the divergence angle to 180 degrees.',      [314], custom());
 d(100, 'Greeks', 'tau', 'TAU!', '-the whole turn-',         'Set the divergence angle to a full turn.',      [628], custom());
 
