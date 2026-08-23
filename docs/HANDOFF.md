@@ -4,8 +4,9 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15. **Last revised: 2026-08-21**, when the achievement
-layer was finished.
+**Written:** 2026-08-15. **Last revised: 2026-08-23**, when the achievement list
+was redesigned from forty to a hundred and one. That redesign is specified and
+**not built** — see §1.
 
 **The web app is feature-complete; it builds and runs as an Android app; and the
 achievement layer is built, working and verified on a Pixel 7 and a Pixel 9. The
@@ -19,7 +20,8 @@ store — see `ANDROID-BUILD.md`.**
 2. `ANDROID-BUILD.md` **§9** — the trap list. Every entry cost real time. Read it
    before debugging anything that looks like a build not taking effect.
 3. `ACHIEVEMENTS.md` if the work is achievement-shaped, which most of the
-   remaining work is. Its §4 is a second trap list, for that layer.
+   remaining work is. Its §8 is a second trap list, for that layer, and its §0
+   says which parts of that document describe built code.
 4. `ANDROID-BUILD.md` §5 for the next technical step, §6 for the Play Console
    sequence.
 
@@ -124,16 +126,24 @@ console-issued ids into the `STORE_IDS` map there. Nothing else in the app
 should need to change: everything already runs against the adapter, and the
 in-memory fallback keeps a browser working.
 
-**The achievement design is settled** — 40 of them, 1,800 of the 2,000 XP with
-200 held back. The Play Console still has to be told about them, which is §6
-and Dakota's, and there is **one decision to make before creating them**:
-standard achievements show their description to players before they are earned,
-which would undo the in-app concealment. See `ACHIEVEMENTS.md` §5.
+**The achievement layer was redesigned on 2026-08-23 and the redesign is not
+built.** The code still does v1 — forty achievements, the conjunction rule, a
+flat list — and that is what runs on the phones. **v2 is a hundred and one
+achievements** in a tree of eleven clusters, with the conjunction dropped, new
+trigger mechanics and an accordion UI. `ACHIEVEMENTS.md` specifies it and marks
+plainly which parts describe built code and which do not.
+`docs/achievements-v6.xlsx` is the authoritative list; `ACHIEVEMENTS.md` §10 is
+the file-by-file implementation brief.
 
-`docs/achievements-design.xlsx` is **history**. It was the working surface while
-the list was being designed and it predates the final gilding rule, so its
-numbers are stale. The code is the source of truth; `node tools/achievements-table.mjs`
-prints the current copy.
+Nothing about step 4 depends on v2 — the adapter and the ledger are unchanged by
+it, and `STORE_IDS` simply grows. But **do not create achievements in the Play
+Console until the list is final**, because they can be added afterwards and
+effectively never removed.
+
+Two decisions still stand before the console is told anything: **standard or
+hidden** (standard achievements show their description before they are earned,
+which would undo the in-app concealment — `ACHIEVEMENTS.md` §12), and whether
+Play Console caps per-achievement XP, since v2 gives UNITY! 500 of the 2,000.
 
 **Work done after step 2, all on `capacitor-spike` and all in `www/` only.**
 The branch has moved on since the strip, and none of it is part of the numbered
@@ -440,9 +450,9 @@ by driving a real browser by hand, and two real bugs were found that way.
 | Document | Read it for | Status |
 |---|---|---|
 | `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Steps 1–2 executed 2026-08-15; §9 is the trap list and is worth reading first |
-| `ACHIEVEMENTS.md` | **The achievement layer.** The gilding rule and why it is a conjunction, the trophy room, how an unlock is detected, the traps, and the open questions | Current, 2026-08-21 |
+| `ACHIEVEMENTS.md` | **The achievement layer.** Both designs: v1 as built, v2 as specified. The gilding rule, clue craft, the accordion, the traps, and the implementation brief | Current, 2026-08-23 |
 | `CODE-NOTES.md` | The two comment layers in `www/` — `DEV:` for implementation, `EDU:` for the mathematics — and where the mathematics actually lives | Current, 2026-08-15 |
-| `achievements-design.xlsx` | The list as it was being designed | **History.** Predates the final gilding rule; numbers are stale. Use `tools/achievements-table.mjs` |
+| `achievements-v6.xlsx` | **The v2 list.** Every achievement's cluster, number, id, name, clue, criteria, gild set and blurb | **Authoritative** for v2. For v1 as built, use `tools/achievements-table.mjs` |
 | `PLAN.md` | The charter, the project's history and reasoning, the gotchas learned building the web app | History. Predates v1; its Burst 6 (TWA via Bubblewrap) is superseded |
 | `V1-PLAN.md` | Why each v1 change was made; which performance claims were measured versus judged | History. All items closed. Its references to a paid TWA are superseded |
 | `archive/PLAY-STORE-HANDOFF.md` | The TWA / paid-app plan, in full | **Superseded 2026-08-15.** Kept for the asset-links and Play-deadline reasoning only |

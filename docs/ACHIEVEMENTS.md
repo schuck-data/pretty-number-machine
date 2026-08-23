@@ -1,23 +1,40 @@
 # Achievements — design and implementation
 
-**Written:** 2026-08-21. **Status: built, working, and verified on a Pixel 7 and
-a Pixel 9.** Not yet connected to Play Games Services — that is
-`ANDROID-BUILD.md` §5 step 4.
+**Written:** 2026-08-21. **Revised 2026-08-23**, when the list was redesigned
+from forty achievements to a hundred and one.
 
-This document is the design record. **The code is the source of truth**;
-anything here that disagrees with `www/modules/achievements-data.js` is wrong
-and should be fixed here. `docs/achievements-design.xlsx` is **history** — it
-was the working surface while the list was being designed and it predates the
-final gilding rule, so do not read numbers out of it. To get the current copy as
-a table, run `node tools/achievements-table.mjs`.
+> **Read this first.** There are two designs in this document and they are not
+> the same thing.
+>
+> **v1 is what the code does.** Forty achievements, the conjunction rule, a flat
+> list. Built, working, and verified on a Pixel 7 and a Pixel 9.
+>
+> **v2 is what this document specifies.** A hundred and one achievements in a
+> tree, no conjunction, new trigger mechanics, an accordion UI. **Designed and
+> not built.** Nothing in §1–§6 exists in `www/` yet.
+>
+> **`docs/achievements-v6.xlsx` is the authoritative list.** Names, clues,
+> criteria, gild sets and blurbs live there, not here. This document is the
+> reasoning; the spreadsheet is the data.
+
+Where this disagrees with the code about **v1**, the code is right and this
+should be fixed. Where it disagrees with the spreadsheet about **v2**, the
+spreadsheet is right.
 
 ---
 
-## 0. What exists
+## 0. Status
 
-Forty achievements, 1,800 of the 2,000 XP Play Games allows, 200 held in
-reserve. All earnable offline and signed out. Nothing is time-limited, nothing
-needs a second player, nothing is unobtainable.
+| | v1 — built | v2 — specified |
+|---|---|---|
+| Count | 40 | **101** |
+| XP | 45 each, 1800 of 2000 | **15 each, UNITY! takes the remaining 500** |
+| Grouping | flat list | tree: Tutorial · Math · Culture · Capstone, eleven clusters |
+| Gilding | direct + derivation, gated by a conjunction | **direct only. No derivation until UNITY!** |
+| Trigger | ad hoc per achievement | **factor selection, dialling, or a stated relationship** |
+| Hints | a sentence each | **crossword clues** |
+| Locked rows | show the hint, not tappable | **tappable; preview the gild set on the figure** |
+| Node reuse | one achievement per node | **many achievements may gild the same node** |
 
 | File | Owns |
 |---|---|
@@ -26,6 +43,7 @@ needs a second player, nothing is unobtainable.
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
 | `tools/check-achievements.mjs` | 71 assertions, in `npm run check` and CI |
 | `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data |
+| `docs/achievements-v6.xlsx` | **The v2 list.** Authoritative |
 
 Achievements are **opt-in**: nothing is recorded until the player turns them on,
 and turning them on is FIRST!. That is a design choice, not a privacy hedge —
@@ -33,120 +51,259 @@ FIRST! has to be earnable, and it cannot be if tracking was already running.
 
 ---
 
-## 1. The gilding rule
+## 1. What v2 changes, and why
 
-This is the heart of it and the part most worth understanding before changing
-anything.
+### The conjunction is dropped
 
-**Every achievement gilds NODES. Nothing gilds a prime directly.**
+v1's rule: a prime became *owned* only when every achievement that gilded it had
+been earned, and owned primes derived their multiples. That existed to solve one
+specific measured failure — under the first design, TWINNING!, SEXY! and
+GERMAIN! between them lit 715 of 726 gold nodes in six taps.
 
-A node goes gold two ways:
+v2 solves the same problem more directly: **nothing derives until UNITY!.** A
+node is gold if an earned achievement names it, full stop. The flood happens
+once, at the capstone, deliberately.
 
-1. **Directly** — some enabled achievement lists it in `gildNodes`. This is the
-   only way to reach a node carrying a prime factor above 131, since no amount
-   of prime-ownership can touch those.
-2. **By derivation** — every prime in its factorisation is *owned*. Not any,
-   every. Owning 2 lights 2, 4, 8 and 16, but not 6, which also needs 3. A
-   number is yours when you own everything it is built from — the same claim the
-   app already makes about colour.
+That leaves the conjunction with no job. It goes, and with it `primeRoutes()`,
+`ROUTES`, `ownedPrimes` and the UNITY! override.
 
-**Owning a prime is a CONJUNCTION.** A prime becomes owned only when *every*
-achievement that gilds it has been earned and is enabled. Prime 11 is gilded by
-LUCAS!, TWINNING!, COUSINS!, SEXY!, GERMAIN! and LOUDER!, so all six are needed.
-Each on its own merely lights node 11; nothing derives.
+**Consequence worth knowing:** prime-selection triggers no longer cost anything.
+Under v1, adding a series that named small primes lengthened their conjunctions
+and made the whole board close later. Under v2 that coupling is gone, so
+achievements are chosen on interest alone.
 
-**Lines follow ownership.** A prime's parastichy curve goes gold when that prime
-is fully owned. Two things this depends on that are easy to miss: a curve only
-exists for a **selected** prime, so the trophy room selects the owned ones; and
-the colour must be re-asserted every frame, because the renderer rewrites every
-line's colour from `liveColor` and then applies a thickness fade.
+### The trigger must be the idea, performed
 
-**Three deliberate exceptions.** Node 0 is the Sun and never gilds. Node 1 has an
-empty factorisation, so the rule would light it for free — it is reachable only
-by UNITY!. And UNITY!, once earned and switched on, is a master override: every
-lit prime becomes owned regardless of its conjunction.
+The rule that shaped the Math branch. A clue you can solve by looking at the
+panel, not by arriving with the answer already.
 
-### Why the conjunction exists
+TWINNING! passes: the clue states a relationship, and finding two primes with
+one even number between them *is* the mathematics. "Set the range to 720" fails
+— even knowing 720 is 6!, typing it into a slider is entering a password.
 
-The first design let a family *own* its primes outright. Measured in a browser:
-**TWINNING! + SEXY! + GERMAIN! — three achievements, six taps — owned 31 of the
-32 primes and lit 715 of 726 gold nodes.** Ninety-eight per cent of the finished
-board from three of forty, with the other thirty-seven worth eleven nodes
-between them.
+Twelve achievements were cut on this test, including every set-the-range one.
+**Their mathematics did not die, it moved into blurbs** on achievements that can
+be discovered. The divisor-parity insight from the cut SQUARES! and the
+six-neighbours argument from the cut SIXES! both survive that way.
 
-The spreadsheet could not have shown this. It had per-achievement counts; the
-problem was in the *union*, and only appeared once the thing was running.
+### Dialling rescues the range trigger
 
-Under the conjunction those same three light 145 of 853 — seventeen per cent —
-and own exactly one prime. **`tools/check-achievements.mjs` asserts that number.
-If it ever climbs back into the hundreds, the regression is back.**
+The one place setting the range means something: **a phone number is a thing you
+dial.** The Dial cluster uses it, and the mechanic works there because it maps to
+the fiction rather than being arbitrary.
 
-A pleasant consequence nobody designed: route counts run from two to seven, and
-it is the *small* primes that need the most. So the thin primes (59, 127) fall
-early and 2, 3, 7, 11, 13 come last. The board floods near the end, when a long
-conjunction finally closes.
+It also dissolves the factor constraint. A dial does not care what a number
+factors into, so area codes that no selection could reach — 313 above all —
+became available.
 
-### SERIES vs FAM
+### Three trigger mechanics, in order of preference
 
-Two sets per family, and the distinction is load-bearing.
+1. **Relational** — "two primes six apart". The clue alone is sufficient. Best.
+2. **Factor selection** — select exactly the distinct prime factors of the node.
+   The default on the Culture side. Discoverable *because of the preview*: the
+   locked row shows you the node, and factoring it is what this app is for.
+3. **Dialling** — set the range to the number. Reserved for Dial, with one
+   deliberate exception (§6).
 
-- **`SERIES.x`** — every prime up to 1000 with the property. This is what gets
-  **gilded**. A series lights all of its members that fit on the figure.
-- **`FAM.x`** — the members inside the 32-prime selectable grid. This is what
-  **triggers** an achievement, because a predicate like `isExactly()` can only
-  ask for primes a player is able to switch on.
+---
 
-Computing the property over the full range also corrects which *in-grid* primes
-qualify, and that is a fix rather than a side effect. 131 **is** a sexy prime —
-137 is six away and prime — but the old within-the-grid definition denied it
-because 137 is the one prime the panel does not offer. Same for 107 and 113 as
-emirps: 701 and 311 are prime, they were merely out of view. **The property
-belongs to the number, not to the user interface.**
+## 2. The gilding rule (v2)
 
-### The picture at N = 1000
+**A node is gold if an earned achievement names it.** That is the whole rule.
+Four display states sit on top of it:
 
-| | count |
+| State | Behaviour |
 |---|---|
-| Gold, everything earned | 853 |
-| Dark | 146 |
-| Reachable only by a direct gild | 131 |
-| Node 1 | UNITY! alone |
-| Node 0 | the Sun, never gilds |
+| Decomposition achievement, highlighted | terminal node **gold**; its prime factors **silver**; the line-runs from each silver factor up to the gold node **silver** |
+| Series achievement, highlighted | the whole set **gold**, no lines |
+| Trophy gallery | nodes gold only. The one line drawn is **89's** — a deliberate NEAT! exception |
+| **UNITY! earned** | every gilded prime gets its parastichy line and all of its multiples. The flood, and the finale |
+
+The decomposition view is the one genuinely new piece of rendering. Today a
+parastichy line is a single whole curve through every multiple of its prime; this
+needs the **run from the factor up to the target node only**. That is a
+sub-segment of an existing curve, and it is the main build cost in v2.
+
+It is also the point of the whole thing: three curves converging on 666, each
+starting from one of its prime factors, is the app drawing a factorisation.
 
 ---
 
-## 2. The trophy room
+## 3. The list
 
-The cup in the top-right corner, beside Reset and Dazzle, and the same kind of
-control: one tap, the whole figure changes. **Destructive** — it assigns the
-knobs and does not stash what it replaced, exactly as Dazzle does.
+**`docs/achievements-v6.xlsx` is authoritative.** Every achievement carries a
+branch, cluster, number, id, name, clue, criteria, gild set, optional blurb and
+XP.
 
-It **resets first**, then applies. Without that it inherited colour scheme,
-filters, glow, the divergence angle and the camera from whatever the player was
-looking at, and no two trophy rooms looked alike. It reuses `#reset-btn` rather
-than a private copy of the reset, because reset writes ~40 DOM values by hand
-and also calls `resetMorph()` and `resetCamera()` — and "reset does not reset
-everything" has been a bug here twice.
+| # | Cluster | Count | Branch |
+|---|---|---|---|
+| 1–16 | Tutorial | 16 | Tutorial |
+| 17–19 | Series | 3 | Math |
+| 20–33 | Primes | 14 | Math |
+| 34–38 | Puzzles | 5 | Math |
+| 39–51 | Meme | 13 | Culture |
+| 52–63 | Lore | 12 | Culture |
+| 64–79 | Geek | 16 | Culture |
+| 80–87 | Calendar | 8 | Culture |
+| 88–97 | Dial | 10 | Culture |
+| 98–100 | Greeks | 3 | Culture |
+| 101 | Capstone | 1 | — |
 
-| Knob | Value | Why |
-|---|---|---|
-| N | 1000 | The measured point. Sits exactly on the physics cap, so the module-cap machinery never fires its synthetic DOM events |
-| All integers | on | The dark field has to be visible or the sieve does not read |
-| Selected primes | the owned ones | A curve only exists for a selected prime, so an owned prime with its button off has no line to gild |
-| Shape | 1.60 | Nearly a sphere, nudged toward the disk |
-| Morph | off | The rotation is the movement here |
-| Auto-rotate | on, 0.15 | On display |
-| Node size | **0.6, claimed last** | Every prime click re-runs the panel's auto-size derivation. See §4 |
-| Line width | 0 | Hairline. Gilded lines are distinguished by colour alone |
-| Gilding | on | |
+**Tutorial is softly ordered.** It is a suggested tour of the app's functionality
+and the app's only tutorial. All of it is visible from the start and it can be
+skipped in any order — Play Games records what the player actually did, and
+Dazzle is a big obvious button someone will press in the first ten seconds.
 
-Gilding works **outside** the room too, off by default, toggled in the panel.
+**Lore reports what communities believe about numbers; it asserts nothing.**
+That framing is also the cleanest answer when the IARC content-rating form asks
+about occult references.
+
+### Rules that govern any addition
+
+**IDs are the key; numbers and names are not.** The ledger writes the `id` to
+storage. TREK! was renamed 1701! during v1 design and its id stayed `trek` — had
+the id been the display name, every unlock a player already held would have been
+orphaned by a cosmetic edit. The same happened again in v2: THELEMA! became
+WHOLE!, EIGHTFOLD! became SIT!, MOON! became LUNA!, and all three kept their ids.
+The 1–101 numbering is display order and shifts freely; **nothing may key off
+it.**
+
+**No two achievements may share an exact selection trigger.** Two achievements
+firing on one tap makes both clues meaningless and breaks the preview, since two
+locked rows would show different nodes reachable by an identical action. This
+replaces the conjunction assertions in the headless checker.
+
+**Watch the gild-set ceiling.** Dropping the conjunction fixed *derivation*
+flooding, not *direct-gild* flooding. The largest sets in v2 are REST! at 142
+nodes and SEXY! at 120. Five dense sequences were cut for this reason alone —
+semiprimes would have gilded 299 of 1000 nodes from a single unlock.
+
+**Jokes age; mathematics does not.** Play Games lets you add achievements after
+publication but effectively never remove them, so a list weighted toward current
+memes is the one mistake that cannot be corrected later. Meme is deliberately the
+smallest Culture cluster it can be.
 
 ---
 
-## 3. How an achievement is detected
+## 4. Clue craft
 
-Four kinds of signal, and they are not interchangeable.
+Borrowed from cryptic crossword setting, which is the same problem.
+
+**Afrit's dictum — "I need not mean what I say, but I must say what I mean."**
+The surface may lie about the subject; the parsing may not. **Oblique is not the
+same as vague.** A clue that merely withholds is unfair; a clue that disguises is
+fair. `_not a baker's_` for 12 is the standard to aim at: it names the answer
+exactly while appearing to talk about bread.
+
+**The clue and the preview are crossing letters.** In a grid no answer has one
+way in — you have the clue *and* the intersecting letters. Here you have the clue
+*and* the highlighted gild set, and they must be **calibrated as a pair**. Where
+the preview is loud (one labelled node), the clue can be merciless. Where the
+preview is silent — VOID! and EMPTY SET! gild nothing, the only two — the clue
+carries everything alone.
+
+The preview also supplies the enumeration, a crossword's `(7)`: the *number of
+nodes* tells you the shape of the answer before you know what it is.
+
+**Confirmation is free here, unlike on paper.** A wrong crossword answer poisons
+the crossings; a wrong guess here costs nothing. So these clues can be harder
+than a newspaper's.
+
+**Vary the device.** Registers in use: catchphrase (`_nice_`, `_get your kicks_`),
+mechanism (`_upside down_`, `_double it, add one_`), false definition
+(`_short and stout_`, `_three of a kind_`), understatement (`_a long walk_`),
+pronunciation (`_pe-RAS-te-kee_`), and signpost — Tutorial only.
+
+**Difficulty gradient.** Tutorial clues are **signposts, not teases**; its job is
+teaching the app, and a player who cannot find Dazzle is blocked rather than
+tickled. Math is fair but firm. Lore and Meme can be genuinely hard, because
+their preview is a single bright labelled node.
+
+> The spreadsheet writes clues as `_like this_` because Excel will not accept a
+> cell beginning with a hyphen. **The real delimiter is a hyphen:** `-like this-`.
+> PARAWHAT?!'s `-pe-RAS-te-kee-` has hyphens of its own and has already been
+> mangled once by a find-and-replace.
+
+---
+
+## 5. The achievements tree — the accordion
+
+**Two interaction levels, not three.** Branch is a static divider; **cluster** is
+what opens. Culture and Math still read as headings without being collapsible.
+
+Fully collapsed that is about fifteen lines — two dividers, eleven cluster
+headers, a progress line — which fits a phone sheet without scrolling. A flat
+101-row list never can.
+
+- **Progress lives on the cluster header.** `LORE ▸ 4 of 12`. This is the
+  at-a-glance value a radial layout would have given, for free.
+- **Multiple clusters may be open at once**, with expand-all and collapse-all.
+  Expand-all doubles as the completionist's single scannable list.
+- **Clues are always visible on locked rows.** Not hidden behind a tap.
+- **Cluster-level trophy toggles.** At 101 rows, "show me only what Lore lit up"
+  beats 101 individual checkboxes. The per-row ones stay for fine control.
+
+### The phone problem
+
+Opening a sixteen-row cluster makes the sheet want to be tall. But tapping a
+locked row paints its gild set on the figure — and if the sheet has grown to
+cover the figure, the preview is behind it. The crossing-letters mechanic
+defeating itself.
+
+**Tapping a row collapses the sheet to a peek**: a single bar carrying that
+achievement's name and clue, the figure filling the screen with the white
+highlight, and a tap on the bar restoring the sheet where it was.
+
+This falls on a clean seam. `sheet.js` already owns *where the sheet sits* and
+never *what is in it*, so it is a position change driven by an event.
+
+Desktop does not have the problem; the panel sits beside the figure.
+
+**Build it in SVG and DOM, not Three.js.** The app sits exactly on the display
+refresh cap already (§9) — an overlay costs nothing, a second 3D scene costs real
+frames. You also get text rendering and accessibility for free, and every toggle
+in the current panel is invisible to assistive technology, which a hand-drawn
+canvas would deepen.
+
+**Reuse `setFocus()`.** The highlight-and-label machinery exists and works. The
+tree only has to call it, which keeps this a presentation change rather than a
+systems change. Note its comment claims the largest focus set is thirty — that
+was true once and is not now.
+
+---
+
+## 6. Deliberate exceptions
+
+Recorded because each one looks like a bug to anybody running a consistency
+check. They are also flagged in the spreadsheet's notes column.
+
+**ENIGMA! triggers on 5 and gilds 23.** The only achievement where the trigger is
+not the gilded node's factorisation. It is the Law of Fives — 2 + 3 = 5, and
+Discordians are as attached to five as to twenty-three. The discord is the joke.
+**Do not "correct" it.**
+
+**SIT! is a range trigger outside Dial.** Range 8 leaves a spare eight-node
+figure, which suits the Eightfold Path. CEILING! is the only other one, and it is
+Tutorial.
+
+**WHOLE! was renamed off THELEMA! but kept `_do what thou wilt_`.** Intentional.
+
+**REST! triggers on pausing the transport** and gilds all 142 multiples of 7 —
+the largest gild set in the design. It is also the only achievement that touches
+the play/pause bar at all.
+
+**212 is gilded twice, by different mechanics.** NY! dials it; BOILING! selects
+`{2, 53}`. One node, two routes, no conflict.
+
+**NEAT! is the only line drawn in the trophy gallery**, and its multiples are not
+gilded as nodes — the line is the point, not the numbers on it.
+
+---
+
+## 7. How an achievement is detected
+
+**True of v1 and carried into v2.** Four kinds of signal, and they are not
+interchangeable.
 
 | Trigger | Mechanism |
 |---|---|
@@ -156,11 +313,15 @@ Four kinds of signal, and they are not interchangeable.
 | `event` | A bus event. Only `physics:dragStart`, added for OUCH! |
 | `derived` | Computed from the ledger. UNITY! only |
 
+v2 adds no new kinds. Dialling is a `state` trigger on N; the relational Math
+predicates are `state` triggers on the prime selection; REST! needs a `dom` or
+`event` hook on the transport, which nothing currently watches.
+
 **`event.isTrusted` is what makes "manually" mean something.** Programmatic
 `.value` and `.checked` assignment fires nothing at all, and anything from
-`dispatchEvent()` has `isTrusted === false`. So Dazzle, Reset and the trophy
-room can set forty controls without awarding anything. Verified: pressing Dazzle
-turns on all-integers, sets node size and selects every prime, and awards only
+`dispatchEvent()` has `isTrusted === false`. So Dazzle, Reset and the trophy room
+can set forty controls without awarding anything. Verified: pressing Dazzle turns
+on all-integers, sets node size and selects every prime, and awards only
 TRIPPY! — which was the click itself.
 
 There is one place in the codebase that dispatches synthetic events —
@@ -170,39 +331,38 @@ There is one place in the codebase that dispatches synthetic events —
 
 ---
 
-## 4. Traps found the hard way
+## 8. Traps found the hard way
 
-Each of these cost a debugging round. They are here so the next one does not.
+Each of these cost a debugging round. **All still apply.**
 
 **`stateChange` is not a reliable signal that state changed.** `core/panel.js`
 `scheduleRebuild()` assigns about fifteen keys onto the `state` singleton
 directly and calls `buildScene()` itself, never going through `update()`.
 Selecting primes, moving N, any filter — none of it emits. Measured: choosing
-`{11}` gave `state.primes === [11]`, one `build` event, and **zero**
-`stateChange` events. Hence the 5 Hz backstop, which is the only one of the
-three sweeps a future writer cannot forget.
+`{11}` gave `state.primes === [11]`, one `build` event, and **zero** `stateChange`
+events. Hence the 5 Hz backstop, which is the only one of the three sweeps a
+future writer cannot forget.
 
 **Invalidate the gild cache BEFORE announcing.** `unlock()` emitted
 `achievement:unlocked` first, so every listener repainted against a cache
-computed without the achievement that had just fired. It read as "1 of 40
-earned, 0 numbers gilded".
+computed without the achievement that had just fired. It read as "1 of 40 earned,
+0 numbers gilded".
 
 **A newly earned achievement must join the display set.** `getEnabled()` returns
 `enabledOverride ?? all unlocked`. The moment anything touched the selection —
-one checkbox, or Show all / Show none — that override became a fixed snapshot
-and never grew. Everything earned afterwards was invisible: no gilding, and no
-contribution to the ownership conjunction. It presented as *"I just unlocked
-TWINNING! and still no lines."*
+one checkbox, or Show all / Show none — that override became a fixed snapshot and
+never grew. Everything earned afterwards was invisible. It presented as *"I just
+unlocked TWINNING! and still no lines."*
 
 **Node size must be claimed LAST, and by dispatching `input`.** The panel derives
-node size from N until the user touches the slider, and every prime click
-re-runs that derivation. Assigning `.value` does not set the panel's private
+node size from N until the user touches the slider, and every prime click re-runs
+that derivation. Assigning `.value` does not set the panel's private
 `nodeSizeUserSet` flag, so the auto curve takes the value straight back. It was
 landing on 0.4 instead of 0.6.
 
-**Curve colour and the per-frame fade.** The renderer rewrites every line's
-colour from `liveColor` and then applies a thickness fade which, at line width
-0, multiplies everything down to 0.05 brightness. Gold written at build time is
+**Curve colour and the per-frame fade.** The renderer rewrites every line's colour
+from `liveColor` and then applies a thickness fade which, at line width 0,
+multiplies everything down to 0.05 brightness. Gold written at build time is
 black a frame later. Module `animate()` runs after that pass and before
 `render()`, which is the one place the value survives.
 
@@ -220,72 +380,107 @@ preserve real progress across an install, read `pnm-achievements-v1` and
 
 ---
 
-## 5. Open questions
+## 9. The trophy room
 
-Nothing here blocks step 4.
+The cup in the top-right corner, beside Reset and Dazzle, and the same kind of
+control: one tap, the whole figure changes. **Destructive** — it assigns the knobs
+and does not stash what it replaced, exactly as Dazzle does.
 
-**Design**
+It **resets first**, then applies. Without that it inherited colour scheme,
+filters, glow, the divergence angle and the camera from whatever the player was
+looking at, and no two trophy rooms looked alike. It reuses `#reset-btn` rather
+than a private copy, because reset writes ~40 DOM values by hand and also calls
+`resetMorph()` and `resetCamera()` — and "reset does not reset everything" has
+been a bug here twice.
 
-- **NIGHT! is on 354 as a placeholder** — the lunar year. "Obviously lunar" and
-  "rescues a dark node" barely overlap; 354, 384 and 235 are all smooth, and the
-  only lunar orphan found was 709 (the synodic month in hours), which rounds.
-- **SEXY! has no home prime.** Every other family has one for its icon. 29 or 61
-  suggested.
-- **HAPPY! is the only pure memory test.** Nine primes with no relationship to
-  spot — you either know them or you look them up. Every other family is a short
-  roster or a two-tap relationship.
-- **LOUDER!'s condition does not use its joke.** "These go to eleven" triggers on
-  selecting 11. Line width maxes at 12, so a maximum-related condition would land
-  better.
-- **15 of 40 gild nothing** — the general group. The trophy room does not change
-  when you earn them. By design, but if every achievement should move the
-  picture they need gild sets.
-- **NEAT! and the 89 line.** The brief said unlocking NEAT! should gild 89's
-  parastichy. Under the conjunction it takes all four of 89's routes —
-  FIBONACCI!, SEXY!, GERMAIN!, NEAT!. Decide whether NEAT! is an exception.
+| Knob | Value | Why |
+|---|---|---|
+| N | 1000 | The measured point. Sits exactly on the physics cap, so the module-cap machinery never fires its synthetic DOM events |
+| All integers | on | The dark field has to be visible or the sieve does not read |
+| Selected primes | the owned ones | A curve only exists for a selected prime |
+| Shape | 1.60 | Nearly a sphere, nudged toward the disk |
+| Morph | off | The rotation is the movement here |
+| Auto-rotate | on, 0.15 | On display |
+| Node size | **0.6, claimed last** | Every prime click re-runs the panel's auto-size derivation. See §8 |
+| Line width | 0 | Hairline. Gilded lines are distinguished by colour alone |
+| Gilding | on | |
 
-**Play Console (§6 work)**
+**v2 changes what the room shows**, not how it is built: nodes gold only, with
+89's line as the sole exception, until UNITY! is earned. "Selected primes: the
+owned ones" needs restating once ownership no longer exists.
 
-- **Standard or hidden?** Play Games shows a *standard* achievement's description
-  to players before they earn it. The in-app list deliberately shows the title
-  and nothing else while locked, so standard achievements would undo that on the
-  player's Play Games profile. Hidden fixes it but hunters dislike a mostly
-  hidden list. **Decide before creating them in the console.**
-- `criteria` exists on every definition for this reason and is rendered nowhere
-  in-app. Do not tidy it away.
-
-**Engineering**
-
-- **The untestable half.** The gilding *rule* is checked headlessly because
-  `achievements-data.js` is free of Three.js. The ledger and display-set logic
-  live in `achievements.js`, which imports the renderer and cannot load in Node —
-  and **two of the bugs above were in that half**. If a third appears, lift the
-  ledger and enabled-set into a third Three-free file so it can be tested.
-- **CEILING! costs real frames.** N=10000 measures 26.7 fps on a Pixel 7 and
-  34.6 on a Pixel 9, against 90/120 everywhere below N=2500. It is an
-  achievement that deliberately sends players there.
-- **The app's toggles are invisible to assistive technology.** Every one is a
-  zero-size checkbox behind a styled track, so the accessibility tree shows
-  nothing. Pre-existing across the whole panel, not new — but worth a pass
-  before any Play accessibility review.
-- **No toast/sound settings persist.** Sound defaults on and resets each launch.
+**Performance is measured and safe.** The trophy room at N=1000 with gilding and
+curves on sits exactly on the display refresh cap on both test devices — 90.6 fps
+on a Pixel 7, 120.2 on a Pixel 9. Those are floors, not ceilings; the app is
+waiting on vsync. The only configuration that costs anything is CEILING! at
+N=10000, at 26.7 and 34.6 fps.
 
 ---
 
-## 6. Checking it
+## 10. What building v2 touches
+
+| File | Change |
+|---|---|
+| `achievements-data.js` | Remove `primeRoutes()`, `ROUTES`, `ownedPrimes`, the UNITY! override. Add `branch`, `cluster`, `number`. Replace the definitions from the spreadsheet |
+| `achievements.js` | Predicates for the new triggers. Accordion rendering. Locked rows tappable, focus painted white. Label threshold. Cluster toggles |
+| `renderer.js` | **Partial parastichy segments** for the decomposition view. The one genuinely new rendering piece |
+| `sheet.js` | Collapse-to-peek on focus |
+| `transport.js` | An event REST! can hear |
+| `platform/index.js` | `STORE_IDS` grows from 40 ids to 101 |
+| `check-achievements.mjs` | Conjunction assertions out. Trigger-uniqueness assertion in. Gild-set ceiling check |
+| `index.html` | Accordion markup and styles |
+
+**`tools/achievements-table.mjs` should gain an importer**, or the spreadsheet
+becomes a second source of truth that drifts. Generating the definitions from
+`achievements-v6.xlsx` once, then deleting the spreadsheet, is the alternative.
+
+---
+
+## 11. Checking it
 
 ```bash
 npm run check
 ```
 
-Runs `tools/check.mjs` and `tools/check-achievements.mjs` — 71 assertions over
-the number sets, the definitions, the store-id map, prime reachability, the
-finished picture, and the conjunction guard. Dependency-free, in CI.
+Runs `tools/check.mjs` and `tools/check-achievements.mjs` — currently 71
+assertions over the number sets, the definitions, the store-id map, prime
+reachability, the finished picture, and the conjunction guard. Dependency-free,
+in CI.
 
 ```bash
 node tools/achievements-table.mjs        # TSV
 node tools/achievements-table.mjs --json # JSON
 ```
 
-The current copy — name, criteria, hint, subtitle, blurb, and what each gilds —
-generated from the live data so it cannot drift.
+**v1's untestable half is still untestable.** The gilding *rule* is checked
+headlessly because `achievements-data.js` is free of Three.js. The ledger and
+display-set logic live in `achievements.js`, which imports the renderer and
+cannot load in Node — and **two of the bugs in §8 were in that half.** v2 is a
+good moment to lift the ledger and enabled-set into a third Three-free file.
+
+---
+
+## 12. Open
+
+- **Play Console XP limits are unverified.** v2 gives UNITY! 500 XP, so a
+  per-achievement maximum below that would break the budget. Check before
+  creating anything in the console
+- **Standard or hidden?** Play Games shows a *standard* achievement's description
+  to players before they earn it. The in-app list shows a clue and nothing else,
+  so standard achievements would undo the concealment on the player's profile.
+  Hidden fixes it but hunters dislike a mostly-hidden list. **Decide before
+  creating them**
+- **`criteria` is the public string.** It is the Play Console description and is
+  visible in the Play Games app; the in-app clue is separate and stays cryptic.
+  A typo there ships
+- **REST! at 142 nodes** is the largest gild set. Trim or accept
+- **SUPERPRIME! needs eleven taps**, SATOR! seven. The longest selections here
+- **Series is three members** and would fold into Primes without loss
+- **The label threshold** for the locked-row preview is unsettled. Working
+  proposal: label sets of eight or fewer, show larger ones as shape only
+- **Accessibility.** Every toggle in the panel is a zero-size checkbox behind a
+  styled track, so the accessibility tree shows nothing. Pre-existing, not new,
+  but the accordion is the moment to fix it
+- **No toast or sound settings persist.** Sound defaults on and resets each launch
+- **CEILING! costs real frames** — 26.7 fps on a Pixel 7 — and it is an
+  achievement that deliberately sends players there

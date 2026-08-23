@@ -289,7 +289,7 @@ appear to `adb`. Cost fifteen minutes to work out, 2026-08-15.
    gilding, reconciliation); `www/modules/achievements-data.js` (the number sets
    and the gilding rule, deliberately free of Three.js and the renderer so it
    can be checked headlessly); `tools/check-achievements.mjs`, 56 assertions,
-   wired into `npm run check` and CI. Design record: `docs/achievements-design.xlsx`.
+   wired into `npm run check` and CI. Design record: `docs/ACHIEVEMENTS.md`.
 
    **Verified in a browser and on a Pixel 7:** unlocks fire, persist, survive
    reload, and reconcile through `platform.saves`. `isNative` reports true in
