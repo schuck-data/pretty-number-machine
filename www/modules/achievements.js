@@ -33,9 +33,13 @@ import { platform } from '../platform/index.js';
 // The number sets and the gilding rule. Kept in a separate, Three-free file so
 // they can be checked headlessly — see tools/check-achievements.mjs.
 import {
-  ACHIEVEMENT_DEFS, FAM, reverseNum, TROPHY_N,
-  computeGild as gildFor, isNodeGilded as gildedByRule,
+  ACHIEVEMENT_DEFS, reverseNum, TROPHY_N, isConsecutivePrimeRun,
+  computeGild as gildFor, isNodeGilded as gildedByRule, isLineGilded as lineGildedByRule,
+  CLUSTER_ORDER, BY_CLUSTER,
 } from './achievements-data.js';
+import { GOLDEN_ANGLE, SELECTABLE_PRIMES } from '../core/math.js';
+
+const PRIME_SET = new Set(SELECTABLE_PRIMES);
 
 // ============================================================
 // PREDICATE HELPERS
@@ -58,83 +62,159 @@ function pairWhere(fn) {
   return fn(a, b);
 }
 
+// The divergence slider runs over a full turn and lands on a float. Half a
+// degree of tolerance: finer than the control can be dragged, coarse enough
+// that the golden-angle restore button always registers.
+const ANGLE_EPS = 0.0087;
+const nearAngle = (got, want) => Math.abs((got ?? 0) - want) <= ANGLE_EPS;
+
+// ============================================================
+// WHERE THE DOM TRIGGERS LISTEN
+// ============================================================
+// Selector and event per dom-triggered achievement. This lives here rather than
+// in achievements-data.js so that file stays free of every browser concern — it
+// has to import cleanly in Node for the headless checker.
+// The one achievement driven by a bus event rather than a control. Kept beside
+// DOM_BINDINGS for the same reason: achievements-data.js stays free of anything
+// that only exists in a browser.
+export const BUS_BINDINGS = {
+  ouch: 'physics:dragStart',
+};
+
+export const DOM_BINDINGS = {
+  first:      { selector: '#achievements-toggle', event: 'change' },
+  exhaustive: { selector: '#show-all-integers',   event: 'change' },
+  parawhat:   { selector: '#show-curves, #line-width', event: 'input change' },
+  art:        { selector: '#section-appearance input, #section-appearance select',
+                event: 'input change' },
+  bophades:   { selector: '#node-size', event: 'input' },
+  maximalist: { selector: '#n-slider',  event: 'input' },
+  trippy:     { selector: '#dazzle-btn', event: 'click' },
+  // REST! is the only achievement that touches the transport. Bound to the
+  // button rather than to `state.paused`, because scrubbing pauses the morph as
+  // a side effect and Reset writes the flag directly — neither should award it.
+  rest:       { selector: '#transport-btn', event: 'click pointerup' },
+};
+
 // ============================================================
 // THE PREDICATES
 // ============================================================
-// One test per id, and nothing else. Everything else about an achievement —
-// its name, its XP, what it gilds — is data and lives in achievements-data.js
-// so that the design can be checked without a browser. This is the half that
-// never could be: every one of these reads the live `state` singleton, the
-// resolved N, or a DOM element.
+// Only the ones that need real logic. Every achievement whose trigger is an
+// exact prime selection or an exact range DECLARES it in achievements-data.js
+// and has its test generated below.
+//
+// DEV: that is the biggest structural change from v1, where all forty triggers
+// were hand-written. Fifty-seven selections and eleven dials now come from data,
+// which collapses a lot of near-identical code — but the reason it was done is
+// that the headless checker can then assert **no two achievements share a
+// selection**. Two firing on one tap makes both their clues meaningless and
+// breaks the locked-row preview. Under v1 nothing could have caught it.
 //
 // Signature by trigger:
-//   state / derived  → ()      no argument
-//   dom              → (el)    the element the gesture landed on
-//   sampled          → (ctx)   the animate context
-//   event            → (data)  the bus event payload
-const PREDICATES = {
-  fibonacci:  () => isExactly(FAM.fibPrimes),
-  perfect:    () => isExactly(FAM.perfectPrimes),
-  ramanujan:  () => resolveN() === 840,
-  lucas:      () => isExactly(FAM.lucasPrimes),
-  squares:    () => resolveN() === 961,
-  emirp:      () => pairWhere((a, b) => reverseNum(a) === b),
-  twinning:   () => pairWhere((a, b) => b - a === 2),
-  cousins:    () => pairWhere((a, b) => b - a === 4),
-  sexy:       () => pairWhere((a, b) => b - a === 6),
-  germain:    () => pairWhere((a, b) => b === 2 * a + 1),
-  happy:      () => isExactly(FAM.happy),
-  euler:      () => isExactly(FAM.euler),
+//   state / derived  -> ()      no argument
+//   dom              -> (el)    the element the gesture landed on
+//   sampled          -> (ctx)   the animate context
+//   event            -> (data)  the bus event payload
+const CUSTOM = {
+  // ---- Tutorial ----
+  first:      (el) => el.checked === true,
+  exhaustive: (el) => el.checked === true,
+  parawhat:   () => true,
+  art:        () => true,
+  bophades:   (el) => +el.value >= 2.0,
+  maximalist: (el) => +el.value >= 2500,
+  trippy:     () => true,
+  ceiling:    () => resolveN() >= MAX_N,
+  zoomies:    () => state.shapeDriftSpeed >= 2.0,
+  boing:      (ctx) => Math.abs(ctx.dim - 0.0) <= 0.01,
+  nerd:       () => state.lensOpen === true,
+  ouch:       (d) => d?.n === 0,
+  oops:       (ctx) => countDisplaced(ctx) >= 20,
+  night:      () => state.showZero === false,
+  void:       () => sel().length === 0,
+  'empty-set': () => sel().length === 0 && state.showZero === false && state.showOne === false,
+
+  // ---- Math. The relational ones: the clue states the relationship, and
+  // finding it on the panel IS the mathematics. See docs/ACHIEVEMENTS.md §1.
+  twinning:  () => pairWhere((a, b) => b - a === 2),
+  cousins:   () => pairWhere((a, b) => b - a === 4),
+  sexy:      () => pairWhere((a, b) => b - a === 6),
+  germain:   () => pairWhere((a, b) => b === 2 * a + 1),
+  emirp:     () => pairWhere((a, b) => reverseNum(a) === b),
+  neat:      () => sel().length === 2 && sel().includes(89) && resolveN() >= 178,
+  smart:     () => isExactly([101]) && state.lensOpen === true,
+  localhost: () => isExactly([127]) && resolveN() === 127,
+
+  // Every even number is the sum of two primes. Open since 1742, and here you
+  // check one by hand.
+  goldbach: () => {
+    const s = sel(), n = resolveN();
+    return s.length === 2 && n % 2 === 0 && s[0] + s[1] === n;
+  },
+  // A run of consecutive primes, plus the prime they add up to. The largest
+  // selected is the total; everything below it must be the run.
+  run: () => {
+    const s = sel();
+    if (s.length < 4) return false;                // three in the run, plus the total
+    const total = s[s.length - 1], parts = s.slice(0, -1);
+    return parts.reduce((a, b) => a + b, 0) === total && isConsecutivePrimeRun(parts);
+  },
+  stairs:      () => { const s = sel(); return s.length === 3 && s[1] - s[0] === s[2] - s[1]; },
+  'square-up': () => pairWhere((a, b) => Number.isInteger(Math.sqrt(a + b))),
+
+  // ---- Greeks. Constants as ANGLES rather than decimal digits: more honest,
+  // and the only thing that works, since pi, tau, e and alpha all carry a prime
+  // factor above the grid and no selection can reach them.
+  phi: () => nearAngle(state.divergenceAngle, GOLDEN_ANGLE),
+  pi:  () => nearAngle(state.divergenceAngle, Math.PI),
+  tau: () => nearAngle(state.divergenceAngle, Math.PI * 2),
+
+  // ---- Lore ----
+  rest: () => true,
 
   // The only predicate whose input is the ledger rather than the app, which is
   // why it is re-tested after every unlock instead of on an app signal.
-  unity:      () => countUnlocked() >= ACHIEVEMENT_DEFS.length - 1,
-
-  first:      (el) => el.checked === true,
-  louder:     () => isExactly([11]),
-  rawr:       () => isExactly([17]),
-  best:       () => isExactly([37, 73]),
-  neat:       () => sel().length === 2 && sel().includes(89) && resolveN() >= 178,
-  trek:       () => isExactly([47]),
-  sixseven:   (el) => +el.dataset.prime === 67 && el.classList.contains('active'),
-  smart:      () => isExactly([101]) && state.lensOpen === true,
-  localhost:  () => isExactly([127]) && resolveN() === 127,
-
-  ouch:       (d) => d?.n === 0,
-  void:       () => sel().length === 0,
-  'empty-set': () => sel().length === 0 && state.showZero === false && state.showOne === false,
-  night:      () => state.showZero === false,
-  boing:      (ctx) => Math.abs(ctx.dim - 0.0) <= 0.01,
-  trippy:     () => true,
-  oops:       (ctx) => countDisplaced(ctx) >= 20,
-  zoomies:    () => state.shapeDriftSpeed >= 2.0,
-  maximalist: (el) => +el.value >= 2500,
-  ceiling:    () => resolveN() >= MAX_N,
-  exhaustive: (el) => el.checked === true,
-  parawhat:   () => true,
-  nerd:       () => state.lensOpen === true,
-  art:        () => true,
-  bophades:   (el) => +el.value >= 2.0,
-  nice:       () => isExactly([3, 23]),
-  dude:       () => isExactly([2, 3, 5, 7]),
-  // Your original criteria was "select exactly 67 and 69". 69 is not prime
-  // (3 x 23), so it is not in the grid and that state is unreachable — the
-  // achievement would have been unobtainable, which also breaks the hunter
-  // convention the whole design is built to respect. {3, 23, 67} reaches the
-  // same two nodes: 67 directly, and 69 as 3 x 23.
-  meme:       () => isExactly([3, 23, 67]),
+  unity: () => countUnlocked() >= ACHIEVEMENT_DEFS.length - 1,
 };
 
+// A declared trigger becomes a test without anybody writing one.
+//
+// DEV: a dial reads `state.N` and NOT resolveN(), and the difference is a real
+// bug that got caught on the way in. When the player has not set a range
+// explicitly, resolveN() returns the PRODUCT of the selected primes (capped at
+// 500) — so selecting {5, 61} makes resolveN() 305, and VICE! would have
+// unlocked with nobody dialling anything. {5, 83} did the same to BAY!. The
+// other nine dials were saved only by the 500 cap, which is luck rather than
+// design. `state.N` is null until the range is set by hand, which is exactly
+// what "dial it" means.
+function generatedTest(def) {
+  if (def.sel) return () => isExactly(def.sel);
+  if (def.range != null) return () => state.N === def.range;
+  return null;
+}
+
 // DEV: a missing predicate returns false rather than throwing, so a definition
-// added to the data file without a test here is inert rather than fatal. The
-// headless checker fails on it, which is where that mistake should surface.
+// added to the data file without a test is inert rather than fatal. The headless
+// checker fails on it, which is where that mistake should surface.
 export const ACHIEVEMENTS = ACHIEVEMENT_DEFS.map(def => ({
   ...def,
-  test: PREDICATES[def.id] || (() => false),
+  dom: DOM_BINDINGS[def.id] || null,
+  busEvent: BUS_BINDINGS[def.id] || null,
+  test: CUSTOM[def.id] || generatedTest(def) || (() => false),
 }));
 
 export function missingPredicates() {
-  return ACHIEVEMENT_DEFS.filter(d => !PREDICATES[d.id]).map(d => d.id);
+  return ACHIEVEMENT_DEFS
+    .filter(d => !CUSTOM[d.id] && !generatedTest(d))
+    .map(d => d.id);
+}
+
+export function missingDomBindings() {
+  return ACHIEVEMENTS.filter(a => a.kind === 'dom' && !a.dom).map(a => a.id);
+}
+
+export function missingBusBindings() {
+  return ACHIEVEMENTS.filter(a => a.kind === 'event' && !a.busEvent).map(a => a.id);
 }
 
 const BY_ID = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
@@ -215,7 +295,7 @@ async function unlock(id) {
   // gilded" and would have shown up on the figure as gilding that lagged one
   // unlock behind.
   invalidateGild();
-  emit('achievement:unlocked', { id, name: a.name, subtitle: a.subtitle, blurb: a.blurb, xp: a.xp });
+  emit('achievement:unlocked', { id, name: a.name, subtitle: a.clue, blurb: a.blurb, xp: a.xp });
 
   // Fire and forget. A failure to reach Play Games must not roll back the local
   // ledger — reconciliation on the next start will push it again, and unlocks
@@ -257,7 +337,9 @@ export function getEnabled() {
 }
 
 export function getGild() { return (gildCache ??= gildFor(getEnabled())); }
-export function isPrimeGilded(p) { return getGild().ownedPrimes.has(p); }
+// v2 has no ownership. A prime's LINE is gilded when the rule says so: NEAT!
+// draws 89's on its own, and UNITY! draws every gilded prime's at the end.
+export function isPrimeGilded(p) { return lineGildedByRule(p, getGild()); }
 export function isNodeGilded(n) { return gildedByRule(n, getGild()); }
 
 // ============================================================
@@ -319,7 +401,7 @@ function onTrusted(selector, events, fn) {
 function sweepState() {
   if (!ready || !ledger.on) return;
   for (const a of ACHIEVEMENTS) {
-    if (a.trigger !== 'state' || ledger.unlocked[a.id]) continue;
+    if (a.kind !== 'state' || ledger.unlocked[a.id]) continue;
     let hit = false;
     try { hit = !!a.test(); } catch (e) { console.error(`[PNM] Achievement "${a.id}" predicate threw:`, e); }
     if (hit) unlock(a.id);
@@ -444,7 +526,7 @@ function showNext() {
   el.innerHTML =
     `<div class="ach-toast-kicker">Achievement</div>` +
     `<div class="ach-toast-name">${a.name}</div>` +
-    `<div class="ach-toast-sub">${a.subtitle}</div>` +
+    `<div class="ach-toast-sub">${a.clue}</div>` +
     (a.blurb ? `<div class="ach-toast-blurb">${a.blurb}</div>` : '');
   el.classList.toggle('tappable', !!a.blurb);
 
@@ -595,7 +677,7 @@ function paintCurvesNow() {
   if (state._gildView !== true) return;
   const g = getGild();
   for (const c of curveRefs) {
-    if (!g.ownedPrimes.has(c.prime)) continue;
+    if (!lineGildedByRule(c.prime, g)) continue;
     c.line.material.color.setRGB(GOLD_LINE.r, GOLD_LINE.g, GOLD_LINE.b);
   }
 }
@@ -615,6 +697,7 @@ function refreshGilding() {
 // curve colour is — the renderer's pulse and colour-drift passes own those
 // properties and would win otherwise. The focused set is small by construction
 // (the largest is SQUARES! at thirty), so this is a short loop.
+const LABEL_MAX = 8;          // see the threshold note in paintFocusNow()
 let labelLayer = null;
 const _proj = { x: 0, y: 0 };
 
@@ -660,24 +743,40 @@ function paintFocusNow(ctx) {
   // than merely large.
   const beat = 1.35 + Math.sin((ctx.time || 0) * 3.2) * 0.12;
 
+  // WHITE while locked, warm gold once earned. The locked preview is the other
+  // half of the clue — the crossing letters — so it must not look like a reward
+  // already collected. See docs/ACHIEVEMENTS.md §4.
+  const earnedFocus = !!ledger.unlocked[focusId];
+  const C  = earnedFocus ? [1.0, 0.94, 0.72] : [0.93, 0.97, 1.0];
+  const EM = earnedFocus ? [1.0, 0.90, 0.50] : [0.72, 0.82, 1.0];
+
   const wanted = [];
   for (const nd of nodesRef) {
     if (!set.has(nd.n) || !nd.mesh) continue;
     const orig = stash(nd);
     nd.mesh.scale.setScalar(orig.scale * beat);
     if (nd.mesh.material.emissive) {
-      nd.mesh.material.emissive.setRGB(1.0, 0.9, 0.5);
+      nd.mesh.material.emissive.setRGB(EM[0], EM[1], EM[2]);
       nd.mesh.material.emissiveIntensity = 1.5;
     }
-    nd.mesh.material.color.setRGB(1.0, 0.94, 0.72);
+    nd.mesh.material.color.setRGB(C[0], C[1], C[2]);
 
     _v.copy(nd.mesh.position).project(cam);
     if (_v.z > 1) continue;                                   // behind the camera
     wanted.push({ n: nd.n, x: (_v.x * 0.5 + 0.5) * W, y: (-_v.y * 0.5 + 0.5) * H });
   }
 
-  // Rebuilt rather than diffed: the set is at most thirty elements and it turns
-  // over completely whenever the focus changes.
+  // LABEL THRESHOLD. v1 assumed the focused set was always small — its comment
+  // claimed thirty at most — and that stopped being true when families started
+  // gilding their whole run: REST! is 142 nodes and SEXY! is 120. A hundred and
+  // forty projected labels is a wall of digits over the figure, so past a small
+  // set the highlight shows the SHAPE and drops the numbers. That is also the
+  // better hint: seeing NEAT!'s near-straight spoke light up says a great deal
+  // without naming anything.
+  if (wanted.length > LABEL_MAX) { layerEl.innerHTML = ''; return; }
+
+  // Rebuilt rather than diffed: small by construction after the threshold, and
+  // it turns over completely whenever the focus changes.
   layerEl.innerHTML = wanted
     .map(p => `<span class="ach-label" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px">${p.n}</span>`)
     .join('');
@@ -764,7 +863,12 @@ function applyTrophyRoom() {
   // The grid is expanded first for the reason panel.js already gives about its
   // All button: a prime switched on but hidden colours the figure with no way
   // to see or unset it.
-  const owned = getGild().ownedPrimes;
+  // DEV: this MUST stay a large set. Several dozen achievements fire on an
+  // exact prime selection, and the trophy room drives the real buttons — so a
+  // room that happened to leave exactly {3, 23} selected would hand out NICE!.
+  // Every gilded prime is comfortably too many for any of them to match.
+  const g0 = getGild();
+  const owned = new Set([...g0.litNodes].filter(n => PRIME_SET.has(n)));
   if (owned.size) {
     const more = $('more-btn');
     for (let i = 0; i < 6 && more && more.textContent !== 'Less'; i++) more.click();
@@ -896,6 +1000,33 @@ function buildSection() {
   renderList();
 }
 
+// ============================================================
+// THE ACCORDION
+// ============================================================
+// A hundred and one rows will not fit a phone sheet as a flat list, so they are
+// grouped: a static branch divider, then one collapsible header per cluster.
+// TWO interaction levels and not three — branch headings do not open, because a
+// third level of tap-to-open in a bottom sheet is one too many.
+//
+// Fully collapsed this is about fifteen lines, which fits without scrolling at
+// all. That is the whole point of the shape.
+//
+// DEV: which clusters are open is view state, not ledger state. It is not
+// persisted and it is deliberately not one-at-a-time — expand-all doubles as
+// the completionist's single scannable list.
+const openClusters = new Set(['Tutorial']);
+
+function clusterProgress(cluster) {
+  const list = BY_CLUSTER.get(cluster) || [];
+  return [list.filter(a => ledger.unlocked[a.id]).length, list.length];
+}
+
+function setAllClusters(open) {
+  openClusters.clear();
+  if (open) for (const c of CLUSTER_ORDER) openClusters.add(c);
+  renderList();
+}
+
 function renderList() {
   if (!listEl) return;
   const enabled = getEnabled();
@@ -908,67 +1039,145 @@ function renderList() {
   }
 
   listEl.innerHTML = '';
-  for (const a of ACHIEVEMENTS) {
-    const got = !!ledger.unlocked[a.id];
-    const row = document.createElement('div');
-    row.className = 'ach-row ' + (got ? 'earned' : 'locked')
-      + (focusId === a.id ? ' focused open' : '');
 
-    // The checkbox is the mix-and-match control: it decides whether this
-    // achievement's gilding is SHOWN, not whether it is earned. Locked rows
-    // have nothing to show, so theirs is disabled.
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = got && enabled.has(a.id);
-    cb.disabled = !got;
-    cb.addEventListener('change', () => {
-      const next = new Set(getEnabled());
-      cb.checked ? next.add(a.id) : next.delete(a.id);
-      setEnabled(next);
-      refreshGilding();
-      renderList();
-    });
+  // Expand / collapse all.
+  const bar = document.createElement('div');
+  bar.className = 'ach-allbar';
+  for (const [label, open] of [['Expand all', true], ['Collapse all', false]]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ach-allbtn';
+    b.textContent = label;
+    b.addEventListener('click', () => setAllClusters(open));
+    bar.appendChild(b);
+  }
+  listEl.appendChild(bar);
 
-    const text = document.createElement('div');
-    text.className = 'ach-text';
-    // Two layers per row. What shows by DEFAULT: the subtitle once earned, the
-    // hint while locked. What shows when TAPPED: the blurb, and only once
-    // earned — the explanation is part of the reward.
-    //
-    // DEV: `criteria` is never rendered anywhere in this list. It is the exact
-    // instruction, and the mystery is the point. It stays on the definitions
-    // because the Play Console requires a description per achievement; do not
-    // tidy it away on the grounds that nothing displays it.
-    text.innerHTML =
-      `<div class="ach-name">${a.name}</div>` +
-      (got ? `<div class="ach-sub">${a.subtitle}</div>`
-           : `<div class="ach-hint">${a.hint}</div>`) +
-      (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '');
+  let lastBranch = null;
+  for (const cluster of CLUSTER_ORDER) {
+    const list = BY_CLUSTER.get(cluster) || [];
+    if (!list.length) continue;
 
-    if (got) {
-      row.classList.add('expandable');
-      row.addEventListener('click', (e) => {
-        // The checkbox is a control in its own right and must not double as a
-        // disclosure toggle: ticking it decides whether this achievement's gold
-        // is SHOWN, tapping the row decides which one is being INSPECTED.
-        if (e.target.tagName === 'INPUT') return;
-        const nowFocused = setFocus(a.id);
-        row.classList.toggle('open', nowFocused === a.id);
-        // Only one row is ever open, because only one can be highlighted.
-        for (const other of listEl.querySelectorAll('.ach-row')) {
-          if (other !== row) other.classList.remove('open', 'focused');
-        }
-        row.classList.toggle('focused', nowFocused === a.id);
-      });
+    // Branch divider. Static — it groups, it does not open.
+    const branch = list[0].branch;
+    if (branch !== lastBranch) {
+      lastBranch = branch;
+      const div = document.createElement('div');
+      div.className = 'ach-branch';
+      div.textContent = branch;
+      listEl.appendChild(div);
     }
 
-    row.appendChild(cb);
-    row.appendChild(text);
-    listEl.appendChild(row);
+    const [got, total] = clusterProgress(cluster);
+    const isOpen = openClusters.has(cluster);
+
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'ach-cluster' + (isOpen ? ' open' : '');
+    head.setAttribute('aria-expanded', String(isOpen));
+    head.innerHTML =
+      `<span class="ach-caret" aria-hidden="true"></span>` +
+      `<span class="ach-cluster-name">${cluster}</span>` +
+      `<span class="ach-cluster-count">${got} of ${total}</span>`;
+    head.addEventListener('click', () => {
+      isOpen ? openClusters.delete(cluster) : openClusters.add(cluster);
+      renderList();
+    });
+    listEl.appendChild(head);
+
+    // The cluster-level trophy toggle. At this many rows, "show me only what
+    // Lore lit up" is a more useful control than a hundred and one checkboxes;
+    // the per-row ones stay for fine control.
+    const earnedHere = list.filter(a => ledger.unlocked[a.id]);
+    if (earnedHere.length) {
+      const allOn = earnedHere.every(a => enabled.has(a.id));
+      const t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'ach-cluster-toggle' + (allOn ? ' on' : '');
+      t.textContent = allOn ? 'hide' : 'show';
+      t.title = `${allOn ? 'Hide' : 'Show'} everything ${cluster} gilds`;
+      t.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const next = new Set(getEnabled());
+        for (const a of earnedHere) allOn ? next.delete(a.id) : next.add(a.id);
+        setEnabled(next);
+        refreshGilding();
+        renderList();
+      });
+      head.appendChild(t);
+    }
+
+    if (!isOpen) continue;
+
+    for (const a of list) listEl.appendChild(buildRow(a, enabled));
   }
 
   const btn = document.getElementById('achievements-btn');
   if (btn) btn.classList.toggle('has-progress', earned > 0);
+}
+
+function buildRow(a, enabled) {
+  const got = !!ledger.unlocked[a.id];
+  const row = document.createElement('div');
+  row.className = 'ach-row ' + (got ? 'earned' : 'locked')
+    + (focusId === a.id ? ' focused open' : '');
+
+  // The checkbox is the mix-and-match control: it decides whether this
+  // achievement's gilding is SHOWN, not whether it is earned. Locked rows have
+  // nothing earned to show, so theirs is disabled.
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = got && enabled.has(a.id);
+  cb.disabled = !got;
+  cb.setAttribute('aria-label', `Show what ${a.name} gilds`);
+  cb.addEventListener('change', () => {
+    const next = new Set(getEnabled());
+    cb.checked ? next.add(a.id) : next.delete(a.id);
+    setEnabled(next);
+    refreshGilding();
+    renderList();
+  });
+
+  const text = document.createElement('div');
+  text.className = 'ach-text';
+  // The clue shows in BOTH states, which is a change from v1 where a locked row
+  // showed a hint and an earned row showed a subtitle. It is short, it reads as
+  // a caption once earned, and leaving it up means a cluster stays scannable.
+  //
+  // DEV: `criteria` is never rendered anywhere in this list. It is the exact
+  // instruction and the mystery is the point. It stays on the definitions
+  // because Play Console requires a public description per achievement; do not
+  // tidy it away on the grounds that nothing displays it.
+  text.innerHTML =
+    `<div class="ach-name"><span class="ach-no">${a.no}</span>${a.name}</div>` +
+    `<div class="ach-hint">${a.clue}</div>` +
+    (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '');
+
+  // BOTH states are tappable now. Tapping a LOCKED row previews what it will
+  // gild — the crossing-letter half of the clue design, and the reason the
+  // clues can be as hard as they are. See docs/ACHIEVEMENTS.md §4.
+  row.classList.add('expandable');
+  row.addEventListener('click', (e) => {
+    // The checkbox is a control in its own right and must not double as a
+    // disclosure toggle: ticking it decides whether this achievement's gold is
+    // SHOWN, tapping the row decides which one is being INSPECTED.
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    const nowFocused = setFocus(a.id);
+    // Only one row is ever open, because only one can be highlighted.
+    for (const other of listEl.querySelectorAll('.ach-row')) {
+      if (other !== row) other.classList.remove('open', 'focused');
+    }
+    row.classList.toggle('open', nowFocused === a.id);
+    row.classList.toggle('focused', nowFocused === a.id);
+    // On a phone the sheet has to get out of the way, or the preview is behind
+    // it. sheet.js owns WHERE the sheet sits and never what is in it, so this
+    // asks rather than reaches.
+    emit('achievements:peek', { id: nowFocused });
+  });
+
+  row.appendChild(cb);
+  row.appendChild(text);
+  return row;
 }
 
 // ============================================================
@@ -1012,7 +1221,7 @@ const mod = {
     sweepState();
 
     for (const a of ACHIEVEMENTS) {
-      if (a.trigger !== 'sampled' || ledger.unlocked[a.id]) continue;
+      if (a.kind !== 'sampled' || ledger.unlocked[a.id]) continue;
       let hit = false;
       try { hit = !!a.test(ctx); } catch (e) { console.error(`[PNM] Achievement "${a.id}" sampler threw:`, e); }
       if (hit) unlock(a.id);
@@ -1036,7 +1245,7 @@ export function register() {
 
   // ---- bus-event predicates ----
   for (const a of ACHIEVEMENTS) {
-    if (a.trigger !== 'event' || !a.busEvent) continue;
+    if (a.kind !== 'event' || !a.busEvent) continue;
     on(a.busEvent, (d) => {
       if (!ready || !ledger.on || ledger.unlocked[a.id]) return;
       let hit = false;
@@ -1073,7 +1282,7 @@ export function register() {
     });
 
     for (const a of ACHIEVEMENTS) {
-      if (a.trigger !== 'dom' || !a.dom) continue;
+      if (a.kind !== 'dom' || !a.dom) continue;
       onTrusted(a.dom.selector, a.dom.event, (el) => {
         // FIRST! is the exception, and has to be: its trigger IS the master
         // switch, so gating it on the switch would make it unearnable.

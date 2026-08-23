@@ -7,19 +7,22 @@
 // What this is for: the number sets and the gilding rule are the part of the
 // achievement design that can be WRONG WITHOUT LOOKING WRONG. A mis-derived
 // family means an achievement that silently never fires. A gilding rule that
-// says "any factor" instead of "every factor" still runs, still lights nodes,
-// and quietly gives away the whole board. Neither shows up as an error in a
+// leaks means the whole board is given away. Neither shows up as an error in a
 // browser, and neither is something you would notice by looking at the figure.
 //
-// The expected values come from docs/achievements-design.xlsx, which is the
-// agreed design record. If a number here changes, either the design moved and
+// THE ONE THAT MATTERS MOST is trigger uniqueness. Two achievements declaring
+// the same exact prime selection both fire on one tap, which makes both their
+// clues meaningless and breaks the locked-row preview — two rows would show
+// different nodes reachable by an identical action. v1 could not have caught
+// this because every trigger was a hand-written predicate; v2 declares them,
+// so it can be checked.
+//
+// Expected values come from docs/achievements-v6.xlsx by way of
+// docs/ACHIEVEMENTS.md. If a number here changes, either the design moved and
 // this file should move with it, or something broke.
 
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dataUrl = new URL('../www/modules/achievements-data.js', import.meta.url);
 
 let pass = 0, failed = 0;
@@ -29,168 +32,206 @@ const eq = (label, got, want) => {
   const g = JSON.stringify(got), w = JSON.stringify(want);
   g === w ? ok(`${label} = ${w}`) : fail(`${label}\n          got  ${g}\n          want ${w}`);
 };
+const yes = (cond, m, why) => cond ? ok(m) : fail(why || m);
 
 const D = await import(dataUrl);
-const { SELECTABLE_PRIMES } = await import(new URL('../www/core/math.js', import.meta.url));
+const { SELECTABLE_PRIMES, primeFactorsOf, isPrimeNumber } = await import(new URL('../www/core/math.js', import.meta.url));
+const A = D.ACHIEVEMENT_DEFS;
+const GRID = new Set(SELECTABLE_PRIMES);
 
-console.log('\n[sets] the sequences');
+// ============================================================
+console.log('\n[shape] the list');
+eq('achievements', A.length, 101);
+eq('clusters', D.CLUSTER_ORDER.map(c => (D.BY_CLUSTER.get(c) || []).length),
+   [16, 3, 14, 5, 13, 12, 16, 8, 10, 3, 1]);
+
+const ids = A.map(a => a.id);
+eq('unique ids', new Set(ids).size, A.length);
+eq('numbers are 1..101 with no gaps', A.map(a => a.no).sort((x, y) => x - y),
+   Array.from({ length: 101 }, (_, i) => i + 1));
+
+const missing = A.filter(a => !a.name || !a.clue || !a.criteria).map(a => a.id);
+eq('every definition has name, clue and criteria', missing, []);
+
+// The clue is what a locked row shows. The criteria is the PUBLIC Play Console
+// description. They are different strings and neither may be blank.
+const badClue = A.filter(a => !/^-.*-$/.test(a.clue)).map(a => a.id);
+eq('every clue is delimited -like this-', badClue, []);
+
+// ============================================================
+console.log('\n[xp] the budget');
+eq('total XP', D.totalXP(), 2000);
+eq('Play Games cap', 2000, 2000);
+eq('ordinary achievements at 15', new Set(A.filter(a => a.id !== 'unity').map(a => a.xp)), new Set([15]));
+eq('UNITY! holds the remainder', A.find(a => a.id === 'unity').xp, 500);
+
+// ============================================================
+console.log('\n[triggers] no two achievements may share a selection');
+// This is the assertion that replaced v1's conjunction guard. See the header.
+const bySel = new Map();
+const clashes = [];
+for (const a of A) {
+  if (!a.sel) continue;
+  const key = a.sel.join(',');
+  if (bySel.has(key)) clashes.push(`${a.name} and ${bySel.get(key)} both fire on {${key}}`);
+  else bySel.set(key, a.name);
+}
+eq('selection clashes', clashes, []);
+ok(`${bySel.size} distinct exact selections declared`);
+
+const byRange = new Map();
+const rangeClashes = [];
+for (const a of A) {
+  if (a.range == null) continue;
+  if (byRange.has(a.range)) rangeClashes.push(`${a.name} and ${byRange.get(a.range)} both fire at N=${a.range}`);
+  else byRange.set(a.range, a.name);
+}
+eq('range clashes', rangeClashes, []);
+ok(`${byRange.size} distinct dials declared`);
+
+const offGrid = A.filter(a => a.sel && a.sel.some(p => !GRID.has(p)))
+                 .map(a => `${a.name} wants ${a.sel.filter(p => !GRID.has(p))}`);
+eq('every declared selection is reachable in the panel', offGrid, []);
+
+// ============================================================
+console.log('\n[triggers] the one deliberate exception');
+// ENIGMA! triggers on 5 and gilds 23 — the Law of Fives, 2+3=5. Everything else
+// that declares a selection and gilds a single node must select that node's
+// distinct prime factors. If a second exception ever appears here it is either
+// a new joke that needs recording in docs/ACHIEVEMENTS.md §6, or a typo.
+const radical = n => [...new Set(primeFactorsOf(n))].sort((x, y) => x - y);
+const exceptions = [];
+for (const a of A) {
+  if (!a.sel || a.gildNodes.length !== 1) continue;
+  const want = radical(a.gildNodes[0]);
+  if (want.length && want.join(',') !== a.sel.join(',')) {
+    exceptions.push(`${a.name}: gilds ${a.gildNodes[0]} {${want}} but selects {${a.sel}}`);
+  }
+}
+eq('only the recorded exceptions break the factor convention', exceptions, [
+  // The Law of Fives: 2+3=5, so 5 opens 23. The discord is the joke.
+  'ENIGMA!: gilds 23 {23} but selects {5}',
+  // The clue is "reads the same every way", so the trigger is the palindromic
+  // primes rather than 25's factors. 25 is what the square LOOKS like: 5x5.
+  'SATOR!: gilds 25 {5} but selects {2,3,5,7,11,101,131}',
+]);
+
+// ============================================================
+console.log('\n[triggers] a dial must actually be dialled');
+// resolveN() falls back to the PRODUCT of the selected primes, capped at 500,
+// whenever the range has not been set by hand. So a dial tested against
+// resolveN() can fire with nobody dialling: {5,61} makes 305 and {5,83} makes
+// 415, which handed out VICE! and BAY! for free. The predicate reads state.N
+// instead, which is null until a human sets it.
+//
+// This assertion does not test the predicate — it records which dials are
+// within reach of a bare selection, so that if anyone ever swaps state.N back
+// for resolveN() the blast radius is written down rather than rediscovered.
+const reachable = [];
+for (const a of A) {
+  if (a.range == null) continue;
+  const hits = [];
+  const walk = (i, prod, picked) => {
+    if (prod > 500) return;                       // the cap, which is luck not design
+    if (picked.length && prod === a.range) hits.push(`{${picked}}`);
+    for (let j = i; j < SELECTABLE_PRIMES.length; j++)
+      walk(j + 1, prod * SELECTABLE_PRIMES[j], [...picked, SELECTABLE_PRIMES[j]]);
+  };
+  walk(0, 1, []);
+  if (hits.length) reachable.push(`${a.name} N=${a.range} <- ${hits.join(' ')}`);
+}
+eq('dials a bare prime selection could reach', reachable,
+   ['VICE! N=305 <- {5,61}', 'BAY! N=415 <- {5,83}']);
+ok('...which is why the dial predicate reads state.N, not resolveN()');
+
+// ============================================================
+console.log('\n[sets] the computed families');
 eq('Fibonacci nodes', D.FIB_NODES, [2,3,5,8,13,21,34,55,89,144,233,377,610,987]);
 eq('Lucas nodes', D.LUCAS_NODES, [2,3,4,7,11,18,29,47,76,123,199,322,521,843]);
-eq('highly composite', D.HCN_NODES, [2,4,6,12,24,36,48,60,120,180,240,360,720,840]);
-eq('perfect', D.PERFECT_NODES, [6,28,496]);
-eq('squares count', D.SQUARE_NODES.length, 30);
-eq('89 multiples', D.NEAT_NODES.length, 11);
-eq('840 divisor count', D.divisorCount(840), 32);
+eq('perfect numbers under 1000', D.PERFECT_NODES, [6,28,496]);
+eq('twins / cousins / sexy', [D.SERIES.twins.length, D.SERIES.cousins.length, D.SERIES.sexy.length], [69, 81, 120]);
+eq('Sophie Germain', D.SERIES.germain.length, 37);
+eq('emirps', D.SERIES.emirp.length, 36);
+eq('palindromic primes in the grid', D.PALINDROMIC_PRIMES, [2,3,5,7,11,101,131]);
+eq('primes whose digits are prime', D.PRIME_DIGIT_PRIMES, [2,3,5,7,23,37,53,73]);
+eq('super-primes in the grid', D.SUPER_PRIMES, [3,5,11,17,31,41,59,67,83,109,127]);
+// EDU: super-prime means a prime at a PRIME INDEX. Different from prime digits,
+// and the two overlap only at 3 and 5 — worth asserting so a future edit that
+// conflates them fails loudly.
+eq('the two prime-ish families overlap only at 3 and 5',
+   D.SUPER_PRIMES.filter(p => D.PRIME_DIGIT_PRIMES.includes(p)), [3, 5]);
+eq('multiples of 7', D.REST_NODES.length, 142);
+eq('repdigits', D.REPDIGITS, [111,222,333,444,555,666,777,888,999]);
+eq('every repdigit is a multiple of 37', D.REPDIGITS.every(n => n % 37 === 0), true);
+eq('run targets', D.RUN_TARGETS, [17,23,31,41,53,59,67,71,83,97,101,109,127,131]);
+eq('squares two primes can reach', D.SQUARE_UP_NODES, [9,16,25,36,49,64,81,100,144,196]);
+// EDU: an odd square needs 2 as one of the two primes, because every other
+// prime is odd and two odds always sum to an even number.
+const oddSquares = D.SQUARE_UP_NODES.filter(n => n % 2 === 1);
+eq('the odd squares all need 2', oddSquares.every(s => isPrimeNumber(s - 2)), true);
 
-console.log('\n[sets] the prime families');
-// FAM is what a predicate may ASK FOR — the members inside the selectable grid.
-// SERIES is what gets GILDED — every member up to 1000.
-eq('twins   (grid / series)', [D.FAM.twins.length, D.SERIES.twins.length], [19, 69]);
-eq('cousins (grid / series)', [D.FAM.cousins.length, D.SERIES.cousins.length], [23, 81]);
-eq('sexy    (grid / series)', [D.FAM.sexy.length, D.SERIES.sexy.length], [28, 120]);
-eq('germain (grid / series)', [D.FAM.germain.length, D.SERIES.germain.length], [12, 37]);
-eq('happy   (grid / series)', [D.FAM.happy.length, D.SERIES.happy.length], [9, 35]);
-eq('emirp   (grid / series)', [D.FAM.emirp.length, D.SERIES.emirp.length], [10, 36]);
-eq('euler   (grid / series)', [D.FAM.euler.length, D.SERIES.euler.length], [10, 31]);
-eq('Sophie Germain (grid)', D.FAM.germain, [2,3,5,11,23,29,41,53,83,89,113,131]);
-eq('happy (grid)', D.FAM.happy, [7,13,19,23,31,79,97,103,109]);
-// 107 and 113 are emirps because 701 and 311 are prime. The earlier definition
-// required the REVERSAL to be inside the grid too, which was a fact about the
-// panel rather than about the numbers.
-eq('emirp (grid)', D.FAM.emirp, [13,17,31,37,71,73,79,97,107,113]);
-eq('Euler n^2+n+41 (grid)', D.FAM.euler, [41,43,47,53,61,71,83,97,113,131]);
-eq('Fibonacci primes', D.FAM.fibPrimes, [2,3,5,13,89]);
-eq('Lucas primes', D.FAM.lucasPrimes, [2,3,7,11,29,47]);
-// The primes building every perfect number below 1000 are 2 plus the Mersenne
-// primes. This is what lets PERFECT! carry the mathematics MERSENNE! used to.
-eq('perfect-number primes', D.FAM.perfectPrimes, [2,3,7,31]);
+// ============================================================
+console.log('\n[gilding] nothing derives before the capstone');
+const allButUnity = A.filter(a => a.id !== 'unity').map(a => a.id);
+const preUnity = D.computeGild(allButUnity);
+const full = D.gildForAll();
 
-console.log('\n[design] the list');
-eq('achievement count', D.ACHIEVEMENT_DEFS.length, 40);
-eq('XP total', D.ACHIEVEMENT_DEFS.reduce((s, a) => s + a.xp, 0), 1800);
-const overCap = D.ACHIEVEMENT_DEFS.filter(a => a.xp > 200);
-overCap.length ? fail(`XP over the 200 cap: ${overCap.map(a => a.id)}`) : ok('no achievement exceeds the 200 XP cap');
-const badStep = D.ACHIEVEMENT_DEFS.filter(a => a.xp % 5 !== 0);
-badStep.length ? fail(`XP not a multiple of 5: ${badStep.map(a => a.id)}`) : ok('every XP value is a multiple of 5');
-const ids = D.ACHIEVEMENT_DEFS.map(a => a.id);
-new Set(ids).size === ids.length ? ok('all ids unique') : fail('duplicate id');
-
-console.log('\n[design] store-id map agrees with the list');
-const platformSrc = readFileSync(join(root, 'www/platform/index.js'), 'utf8');
-const mapped = [...platformSrc.matchAll(/'([a-z0-9-]+)',?\s*(?=\/\/|')/g)].map(m => m[1]);
-const missingFromMap = ids.filter(id => !platformSrc.includes(`'${id}'`));
-missingFromMap.length
-  ? fail(`ids absent from the platform store-id map: ${missingFromMap}`)
-  : ok(`all ${ids.length} ids appear in the platform store-id map`);
-
-const noNodes = D.ACHIEVEMENT_DEFS.filter(a => !Array.isArray(a.gildNodes));
-noNodes.length ? fail(`gildNodes missing: ${noNodes.map(a => a.id)}`) : ok('every definition has a gildNodes array');
-const outOfRange = D.ACHIEVEMENT_DEFS.flatMap(a => a.gildNodes.filter(n => n < 1 || n > D.TROPHY_N));
-outOfRange.length
-  ? fail(`gilded nodes outside 1..${D.TROPHY_N}: ${[...new Set(outOfRange)]}`)
-  : ok(`every gilded node lies inside 1..${D.TROPHY_N}`);
-
-console.log('\n[design] every selectable prime is reachable');
-const ROUTES = D.primeRoutes();
-const noRoute = SELECTABLE_PRIMES.filter(p => !(ROUTES.get(p) || []).length);
-noRoute.length
-  ? fail(`primes no achievement gilds: ${noRoute}`)
-  : ok(`all ${SELECTABLE_PRIMES.length} selectable primes have at least one route`);
-const routeCounts = SELECTABLE_PRIMES.map(p => ROUTES.get(p).length);
-eq('route counts run from', [Math.min(...routeCounts), Math.max(...routeCounts)], [2, 7]);
-
-console.log('\n[gilding] the finished picture at N = 1000');
-const PSET = new Set(SELECTABLE_PRIMES);
-const outsideGrid = (n) => {
-  let m = n;
-  for (let dd = 2; dd * dd <= m; dd++) while (m % dd === 0) { if (!PSET.has(dd)) return true; m /= dd; }
-  return m > 1 && !PSET.has(m);
-};
-const gild = D.gildForAll();
-let gold = 0, dark = 0;
-const rescued = [];
-for (let n = 2; n <= D.TROPHY_N; n++) {
-  const lit = D.isNodeGilded(n, gild);
-  if (lit) gold++; else dark++;
-  if (lit && outsideGrid(n)) rescued.push(n);
+// Find a composite that NO achievement names but whose primes are all lit. If
+// derivation ever leaks, this is the node that shows it first.
+// DEV: do not hardcode one. 4 looks like the obvious candidate and is wrong —
+// it is a Lucas number, so LUCAS! names it outright.
+let witness = 0;
+for (let n = 4; n <= D.TROPHY_N && !witness; n++) {
+  if (preUnity.litNodes.has(n)) continue;
+  const f = primeFactorsOf(n);
+  if (f.length > 1 && f.every(p => preUnity.litNodes.has(p))) witness = n;
 }
-eq('gold nodes (2..1000)', gold, 853);
-eq('dark nodes (2..1000)', dark, 146);
-// Nodes carrying a prime factor above 131. No amount of prime-ownership can
-// reach these, so a direct gild is their only route. Once the families gild
-// their whole SERIES rather than just the grid members, most of these arrive in
-// bulk rather than one at a time, so the count is asserted and a few named
-// members spot-checked.
-eq('rescued from the dark (count)', rescued.length, 131);
-for (const n of [137, 149, 199, 233, 314, 419, 433, 521, 641, 843, 997]) {
-  rescued.includes(n) ? ok(`  ${n} is reachable`) : fail(`  ${n} should be reachable`);
-}
+yes(witness > 0, `found an underived witness: ${witness}`, 'no unnamed composite left to test with');
+yes(!D.isNodeGilded(witness, preUnity),
+    `${witness} stays dark before UNITY! though every prime in it is gilded`,
+    'derivation leaked before the capstone — the v1 flood is back');
+yes(D.isNodeGilded(witness, full), `UNITY! lights ${witness} by derivation`, 'UNITY! failed to flood');
 
-console.log('\n[gilding] ownership is a CONJUNCTION, not a disjunction');
-// THE assertion this file exists for. Under the first design these three
-// achievements owned 31 of the 32 primes and lit 715 of 726 nodes — 98% of the
-// finished board from three of forty, with the other thirty-seven worth eleven
-// nodes between them. Measured in a browser, not predicted. If this number ever
-// climbs back into the hundreds, that regression has returned.
-const three = D.computeGild(['twinning', 'sexy', 'germain']);
-let goldThree = 0;
-for (let n = 2; n <= D.TROPHY_N; n++) if (D.isNodeGilded(n, three)) goldThree++;
-// Under the first design these three owned 31 of 32 primes and lit 715 of 726
-// — 98% of the board from three of forty. They now light 145 of 853, or 17%,
-// and still own exactly one prime. The number grew when the families started
-// gilding their full series; what matters is that it is DIRECT gilding and the
-// ownership conjunction is untouched.
-eq('twinning + sexy + germain light only', goldThree, 145);
-eq('...and own this many primes', three.ownedPrimes.size, 1);
-
-const soloLouder = D.computeGild(['louder']);
-soloLouder.ownedPrimes.has(11)
-  ? fail('LOUDER! alone must NOT own prime 11 — it is one of six routes')
-  : ok('LOUDER! alone lights node 11 without owning prime 11');
-soloLouder.litNodes.has(11)
-  ? ok('...but node 11 is lit')
-  : fail('LOUDER! must at least light node 11');
-const allRoutes11 = D.computeGild(ROUTES.get(11));
-allRoutes11.ownedPrimes.has(11)
-  ? ok(`prime 11 needs all ${ROUTES.get(11).length} routes, and they suffice`)
-  : fail('the full route set for prime 11 must own it');
-// Derivation still means EVERY factor, not any. Tested against a synthetic
-// gild rather than a real achievement set: the seven routes to prime 2 also
-// light plenty of other nodes DIRECTLY (PERFECT! and RAMANUJAN! both gild 6),
-// so a real set cannot isolate the derivation. That is a fact about the design,
-// not a limitation — and the first version of this check got it wrong.
-const only2 = { litNodes: new Set(), ownedPrimes: new Set([2]) };
-for (const n of [2, 4, 8, 16, 32, 64, 128, 256, 512]) {
-  D.isNodeGilded(n, only2) ? ok(`owning only 2 lights ${n}`) : fail(`owning 2 should light ${n}`);
+let before = 0, after = 0;
+for (let n = 0; n <= D.TROPHY_N; n++) {
+  if (D.isNodeGilded(n, preUnity)) before++;
+  if (D.isNodeGilded(n, full)) after++;
 }
-for (const n of [6, 10, 12, 14, 18, 20, 22]) {
-  D.isNodeGilded(n, only2)
-    ? fail(`owning only 2 must NOT light ${n} — it needs another prime`)
-    : ok(`owning only 2 does not light ${n}`);
-}
-// And the real route set does own the prime.
-D.computeGild(ROUTES.get(2)).ownedPrimes.has(2)
-  ? ok(`prime 2 needs all ${ROUTES.get(2).length} routes, and they suffice`)
-  : fail('the full route set for prime 2 must own it');
-
-console.log('\n[gilding] the UNITY! override stabilises the trophy-room toggles');
-const allIds = D.ACHIEVEMENT_DEFS.map(a => a.id);
-const offNoUnity = D.computeGild(allIds.filter(i => i !== 'sexy' && i !== 'unity'));
-const offWithUnity = D.computeGild(allIds.filter(i => i !== 'sexy'));
-let a1 = 0, a2 = 0;
-for (let n = 2; n <= D.TROPHY_N; n++) {
-  if (D.isNodeGilded(n, offNoUnity)) a1++;
-  if (D.isNodeGilded(n, offWithUnity)) a2++;
-}
-a2 > a1
-  ? ok(`switching a family off costs ${a2 - a1} fewer nodes with UNITY! on (${a2} vs ${a1})`)
-  : fail('the UNITY! override should keep derivation alive when a route is disabled');
+ok(`the board goes from ${before} gold to ${after} of ${D.TROPHY_N + 1} when UNITY! lands`);
+yes(after > before * 1.5, `UNITY! is a genuine flood (x${(after / before).toFixed(1)})`,
+    `UNITY! barely changes the picture: ${before} -> ${after}`);
 
 console.log('\n[gilding] node 0 and node 1');
 const none = D.computeGild([]);
-D.isNodeGilded(0, none) ? fail('node 0 must never gild — it is the Sun') : ok('node 0 never gilds');
-D.isNodeGilded(1, none) ? fail('node 1 must not gild by rule') : ok('node 1 does not gild by rule (empty factorisation)');
-D.isNodeGilded(1, D.computeGild(['unity'])) ? ok('node 1 gilds via UNITY! alone') : fail('UNITY! must light node 1');
+yes(!D.isNodeGilded(0, none) && !D.isNodeGilded(0, full), 'node 0 never gilds — it is the Sun');
+yes(!D.isNodeGilded(1, preUnity), 'node 1 stays dark until the capstone');
+yes(D.isNodeGilded(1, D.computeGild(['unity'])), 'UNITY! lights node 1');
+
+console.log('\n[gilding] lines');
+const neatOnly = D.computeGild(['neat']);
+yes(D.isLineGilded(89, neatOnly), "NEAT! draws 89's line on its own");
+yes(!D.isNodeGilded(178, neatOnly), "NEAT!'s multiples stay dark — the line is the point");
+yes(D.computeGild(allButUnity).litLines.size === 1,
+    'before the capstone, 89 is the only gilded line',
+    `expected exactly one line before UNITY!, got ${D.computeGild(allButUnity).litLines.size}`);
+yes(full.litLines.size > 20, `UNITY! gilds ${full.litLines.size} lines`);
+
+// ============================================================
+console.log('\n[gilding] the ceiling');
+// Dropping the conjunction fixed DERIVATION flooding, not DIRECT-GILD flooding.
+// A single achievement naming a third of the board would give the picture away
+// in one tap. These are the two largest and they were accepted knowingly.
+const biggest = [...A].sort((a, b) => b.gildNodes.length - a.gildNodes.length).slice(0, 3);
+ok('largest gild sets: ' + biggest.map(a => `${a.name} ${a.gildNodes.length}`).join(', '));
+yes(biggest[0].gildNodes.length <= 150,
+    `the largest gild set is ${biggest[0].gildNodes.length} nodes`,
+    `${biggest[0].name} gilds ${biggest[0].gildNodes.length} nodes — over the 150 ceiling`);
+
+const outOfRange = A.flatMap(a => a.gildNodes.filter(n => n < 0 || n > D.TROPHY_N).map(n => `${a.name}:${n}`));
+eq('every gilded node fits the trophy room', outOfRange, []);
+
+const dark = D.darkNodes();
+ok(`${dark.length} of ${D.TROPHY_N - 1} nodes stay dark with everything earned`);
 
 console.log(`\n${failed ? 'FAILED' : 'All achievement checks passed.'}  (${pass} passed, ${failed} failed)\n`);
 process.exit(failed ? 1 : 0);

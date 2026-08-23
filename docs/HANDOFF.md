@@ -4,9 +4,9 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15. **Last revised: 2026-08-23**, when the achievement list
-was redesigned from forty to a hundred and one. That redesign is specified and
-**not built** — see §1.
+**Written:** 2026-08-15. **Last revised: 2026-08-23**, when the achievement
+layer was rebuilt from forty achievements to a hundred and one. One piece of it
+is still missing and none of it has been seen on a phone — see §1.
 
 **The web app is feature-complete; it builds and runs as an Android app; and the
 achievement layer is built, working and verified on a Pixel 7 and a Pixel 9. The
@@ -126,14 +126,19 @@ console-issued ids into the `STORE_IDS` map there. Nothing else in the app
 should need to change: everything already runs against the adapter, and the
 in-memory fallback keeps a browser working.
 
-**The achievement layer was redesigned on 2026-08-23 and the redesign is not
-built.** The code still does v1 — forty achievements, the conjunction rule, a
-flat list — and that is what runs on the phones. **v2 is a hundred and one
-achievements** in a tree of eleven clusters, with the conjunction dropped, new
-trigger mechanics and an accordion UI. `ACHIEVEMENTS.md` specifies it and marks
-plainly which parts describe built code and which do not.
-`docs/achievements-v6.xlsx` is the authoritative list; `ACHIEVEMENTS.md` §10 is
-the file-by-file implementation brief.
+**The achievement layer was redesigned and rebuilt on 2026-08-23.** It is now
+**a hundred and one achievements** in a tree of eleven clusters: the conjunction
+rule is gone, nothing derives until UNITY!, triggers are declared as data rather
+than hand-written, and the panel is an accordion. `npm run check` covers it with
+50 assertions.
+
+**One piece is missing and nothing visual has been checked on a device.** The
+decomposition view — silver prime factors, and silver line-runs from each factor
+up to the gilded node — needs partial parastichy segments in `renderer.js`.
+Everything else was verified as logic in a browser, and the render loop does not
+run in a desktop preview pane, so gilding and highlighting have been confirmed
+as behaviour and not as pixels. `ACHIEVEMENTS.md` §10 has the state of every
+file.
 
 Nothing about step 4 depends on v2 — the adapter and the ledger are unchanged by
 it, and `STORE_IDS` simply grows. But **do not create achievements in the Play

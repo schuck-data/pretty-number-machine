@@ -525,12 +525,66 @@
   .ach-row.earned .ach-name { color: rgba(212, 175, 55, 0.9); }
   .ach-sub { font-size: 0.66rem; color: var(--text-dim); font-style: italic; }
   .ach-crit { font-size: 0.64rem; color: var(--text-dim); }
-  #ach-list { max-height: 42vh; overflow-y: auto; margin-top: 6px; }
+  #ach-list { max-height: 56vh; overflow-y: auto; margin-top: 6px; }
   #ach-progress { font-size: 0.7rem; color: var(--text-dim); margin: 4px 0 2px; }
 
-  /* A locked row shows its hint; an earned one shows its subtitle, and its
-     blurb only once tapped open. The explanation is part of the reward. */
+  /* The clue shows in BOTH states — it is short, it reads as a caption once
+     earned, and leaving it up is what keeps an open cluster scannable. The
+     blurb appears only when the row is tapped open; the explanation is part of
+     the reward. */
   .ach-hint { font-size: 0.66rem; color: var(--text-dim); font-style: italic; }
+  .ach-no {
+    display: inline-block; min-width: 1.9em;
+    color: var(--text-dim); opacity: 0.55; font-variant-numeric: tabular-nums;
+  }
+
+  /* THE ACCORDION. A hundred and one rows will not fit a phone sheet flat, so
+     they group: a static branch divider, then one collapsible header per
+     cluster. Fully collapsed this is about fifteen lines and needs no scroll at
+     all, which is the whole point of the shape. */
+  .ach-branch {
+    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-dim); opacity: 0.65;
+    margin: 10px 0 2px; padding-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ach-branch:first-of-type { margin-top: 4px; }
+  .ach-cluster {
+    display: flex; align-items: center; gap: 7px; width: 100%;
+    padding: 6px 0; background: transparent; border: none;
+    color: var(--text-faint); font: inherit; font-size: 0.72rem;
+    letter-spacing: 0.04em; text-align: left; cursor: pointer;
+  }
+  .ach-cluster:hover { color: var(--text); }
+  .ach-cluster-name { flex: 1; }
+  .ach-cluster-count {
+    font-size: 0.64rem; color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .ach-caret {
+    flex: none; width: 0; height: 0;
+    border-left: 4px solid currentColor;
+    border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
+    transition: transform 120ms ease;
+  }
+  .ach-cluster.open .ach-caret { transform: rotate(90deg) translateX(1px); }
+  .ach-cluster-toggle {
+    flex: none; padding: 1px 6px; font: inherit; font-size: 0.6rem;
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 3px; color: var(--text-dim); cursor: pointer;
+  }
+  .ach-cluster-toggle.on {
+    color: rgba(212, 175, 55, 0.9); border-color: rgba(212, 175, 55, 0.4);
+  }
+  .ach-allbar { display: flex; gap: 6px; margin: 2px 0 4px; }
+  .ach-allbtn {
+    flex: 1; padding: 3px; font: inherit; font-size: 0.62rem;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); cursor: pointer;
+  }
+  .ach-allbtn:hover { color: var(--text-faint); }
+  /* Rows inside a cluster sit in from the header so the grouping reads. */
+  .ach-row { padding-left: 11px; }
   .ach-blurb {
     display: none;
     font-size: 0.68rem; color: var(--text-dim); line-height: 1.45;
@@ -540,6 +594,12 @@
   .ach-row.open .ach-blurb { display: block; }
   .ach-row.focused { background: rgba(212, 175, 55, 0.07); }
   .ach-row.focused .ach-name { color: rgba(233, 200, 100, 1); }
+  /* A LOCKED row is tappable too, and previews what it will gild in white.
+     It must not borrow the gold focus look — that would read as a reward
+     already collected. See docs/ACHIEVEMENTS.md §4 on the two channels. */
+  .ach-row.locked { opacity: 0.42; }
+  .ach-row.locked.focused { background: rgba(190, 214, 255, 0.09); opacity: 0.85; }
+  .ach-row.locked.focused .ach-name { color: rgba(214, 230, 255, 0.95); }
   .ach-bulk {
     flex: 1; padding: 4px; background: transparent;
     border: 1px solid var(--border); color: var(--text-faint);

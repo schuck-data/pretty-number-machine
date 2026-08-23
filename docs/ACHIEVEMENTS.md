@@ -3,29 +3,33 @@
 **Written:** 2026-08-21. **Revised 2026-08-23**, when the list was redesigned
 from forty achievements to a hundred and one.
 
-> **Read this first.** There are two designs in this document and they are not
-> the same thing.
+> **Read this first.**
 >
-> **v1 is what the code does.** Forty achievements, the conjunction rule, a flat
-> list. Built, working, and verified on a Pixel 7 and a Pixel 9.
+> **v2 is built, apart from one piece.** A hundred and one achievements in a
+> tree, no conjunction, declarative triggers, the accordion. Landed 2026-08-23.
+> `npm run check` covers it with 50 assertions and it has been exercised in a
+> browser.
 >
-> **v2 is what this document specifies.** A hundred and one achievements in a
-> tree, no conjunction, new trigger mechanics, an accordion UI. **Designed and
-> not built.** Nothing in §1–§6 exists in `www/` yet.
+> **What is NOT built: the decomposition view** — the silver prime factors and
+> the silver line-runs from each factor up to the gilded node (§2). That needs
+> partial parastichy segments in `renderer.js` and is the one genuinely new
+> piece of rendering in the design.
+>
+> **Nothing visual has been verified on a device.** The render loop does not run
+> in a desktop preview pane (§8), so gilding, the focus highlight and the labels
+> were all confirmed as logic and none of them as pixels. Judge them on a phone.
 >
 > **`docs/achievements-v6.xlsx` is the authoritative list.** Names, clues,
-> criteria, gild sets and blurbs live there, not here. This document is the
-> reasoning; the spreadsheet is the data.
+> criteria, gild sets and blurbs live there. `achievements-data.js` was built
+> from it, and the two are now a genuine second source of truth — see §10.
 
-Where this disagrees with the code about **v1**, the code is right and this
-should be fixed. Where it disagrees with the spreadsheet about **v2**, the
-spreadsheet is right.
+Where this disagrees with the code, the code is right and this should be fixed.
 
 ---
 
 ## 0. Status
 
-| | v1 — built | v2 — specified |
+| | v1 — replaced | v2 — built 2026-08-23 |
 |---|---|---|
 | Count | 40 | **101** |
 | XP | 45 each, 1800 of 2000 | **15 each, UNITY! takes the remaining 500** |
@@ -41,7 +45,7 @@ spreadsheet is right.
 | `www/modules/achievements-data.js` | The number sets, the definitions, and the gilding rule. **No Three.js, no renderer** — so it can be checked headlessly |
 | `www/modules/achievements.js` | The ledger, the predicates, the UI, the toast, the sound, the gilding paint |
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
-| `tools/check-achievements.mjs` | 71 assertions, in `npm run check` and CI |
+| `tools/check-achievements.mjs` | 50 assertions, in `npm run check` and CI |
 | `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data |
 | `docs/achievements-v6.xlsx` | **The v2 list.** Authoritative |
 
@@ -373,6 +377,23 @@ device. Also: opening the preview at the site root registers the *shipped*
 build's service worker at scope `/`, which then swallows `/www/`. Unregister it
 before concluding anything.
 
+**`resolveN()` is not the range the player set.** When `state.N` is null — and
+it is null until somebody sets the range by hand — `resolveN()` returns the
+**product of the selected primes**, capped at 500. A dial tested against it
+therefore fires with nobody dialling: `{5, 61}` makes 305 and handed out VICE!,
+`{5, 83}` makes 415 and handed out BAY!. The other nine dials escaped only
+because their numbers sit above the 500 cap, which is luck and not design. Dial
+predicates read `state.N`. `tools/check-achievements.mjs` records the blast
+radius so a future edit that swaps it back is caught.
+
+**A stale console will send you hunting a bug that is not there.** Opening the
+preview at the site root registers the *shipped* build's service worker at scope
+`/`, which then swallows `/www/`. Unregistering it and reloading fixes the page
+— but the captured console keeps the original error, with line numbers from a
+document that is no longer being served, and `console.clear()` does not clear
+it. Ten minutes went into chasing a null `addEventListener` that had stopped
+existing. **Open a fresh tab and read that tab's console.**
+
 **Installing wipes the ledger.** `adb install -r` does not clear the WebView's
 HTTP cache, so `pm clear` is necessary — and it takes the ledger with it. To
 preserve real progress across an install, read `pnm-achievements-v1` and
@@ -419,20 +440,31 @@ N=10000, at 26.7 and 34.6 fps.
 
 ## 10. What building v2 touches
 
-| File | Change |
+| File | State |
 |---|---|
-| `achievements-data.js` | Remove `primeRoutes()`, `ROUTES`, `ownedPrimes`, the UNITY! override. Add `branch`, `cluster`, `number`. Replace the definitions from the spreadsheet |
-| `achievements.js` | Predicates for the new triggers. Accordion rendering. Locked rows tappable, focus painted white. Label threshold. Cluster toggles |
-| `renderer.js` | **Partial parastichy segments** for the decomposition view. The one genuinely new rendering piece |
-| `sheet.js` | Collapse-to-peek on focus |
-| `transport.js` | An event REST! can hear |
-| `platform/index.js` | `STORE_IDS` grows from 40 ids to 101 |
-| `check-achievements.mjs` | Conjunction assertions out. Trigger-uniqueness assertion in. Gild-set ceiling check |
-| `index.html` | Accordion markup and styles |
+| `achievements-data.js` | **done.** Conjunction machinery gone. 101 definitions with `branch`, `cluster`, `no`, and declarative `sel` / `range` triggers |
+| `achievements.js` | **done.** Generated predicates, the accordion, locked rows tappable, focus in white, label threshold, cluster toggles |
+| `platform/index.js` | **done.** 101 store ids, generated from the data file |
+| `sheet.js` | **done.** Collapse-to-peek on focus, driven by an event so the seam holds |
+| `index.html` | **done.** Accordion styles |
+| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard and the gild ceiling in. 50 assertions |
+| `renderer.js` | **NOT DONE.** Partial parastichy segments for the decomposition view |
+| `transport.js` | not needed. REST! binds to `#transport-btn` through the existing delegated `onTrusted`, so nothing had to be added |
 
-**`tools/achievements-table.mjs` should gain an importer**, or the spreadsheet
-becomes a second source of truth that drifts. Generating the definitions from
-`achievements-v6.xlsx` once, then deleting the spreadsheet, is the alternative.
+### The remaining piece
+
+The decomposition view wants the run of a prime's parastichy curve **from the
+factor up to the target node only**, drawn in silver. Today a curve is one whole
+line through every multiple of its prime. That is a sub-segment of existing
+geometry, and it is the reason 666 is worth looking at: three curves converging
+on it, each starting at one of its prime factors.
+
+### Two sources of truth
+
+`achievements-data.js` was generated from `achievements-v6.xlsx` by hand, once.
+They will drift. Either give `tools/achievements-table.mjs` an importer that
+regenerates the definitions, or accept the code as authoritative and delete the
+spreadsheet. **Deciding nothing is the option that goes wrong.**
 
 ---
 
@@ -442,9 +474,9 @@ becomes a second source of truth that drifts. Generating the definitions from
 npm run check
 ```
 
-Runs `tools/check.mjs` and `tools/check-achievements.mjs` — currently 71
-assertions over the number sets, the definitions, the store-id map, prime
-reachability, the finished picture, and the conjunction guard. Dependency-free,
+Runs `tools/check.mjs` and `tools/check-achievements.mjs` — 50 assertions over
+the list shape, the XP budget, trigger uniqueness, the dial guard, the computed
+families, the gilding rule and the gild-set ceiling. Dependency-free,
 in CI.
 
 ```bash
@@ -473,6 +505,10 @@ good moment to lift the ledger and enabled-set into a third Three-free file.
 - **`criteria` is the public string.** It is the Play Console description and is
   visible in the Play Games app; the in-app clue is separate and stays cryptic.
   A typo there ships
+- **The preview shows nothing when the node is out of range.** Tapping locked
+  BEAST! at the default range paints no highlight, because 666 is not on the
+  figure. Around half the list gilds a node above 500. Either the preview should
+  raise the range, or a locked row should say the number is off the board
 - **REST! at 142 nodes** is the largest gild set. Trim or accept
 - **SUPERPRIME! needs eleven taps**, SATOR! seven. The longest selections here
 - **Series is three members** and would fold into Primes without loss

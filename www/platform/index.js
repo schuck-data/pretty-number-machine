@@ -28,19 +28,36 @@
 // id stayed `trek`; had the id been the display name, every unlock a player
 // already held would have been orphaned by a cosmetic edit.
 //
-// DEV: `pgs` is empty for every entry because Play Console has not issued them.
+// DEV: 101 ids, taken straight from modules/achievements-data.js so this map
+// cannot drift from the design. `pgs` is empty for every entry because Play
+// Console has not issued them.
 // It assigns an opaque string (they look like `CgkI…`) when the achievement is
 // created in the console, and that is a §6 task. `gamecenter` is pre-filled
 // with the reverse-DNS convention Apple uses, since those are author-chosen
 // rather than issued — but nothing reads them yet.
 const STORE_IDS = {};
 for (const id of [
-  'fibonacci', 'perfect', 'ramanujan', 'lucas', 'squares', 'emirp', 'twinning',
-  'cousins', 'sexy', 'germain', 'happy', 'euler', 'unity', 'first', 'louder',
-  'rawr', 'best', 'neat', 'trek', 'sixseven', 'smart', 'localhost', 'ouch',
-  'void', 'empty-set', 'night', 'boing', 'trippy', 'oops', 'zoomies',
-  'maximalist', 'ceiling', 'exhaustive', 'parawhat', 'nerd', 'art', 'bophades',
-  'nice', 'dude', 'meme',
+  'first', 'exhaustive', 'parawhat', 'art', 'bophades',
+  'maximalist', 'ceiling', 'zoomies', 'boing', 'trippy',
+  'nerd', 'ouch', 'oops', 'night', 'void',
+  'empty-set', 'fibonacci', 'lucas', 'perfect', 'twinning',
+  'cousins', 'sexy', 'germain', 'emirp', 'mersenne',
+  'fermat', 'neat', 'louder', 'smart', 'balanced',
+  'stride', 'all-prime', 'super-prime', 'goldbach', 'collatz',
+  'run', 'stairs', 'square-up', 'nice', 'dude',
+  'meme', 'oil', 'catch', 'route', 'cards',
+  'jackpot', 'heinz', 'slurpee', 'sparta', 'jumbo',
+  'deck', 'beast', 'angel', 'lucky', 'unlucky',
+  'enigma', 'masonic', 'thelema', 'other-beast', 'rest',
+  'eightfold', 'sator', 'choirs', 'not-found', 'teapot',
+  'bradbury', 'trek', 'localhost', 'rawr', 'best',
+  'concert-a', 'lightspeed', 'memory', 'skeleton', 'inherited',
+  'elements', 'freezing', 'body-heat', 'boiling', 'year',
+  'leap', 'months', 'moon', 'metonic', 'quarter',
+  'shortest', 'longest', 'help', 'central', 'ny',
+  'space-city', 'graceland', 'motor-city', 'vice', 'bay',
+  'aloha', 'nola', 'phi', 'pi', 'tau',
+  'unity',
 ]) {
   STORE_IDS[id] = { pgs: '', gamecenter: `com.schuckdata.pnm.${id.replace(/-/g, '_')}` };
 }

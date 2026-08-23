@@ -1,4 +1,4 @@
-// PNM — Achievement Number Sets
+// PNM — Achievement Definitions and Number Sets
 //
 // Every integer set the achievement design depends on, and the gilding rule
 // itself. Split out from achievements.js for the same reason core/math.js is
@@ -6,17 +6,21 @@
 // renderer dependency**, so it can be imported, reasoned about and tested
 // without a browser. `node tools/check-achievements.mjs` does exactly that.
 //
-// That matters more here than it looks. These lists are long, several of them
-// are easy to get subtly wrong by hand, and a wrong one would be invisible in
-// the app — an achievement that simply never fires, or a node quietly gilded
-// that should not be. They are computed rather than written out as literals for
-// the same reason the golden angle is computed in math.js: a hand-copied list
-// is a second source of truth that drifts in silence.
+// That matters more here than it looks. These lists are long, several are easy
+// to get subtly wrong by hand, and a wrong one would be invisible in the app —
+// an achievement that never fires, or a node quietly gilded that should not be.
+// They are computed rather than written out as literals for the same reason the
+// golden angle is computed in math.js: a hand-copied list is a second source of
+// truth that drifts in silence.
+//
+// DESIGN RECORD: docs/ACHIEVEMENTS.md. The list itself was designed in
+// docs/achievements-v6.xlsx, which is where names, clues and blurbs came from.
+// If the two ever disagree, this file is the code and therefore right.
 
 import { SELECTABLE_PRIMES, isPrimeNumber, primeFactorsOf } from '../core/math.js';
 
 // The range the gilding design is specified against, and the trophy room's
-// pinned N. See docs/achievements-design.xlsx, "Trophy room" tab.
+// pinned N.
 export const TROPHY_N = 1000;
 
 const P = SELECTABLE_PRIMES;
@@ -44,36 +48,10 @@ export function seqLucas(limit) {
   return [...new Set(out)].sort((x, y) => x - y);
 }
 
-export function divisorCount(n) {
-  let c = 0;
-  for (let d = 1; d * d <= n; d++) {
-    if (n % d !== 0) continue;
-    c += (d * d === n) ? 1 : 2;
-  }
-  return c;
-}
-
-// EDU: a highly composite number has strictly more divisors than every number
-// below it. They are the exact opposite of primes — a prime has no factors at
-// all, and these have as many as it is possible to have at their size. 840 has
-// thirty-two, more than any number under a thousand. Ramanujan named and
-// catalogued them in 1915.
-export function seqHighlyComposite(limit) {
-  const out = [];
-  let best = 0;
-  for (let n = 2; n <= limit; n++) {
-    const d = divisorCount(n);
-    if (d > best) { best = d; out.push(n); }
-  }
-  return out;
-}
-
 // EDU: a perfect number equals the sum of its proper divisors — 6 = 1+2+3.
 // Euclid showed 2^(p-1)(2^p - 1) is perfect whenever 2^p - 1 is prime, and
 // Euler showed every even perfect number has that shape, so each one carries a
-// Mersenne prime inside it: 6 = 2x3, 28 = 4x7, 496 = 16x31. Only three exist
-// below 1000. Whether an ODD perfect number exists is still open after two
-// thousand years.
+// Mersenne prime inside it. Only three exist below 1000.
 export function seqPerfect(limit) {
   const out = [];
   for (let n = 2; n <= limit; n++) {
@@ -88,45 +66,20 @@ export function seqPerfect(limit) {
   return out;
 }
 
-// EDU: node n is placed at a distance proportional to the square root of n —
-// see SPACING_2D in core/math.js for why that exponent is forced. So the square
-// numbers land at distances 2, 3, 4, 5: evenly spaced, marching straight
-// outward, while everything around them crowds together. That regularity is a
-// property of THIS arrangement, not of the squares.
-export function seqSquares(limit) {
-  const out = [];
-  for (let k = 2; k * k <= limit; k++) out.push(k * k);
-  return out;
-}
-
 export function multiplesOf(p, limit) {
   const out = [];
   for (let k = 1; k * p <= limit; k++) out.push(k * p);
   return out;
 }
 
-// EDU: square each digit, add them up, repeat. Land on 1 and the number is
-// "happy". Fail and you fall into a cycle that always passes through 89 and
-// never leaves. Every number does one or the other, and the reason is a size
-// argument: above 1000 the map strictly decreases, so no trajectory can escape
-// upward forever and all of them must eventually repeat.
-export function isHappy(n) {
-  const seen = new Set();
-  while (n !== 1 && !seen.has(n)) {
-    seen.add(n);
-    n = String(n).split('').reduce((s, d) => s + (+d) * (+d), 0);
-  }
-  return n === 1;
-}
-
 export const reverseNum = n => +String(n).split('').reverse().join('');
+export const isPalindrome = n => String(n) === String(n).split('').reverse().join('');
 
 export const FIB_NODES     = seqFib(TROPHY_N);
 export const LUCAS_NODES   = seqLucas(TROPHY_N);
-export const HCN_NODES     = seqHighlyComposite(TROPHY_N);
 export const PERFECT_NODES = seqPerfect(TROPHY_N);
-export const SQUARE_NODES  = seqSquares(TROPHY_N);
-export const NEAT_NODES    = multiplesOf(89, TROPHY_N);
+export const REST_NODES    = multiplesOf(7, TROPHY_N);          // 142 of them
+export const REPDIGITS     = [111, 222, 333, 444, 555, 666, 777, 888, 999];
 
 // ============================================================
 // PRIME FAMILIES
@@ -134,19 +87,16 @@ export const NEAT_NODES    = multiplesOf(89, TROPHY_N);
 // TWO sets per family, and the distinction matters.
 //
 //   SERIES.x  — every prime up to 1000 with the property. This is what gets
-//               GILDED: a series should light all of its members that fit on
+//               GILDED: a family should light all of its members that fit on
 //               the figure, not just the handful the panel happens to offer.
-//   FAM.x     — the members inside the selectable grid. This is what TRIGGERS
-//               an achievement, because a predicate like isExactly() can only
-//               ask for primes a player is able to switch on.
+//   FAM.x     — the members inside the selectable grid, for anything that has
+//               to name them.
 //
 // DEV: computing the property over the full range rather than within the grid
 // also changes which IN-GRID primes qualify, and that is a correction rather
-// than a side effect. 131 is a sexy prime — 137 is six away and prime — but the
-// old within-the-grid definition denied it, because 137 is the one prime the
-// panel does not offer. Same for 107 and 113 as emirps: 701 and 311 are prime,
-// they were simply out of view. The property belongs to the number, not to the
-// user interface.
+// than a side effect. 131 is a sexy prime — 137 is six away and prime — but a
+// within-the-grid definition would deny it, because 137 is the one prime the
+// panel does not offer. The property belongs to the number, not to the UI.
 const P1000 = [];
 for (let n = 2; n <= TROPHY_N; n++) if (isPrimeNumber(n)) P1000.push(n);
 const P1000SET = new Set(P1000);
@@ -160,413 +110,321 @@ export const SERIES = {
   // EDU: p is a Sophie Germain prime when 2p+1 is also prime. 2p+1 may be well
   // past the end of the figure — that is fine, the property is about p.
   germain: P1000.filter(p => isPrimeNumber(2 * p + 1)),
-  happy:   P1000.filter(isHappy),
   // EDU: an emirp is a prime whose digits reversed give a DIFFERENT prime.
   // "Emirp" is "prime" spelled backwards.
   emirp:   P1000.filter(p => reverseNum(p) !== p && isPrimeNumber(reverseNum(p))),
-  // EDU: Euler's polynomial n^2 + n + 41 is prime for every n from 0 to 39.
-  // Thirty-one of those values fit under 1000; the run does not break until
-  // n = 40, well past the edge of the figure.
-  euler:   Array.from({ length: 40 }, (_, n) => n * n + n + 41).filter(v => v <= TROPHY_N),
-  fib:     FIB_NODES.filter(isPrimeNumber),
-  lucas:   LUCAS_NODES.filter(isPrimeNumber),
   perfect: [...new Set(PERFECT_NODES.flatMap(primeFactorsOf))].sort((a, b) => a - b),
 };
 
-// The selectable members — what a predicate is allowed to ask for.
-const inGrid = xs => xs.filter(p => PSET.has(p));
+// Selectable primes with a property, for the achievements that name them.
+// Computed rather than typed so the definitions below cannot drift from truth.
+export const PALINDROMIC_PRIMES = P.filter(isPalindrome);            // 2 3 5 7 11 101 131
+export const PRIME_DIGIT_PRIMES = P.filter(p => String(p).split('').every(d => '2357'.includes(d)));
+// EDU: a super-prime sits at a PRIME position in the list of primes. 2 is the
+// 1st prime, 3 the 2nd, 5 the 3rd — so 3, 5, 11, 17 … are the primes you reach
+// by counting with primes. Not the same thing as a prime whose digits are prime.
+export const SUPER_PRIMES = P1000.filter((p, i) => isPrimeNumber(i + 1)).filter(p => PSET.has(p));
 
-export const FAM = {
-  twins:   inGrid(SERIES.twins),
-  cousins: inGrid(SERIES.cousins),
-  sexy:    inGrid(SERIES.sexy),
-  germain: inGrid(SERIES.germain),
-  happy:   inGrid(SERIES.happy),
-  emirp:   inGrid(SERIES.emirp),
-  euler:   inGrid(SERIES.euler),
-  fibPrimes:     inGrid(SERIES.fib),
-  lucasPrimes:   inGrid(SERIES.lucas),
-  perfectPrimes: inGrid(SERIES.perfect),
-};
+// RUN!: primes reachable as the sum of three or more consecutive primes.
+export const RUN_TARGETS = (() => {
+  const out = new Set();
+  for (let i = 0; i < P1000.length; i++) {
+    let s = 0;
+    for (let j = i; j < P1000.length; j++) {
+      s += P1000[j];
+      if (s > 131) break;
+      if (j - i >= 2 && PSET.has(s)) out.add(s);
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+})();
+
+// GOLDBACH!: every even number two selectable primes can build.
+export const GOLDBACH_EVENS = (() => {
+  const out = new Set();
+  for (const a of P) for (const b of P) if ((a + b) % 2 === 0) out.add(a + b);
+  return [...out].sort((x, y) => x - y);
+})();
+
+// SQUARE UP!: the squares two selectable primes can reach.
+export const SQUARE_UP_NODES = (() => {
+  const out = new Set();
+  for (const a of P) for (const b of P) {
+    if (a >= b) continue;
+    const s = a + b;
+    if (Number.isInteger(Math.sqrt(s))) out.add(s);
+  }
+  return [...out].sort((x, y) => x - y);
+})();
 
 // ============================================================
 // THE DEFINITIONS
 // ============================================================
-// Data only — no predicates, because a predicate needs the live `state` and
-// that would drag the renderer back in here. modules/achievements.js supplies
-// one test function per id and merges the two halves.
+// Data only — no predicates. Where a trigger is an exact prime selection or an
+// exact range it is DECLARED here rather than hand-written in achievements.js:
 //
-// EVERY achievement gilds NODES, and nothing gilds a prime directly. That is
-// the whole design and it is worth understanding before changing anything here,
-// because the obvious alternative was tried and measured and it collapsed.
+//   sel: [2, 3, 37]   the player must have exactly these primes selected
+//   range: 911        the range must be exactly this
+//   custom: true      achievements.js supplies a test function
 //
-// The first version let a family "own" its primes outright, so that owning a
-// prime lit every composite built from it. Measured in a browser: TWINNING!,
-// SEXY! and GERMAIN! — three achievements, six taps — owned 31 of the 32
-// primes and lit 715 of the 726 gold nodes. Ninety-eight per cent of the
-// finished trophy room, from three of forty achievements, and the remaining
-// thirty-seven were worth eleven nodes between them.
+// DEV: this is the biggest change from v1, where every one of forty triggers was
+// a hand-written predicate. Declaring them buys two things. Fifty-odd predicates
+// collapse to one generated comparison, and — the reason that matters — the
+// headless checker can assert that **no two achievements share a selection**.
+// Two achievements firing on one tap makes both their clues meaningless and
+// breaks the locked-row preview, since two rows would show different nodes
+// reachable by an identical action. Under v1 nothing could have caught that.
 //
-// So ownership is now a CONJUNCTION rather than a disjunction: see the gilding
-// rule below. Under it those same three achievements light 31 nodes.
-//
-// XP: 45 each across 40 achievements is 1,800 of the 2,000 Play Games allows,
-// holding 200 back. Deliberately not 50: achievements can be added after
-// publication but almost certainly not removed, so a list that spends the whole
-// budget is the one shape that cannot be corrected later.
-export const XP = 45;
+// XP: 15 each across 100, and UNITY! takes the remaining 500 of Play's 2000.
+// Holding the reserve inside the capstone rather than leaving it unspent means
+// later additions have somewhere to come from — drop UNITY! to 350 and you have
+// ten more achievements. Achievements can be added after publication and
+// effectively never removed, so that flexibility is the whole point.
+export const XP = 15;
+export const XP_UNITY = 500;
 
-const d = (id, name, subtitle, trigger, gildNodes = [], extra = {}) => ({
-  id, name, subtitle, trigger,
-  xp: XP, kind: 'standard',
-  gildNodes,
-  ...extra,
-});
+const defs = [];
+const d = (no, cluster, id, name, clue, criteria, gildNodes, trigger, opts = {}) => {
+  defs.push({
+    no, id, name, clue, criteria, cluster,
+    branch: opts.branch || BRANCH_OF[cluster],
+    gildNodes, gildLines: opts.gildLines || [],
+    xp: id === 'unity' ? XP_UNITY : XP,
+    blurb: opts.blurb || '',
+    ...trigger,
+  });
+};
+const BRANCH_OF = {
+  Tutorial: 'Tutorial', Series: 'Math', Primes: 'Math', Puzzles: 'Math',
+  Meme: 'Culture', Lore: 'Culture', Geek: 'Culture', Calendar: 'Culture',
+  Dial: 'Culture', Greeks: 'Culture', Capstone: 'Capstone',
+};
+const sel   = (...primes) => ({ kind: 'state', sel: primes.sort((a, b) => a - b) });
+const range = (n)         => ({ kind: 'state', range: n });
+const custom = (kind = 'state') => ({ kind, custom: true });
 
-export const ACHIEVEMENT_DEFS = [
-  // ---- families: named number sets, marked on the figure ----
-  d('fibonacci', 'FIBONACCI!', 'How nature counts.', 'state', FIB_NODES),
-  d('perfect', 'PERFECT!', 'Equal to the sum of its own parts.', 'state',
-    [...SERIES.perfect, ...PERFECT_NODES]),
-  d('ramanujan', 'RAMANUJAN!', 'More factors than anything smaller.', 'state', HCN_NODES),
-  d('lucas', 'LUCAS!', 'Same rule, different start.', 'state', LUCAS_NODES),
-  d('squares', 'SQUARES!', 'Evenly spaced, all the way out.', 'state', SQUARE_NODES),
-  d('emirp', 'EMIRP!', 'Prime, backwards.', 'state', SERIES.emirp),
-  d('twinning', 'TWINNING!', 'Two apart, forever.', 'state', SERIES.twins),
-  d('cousins', 'COUSINS!', 'Close, but not that close.', 'state', SERIES.cousins),
-  d('sexy', 'SEXY!', "It's Latin. Honestly.", 'state', SERIES.sexy),
-  d('germain', 'GERMAIN!', 'p, and twice p plus one.', 'state', SERIES.germain),
-  d('happy', 'HAPPY!', 'Square the digits. Repeat.', 'state', SERIES.happy),
-  d('euler', 'EULER!', "He's everywhere!", 'state', SERIES.euler),
+// ---- TUTORIAL — the ordered tour ----------------------------------------
+d(1,  'Tutorial', 'first',      'FIRST!',       '-switch it on-',                      'Switch achievements on from the achievements section.', [2],    custom('dom'));
+d(2,  'Tutorial', 'exhaustive', 'EXHAUSTIVE!',  '-show the ones in between-',          'Switch on all integers in range.',                      [1000], custom('dom'));
+d(3,  'Tutorial', 'parawhat',   'PARAWHAT?!',   '-pe-RAS-te-kee-',                     'Turn on or adjust parastichy line visibility.',         [137],  custom('dom'));
+d(4,  'Tutorial', 'art',        'ART!',         '-change how it looks, not what it is-','Change any appearance setting.',                       [433],  custom('dom'));
+d(5,  'Tutorial', 'bophades',   'ORBS!',        '-so big-',                            'Take node size to its maximum.',                        [8],    custom('dom'));
+d(6,  'Tutorial', 'maximalist', 'MAXIMALIST!',  '-push the slider all the way-',       'Take the range slider to its maximum, 2500.',           [999],  custom('dom'));
+d(7,  'Tutorial', 'ceiling',    'CEILING!',     '-the slider was lying-',              'Set the range to 10000.',                               [997],  custom());
+d(8,  'Tutorial', 'zoomies',    'ZOOMIES!',     '-faster, all the way-',               'Turn morph speed up to maximum.',                       [88, 121], custom());
+d(9,  'Tutorial', 'boing',      'BOING!',       '-wait for the bottom-',               'Let the morph reach the Spring form.',                  [6],    custom('sampled'));
+d(10, 'Tutorial', 'trippy',     'TRIPPY!',      '-there is a button for this-',        'Press Dazzle.',                                         [815],  custom('dom'));
+d(11, 'Tutorial', 'nerd',       'NERD!',        '-drag the classroom across-',         'Open the classroom lens.',                              [42],   custom());
+d(12, 'Tutorial', 'ouch',       'OUCH!',        '-take hold of the Sun-',              'With physics on, drag node 0.',                         [149],  custom('event'));
+d(13, 'Tutorial', 'oops',       'OOPS!',        '-make the springs disagree-',         'Get 20 or more nodes further than twice their rest distance from the Sun.', [641], custom('sampled'));
+d(14, 'Tutorial', 'night',      'NIGHT!',       '-put out the Sun-',                   'Switch off the zero node.',                             [354],  custom());
+d(15, 'Tutorial', 'void',       'VOID!',        '-take every prime away-',             'Deselect every prime.',                                 [],     custom());
+d(16, 'Tutorial', 'empty-set',  'EMPTY SET!',   '-then take away what was left-',      'Deselect every prime and switch off both 0 and 1.',     [86],   custom());
 
-  // ---- the capstone ----
-  // DEV: node 1 has an empty factorisation, so the derivation rule would light
-  // it for free. It is reachable only here. UNITY! is also the master switch —
-  // see applyUnityOverride() in the rule below.
-  d('unity', 'UNITY!', 'Everything else, first.', 'derived', [1]),
+// ---- MATH · SERIES ------------------------------------------------------
+d(17, 'Series', 'fibonacci', 'FIBONACCI!', '-how nature counts-',            'Select exactly the five Fibonacci primes and nothing else.', FIB_NODES,   sel(2, 3, 5, 13, 89));
+d(18, 'Series', 'lucas',     'LUCAS!',     '-fibonacci, but different-',     'Select exactly 2, 3, 7, 11, 29 and 47.',                     LUCAS_NODES, sel(2, 3, 7, 11, 29, 47));
+d(19, 'Series', 'perfect',   'PERFECT!',   '-equal to the sum of its parts-','Select exactly 2, 3, 7 and 31.',   [...SERIES.perfect, ...PERFECT_NODES], sel(2, 3, 7, 31));
 
-  // ---- individual numbers ----
-  d('first', 'FIRST!', 'The game begins.', 'dom', [2],
-    { dom: { selector: '#achievements-toggle', event: 'change' } }),
-  d('louder', 'LOUDER!', 'These go to eleven.', 'state', [11]),
-  d('rawr', 'RAWR!', 'U R so random!', 'state', [17]),
-  d('best', 'BEST!', 'The best number.', 'state', [37, 73]),
-  // The claim is about the multiples of 89 stacking into a spoke, so it marks
-  // all eleven of them rather than 89 alone.
-  d('neat', 'NEAT!', '89 is oddly tidy.', 'state', NEAT_NODES),
-  d('trek', '1701!', 'Deck 47, Sector 47, 47 casualties.', 'state', [47]),
-  d('sixseven', 'SIXSEVEN!', 'Kids these days.', 'dom', [67],
-    { dom: { selector: '.prime-btn[data-prime="67"]', event: 'click' } }),
-  d('smart', 'SMART!', 'Prime 101.', 'state', [101]),
-  d('localhost', 'LOCALHOST!', "There's no place like it.", 'state', [127]),
+// ---- MATH · PRIMES ------------------------------------------------------
+d(20, 'Primes', 'twinning',    'TWINNING!',     '-one even number between them-',        "Select exactly two primes that differ by 2.",                SERIES.twins,   custom());
+d(21, 'Primes', 'cousins',     'COUSINS!',      '-four apart-',                          'Select exactly two primes that differ by 4.',                SERIES.cousins, custom());
+d(22, 'Primes', 'sexy',        'SEXY!',         '-six apart, and that is the real name-','Select exactly two primes that differ by 6.',                SERIES.sexy,    custom());
+d(23, 'Primes', 'germain',     'GERMAIN!',      '-double it, add one-',                  'Select exactly two primes p and q where q = 2p+1.',          SERIES.germain, custom());
+d(24, 'Primes', 'emirp',       'EMIRP!',        '-read it the other way-',               "Select exactly two primes that are each other's digit reversal.", SERIES.emirp, custom());
+d(25, 'Primes', 'mersenne',    'MERSENNE!',     '-one less than a power of two-',        'Select exactly 3, 7, 31 and 127.',                           [3, 7, 31, 127],        sel(3, 7, 31, 127));
+d(26, 'Primes', 'fermat',      'FERMAT!',       '-one more than a power of two-',        'Select exactly 3, 5 and 17.',                                [3, 5, 17, 255, 257],   sel(3, 5, 17));
+d(27, 'Primes', 'neat',        'NEAT!',         '-almost a straight line-',              'Two primes selected, one of them 89, with the range at least 178.', [89],             custom(), { gildLines: [89] });
+d(28, 'Primes', 'louder',      'LOUDER!',       '-these ones go to-',                    'Select exactly 11.',                                         [11],                   sel(11));
+d(29, 'Primes', 'smart',       'SMART!',        '-intro class-',                         'Select exactly 101 and view it through the classroom lens.', [101],                  custom());
+d(30, 'Primes', 'balanced',    'BALANCED!',     '-exactly halfway between its neighbours-','Select exactly 5 and 53.',                                 [5, 53],                sel(5, 53));
+d(31, 'Primes', 'stride',      'STRIDE!',       '-the widest step-',                     'Select exactly 113 and 127.',                                [113, 127],             sel(113, 127));
+d(32, 'Primes', 'all-prime',   'PRIME DIGITS!', '-every digit too-',                     'Select exactly 2, 3, 5, 7, 23, 37, 53 and 73.',              PRIME_DIGIT_PRIMES,     sel(...PRIME_DIGIT_PRIMES));
+d(33, 'Primes', 'super-prime', 'SUPERPRIME!',   '-count the primes and land on one-',    'Select exactly 3, 5, 11, 17, 31, 41, 59, 67, 83, 109 and 127.', SUPER_PRIMES,        sel(...SUPER_PRIMES));
 
-  // ---- general ----
-  // Every gild here was chosen for the number's meaning. The ones marked
-  // RESCUE are primes above 131, which no amount of prime-ownership can ever
-  // reach — an explicit gild is their only route, so they are the only entries
-  // in this block that change the FINISHED picture rather than merely lighting
-  // something sooner.
-  d('ouch', 'OUCH!', 'You touched the Sun!', 'event', [149],   // RESCUE. 1 AU: 149.6 million km.
-    { busEvent: 'physics:dragStart' }),
-  // VOID! and EMPTY SET! gild nothing, on purpose. An achievement called
-  // EMPTY SET! that gilds the empty set is correct, not an oversight.
-  d('void', 'VOID!', 'Behold the nothing!', 'state', []),
-  d('empty-set', 'EMPTY SET!', 'The empty set.', 'state', []),
-  d('night', 'NIGHT!', 'Who turned out the Sun?!', 'state', [354]),  // lunar year: 12 lunar months vs 365 solar.
-  d('boing', 'BOING!', 'You saw the spring!', 'sampled', [314]),     // RESCUE (2 x 157). pi — a spring's period is 2*pi*sqrt(m/k).
-  d('trippy', 'TRIPPY!', 'Woah man, check it out!', 'dom', [419],    // RESCUE. Bicycle Day, 19 April 1943.
-    { dom: { selector: '#dazzle-btn', event: 'click' } }),
-  d('oops', 'OOPS!', 'Is it supposed to do that?', 'sampled', [641]), // RESCUE. 641 divides 2^32+1, which Fermat said was prime.
-  d('zoomies', 'ZOOMIES!', "Look at 'em go!", 'state', [88, 121]),   // 88 mph, 1.21 gigawatts.
-  d('maximalist', 'MAXIMALIST!', 'It just keeps going!', 'dom', [999],
-    { dom: { selector: '#n-slider', event: 'input' } }),
-  d('ceiling', 'CEILING!', "That's the lot.", 'state', [997]),        // RESCUE. Largest prime under 1000.
-  d('exhaustive', 'EXHAUSTIVE!', "Yep, that's all of 'em!", 'dom', [1000],
-    { dom: { selector: '#show-all-integers', event: 'change' } }),
-  d('parawhat', 'PARAWHAT?!', 'pe-RAS-te-kee', 'dom', [137],          // RESCUE. The golden angle is 137.5 degrees — the reason parastichies exist. Also the one prime the panel refuses to offer.
-    { dom: { selector: '#show-curves, #line-width', event: 'input change' } }),
-  d('nerd', 'NERD!', 'Great minds think!', 'state', [42]),
-  d('art', 'ART!', 'Beauty is in the eye of the beholder!', 'dom', [433],  // RESCUE. John Cage, 4'33".
-    { dom: { selector: '#section-appearance input, #section-appearance select',
-             event: 'input change' } }),
-  d('bophades', 'BOPHADES!', 'Yup, pretty big!', 'dom', [2],
-    { dom: { selector: '#node-size', event: 'input' } }),
+// ---- MATH · PUZZLES -----------------------------------------------------
+d(34, 'Puzzles', 'goldbach',  'GOLDBACH!',   '-two make an even-',                'With the range set to an even number, select exactly two primes that add up to it.', GOLDBACH_EVENS,  custom());
+d(35, 'Puzzles', 'collatz',   'COLLATZ!',    '-the long way down-',               'Select exactly 13 and 67.',                                   [871],            sel(13, 67));
+d(36, 'Puzzles', 'run',       'RUN!',        '-a run of them adds up to another-','Select three or more primes in a row together with the prime they add up to.', RUN_TARGETS, custom());
+d(37, 'Puzzles', 'stairs',    'STAIRS!',     '-three evenly spaced-',             'Select exactly three primes that are evenly spaced.',         [3, 5, 7],        custom());
+d(38, 'Puzzles', 'square-up', 'SQUARE UP!',  '-two that add to a square-',        'Select exactly two primes that add up to a square number.',   SQUARE_UP_NODES,  custom());
 
-  d('nice', 'NICE!', 'Nice.', 'state', [69]),
-  d('dude', 'DUDE!', 'Heh.', 'state', [420]),
-  d('meme', 'MEME!', 'Two numbers, both alike in dignity.', 'state', [67, 69]),
-];
+// ---- CULTURE · MEME -----------------------------------------------------
+d(39, 'Meme', 'nice',    'NICE!',     '-nice-',                'Select exactly 3 and 23.',       [69],  sel(3, 23));
+d(40, 'Meme', 'dude',    'DUDE!',     '-what was I saying?-',  'Select exactly 2, 3, 5 and 7.',  [420], sel(2, 3, 5, 7));
+d(41, 'Meme', 'meme',    'MEME!',     '-kids these days-',     'Select exactly 67.',             [67],  sel(67));
+d(42, 'Meme', 'oil',     'OIL!',      '-upside down-',         'Select exactly 2, 5 and 71.',    [710], sel(2, 5, 71));
+d(43, 'Meme', 'catch',   'CATCH!',    '-damned either way-',   'Select exactly 2 and 11.',       [22],  sel(2, 11));
+d(44, 'Meme', 'route',   'ROUTE!',    '-get your kicks-',      'Select exactly 2, 3 and 11.',    [66],  sel(2, 3, 11));
+d(45, 'Meme', 'cards',   'CARDS!',    '-hit me-',              'Select exactly 3 and 7.',        [21],  sel(3, 7));
+d(46, 'Meme', 'jackpot', 'JACKPOT!',  '-three of a kind-',     'Select exactly 3, 7 and 37.',    [777], sel(3, 7, 37));
+d(47, 'Meme', 'heinz',   'HEINZ!',    '-varieties-',           'Select exactly 3 and 19.',       [57],  sel(3, 19));
+d(48, 'Meme', 'slurpee', 'SLURPEE!',  '-any time-',            'Select exactly 3 and 79.',       [711], sel(3, 79));
+d(49, 'Meme', 'sparta',  'SPARTA!',   '-this is-',             'Select exactly 2, 3 and 5.',     [300], sel(2, 3, 5));
+d(50, 'Meme', 'jumbo',   'JUMBO!',    '-upper deck-',          'Select exactly 3 and 83.',       [747], sel(3, 83));
+d(51, 'Meme', 'deck',    'DECK!',     '-a full one-',          'Select exactly 2 and 13.',       [52],  sel(2, 13));
+
+// ---- CULTURE · LORE -----------------------------------------------------
+d(52, 'Lore', 'beast',       'BEAST!',       '-number of a man-',       'Select exactly 2, 3 and 37.',       [666],      sel(2, 3, 37));
+d(53, 'Lore', 'angel',       'ANGEL!',       '-a repeating message-',   'Select exactly 2, 3, 5, 7 and 37.', REPDIGITS,  sel(2, 3, 5, 7, 37));
+d(54, 'Lore', 'lucky',       'LUCKY!',       '-*th heaven-',            'Select exactly 7.',                 [7],        sel(7));
+d(55, 'Lore', 'unlucky',     'UNLUCKY!',     '-fourteenth floor-',      'Select exactly 13.',                [13],       sel(13));
+// DELIBERATE: the trigger does NOT match the gilded node's factors. 5 opens 23
+// — the Law of Fives, 2+3=5. The only such exception in the design, and the
+// discord is the joke. Do not "correct" it. See docs/ACHIEVEMENTS.md §6.
+d(56, 'Lore', 'enigma',      'ENIGMA!',      '-fnord-',                 'Select exactly 5.',                 [23],       sel(5));
+d(57, 'Lore', 'masonic',     'MASONIC!',     '-the highest degree-',    'Select exactly 3 and 11.',          [33],       sel(3, 11));
+d(58, 'Lore', 'thelema',     'WHOLE!',       '-do what thou wilt-',     'Select exactly 3 and 31.',          [93],       sel(3, 31));
+d(59, 'Lore', 'other-beast', 'OTHER BEAST!', '-the older manuscript-',  'Select exactly 2, 7 and 11.',       [616],      sel(2, 7, 11));
+d(60, 'Lore', 'rest',        'REST!',        '-gotta take breaks-',     'Pause the transport.',              REST_NODES, custom('dom'));
+// DELIBERATE: a range trigger outside the Dial cluster. Range 8 leaves a spare
+// eight-node figure, which suits the idea.
+d(61, 'Lore', 'eightfold',   'SIT!',         '-the middle way-',        'Set the range to 8.',               [8],        range(8));
+d(62, 'Lore', 'sator',       'SATOR!',       '-reads the same every way-','Select all palindromic primes.',  [25],       sel(...PALINDROMIC_PRIMES));
+d(63, 'Lore', 'choirs',      'CHOIRS!',      '-nine ranks of them-',    'Select exactly 3.',                 [9],        sel(3));
+
+// ---- CULTURE · GEEK -----------------------------------------------------
+d(64, 'Geek', 'not-found',  'NOT FOUND!',  '-missing-',                   'Select exactly 2 and 101.',                          [404], sel(2, 101));
+d(65, 'Geek', 'teapot',     'TEAPOT!',     '-short and stout-',           'Select exactly 2, 11 and 19.',                       [418], sel(2, 11, 19));
+d(66, 'Geek', 'bradbury',   'BRADBURY!',   '-burning point-',             'Select exactly 11 and 41.',                          [451], sel(11, 41));
+d(67, 'Geek', 'trek',       '1701!',       '-deck 47, sector 47-',        'Select exactly 47.',                                 [47],  sel(47));
+d(68, 'Geek', 'localhost',  'LOCALHOST!',  '-no place like it-',          'Select exactly 127, with the range set to 127.',     [127], custom());
+d(69, 'Geek', 'rawr',       'RAWR!',       '-so random-',                 'Select exactly 17.',                                 [17],  sel(17));
+d(70, 'Geek', 'best',       'BEST!',       '-the twenty-first, reflected-','Select exactly 37 and 73.',                         [37, 73], sel(37, 73));
+d(71, 'Geek', 'concert-a',  'CONCERT A!',  '-tune up-',                   'Select exactly 2, 5 and 11.',                        [440], sel(2, 5, 11));
+d(72, 'Geek', 'lightspeed', 'LIGHTSPEED!', '-in a vacuum-',               'Select exactly 13 and 23.',                          [299], sel(13, 23));
+d(73, 'Geek', 'memory',     'MEMORY!',     '-ought to be enough-',        'Select exactly 2 and 5.',                            [640], sel(2, 5));
+d(74, 'Geek', 'skeleton',   'SKELETON!',   '-what you are built on-',     'Select exactly 2 and 103.',                          [206], sel(2, 103));
+d(75, 'Geek', 'inherited',  'INHERITED!',  '-what makes you you-',        'Select exactly 2 and 23.',                           [46],  sel(2, 23));
+d(76, 'Geek', 'elements',   'ELEMENTS!',   '-the whole table-',           'Select exactly 2 and 59.',                           [118], sel(2, 59));
+d(77, 'Geek', 'freezing',   'FREEZING!',   '-where water gives up, K?-',  'Select exactly 3, 7 and 13.',                        [273], sel(3, 7, 13));
+d(78, 'Geek', 'body-heat',  'BODY HEAT!',  '-normal, C?-',                'Select exactly 37.',                                 [37],  sel(37));
+// 212 is gilded twice on purpose: NY! dials it, BOILING! takes it apart.
+d(79, 'Geek', 'boiling',    'BOILING!',    '-F water-',                   'Select exactly 2 and 53.',                           [212], sel(2, 53));
+
+// ---- CULTURE · CALENDAR -------------------------------------------------
+d(80, 'Calendar', 'year',     'YEAR!',     '-once around-',                          'Select exactly 5 and 73.',      [365], sel(5, 73));
+d(81, 'Calendar', 'leap',     'LEAP!',     "-dayn't-",                               'Select exactly 2, 3 and 61.',   [366], sel(2, 3, 61));
+d(82, 'Calendar', 'months',   'MONTHS!',   "-not a baker's-",                        'Select exactly 2 and 3.',       [12],  sel(2, 3));
+d(83, 'Calendar', 'moon',     'LUNA!',     '-one cycle of it-',                      'Select exactly 29.',            [29],  sel(29));
+d(84, 'Calendar', 'metonic',  'METONIC!',  '-wait long enough and the moon repeats-','Select exactly 19.',            [19],  sel(19));
+d(85, 'Calendar', 'quarter',  'QUARTER!',  '-thirteen weeks-',                       'Select exactly 7 and 13.',      [91],  sel(7, 13));
+d(86, 'Calendar', 'shortest', 'SHORTEST!', '-February, usually-',                    'Select exactly 2 and 7.',       [28],  sel(2, 7));
+d(87, 'Calendar', 'longest',  'LONGEST!',  '-thirty days hath not this one-',        'Select exactly 31.',            [31],  sel(31));
+
+// ---- CULTURE · DIAL — the trigger is dialling ---------------------------
+d(88, 'Dial', 'help',       'HELP!',       '-dial-',                       'Set the range to 911.', [911], range(911));
+d(89, 'Dial', 'central',    'CENTRAL!',    '-the number that never rings-','Set the range to 555.', [555], range(555));
+d(90, 'Dial', 'ny',         'NY!',         '-NY-',                         'Set the range to 212.', [212], range(212));
+d(91, 'Dial', 'space-city', 'SPACE CITY!', '-we have a problem-',          'Set the range to 713.', [713], range(713));
+d(92, 'Dial', 'graceland',  'GRACELAND!',  '-the king-',                   'Set the range to 901.', [901], range(901));
+d(93, 'Dial', 'motor-city', 'MOTOR CITY!', '-lose yourself-',              'Set the range to 313.', [313], range(313));
+d(94, 'Dial', 'vice',       'VICE!',       '-south beach-',                'Set the range to 305.', [305], range(305));
+d(95, 'Dial', 'bay',        'BAY!',        '-by the bay-',                 'Set the range to 415.', [415], range(415));
+d(96, 'Dial', 'aloha',      'ALOHA!',      '-island time-',                'Set the range to 808.', [808], range(808));
+d(97, 'Dial', 'nola',       'NOLA!',       '-the big easy-',               'Set the range to 504.', [504], range(504));
+
+// ---- CULTURE · GREEKS — constants as angles ----------------------------
+d(98,  'Greeks', 'phi', 'PHI!', '-the angle nature picks-', 'Set the divergence angle to the golden angle.', [161], custom());
+d(99,  'Greeks', 'pi',  'PI!',  '-half a turn-',            'Set the divergence angle to 180 degrees.',      [314], custom());
+d(100, 'Greeks', 'tau', 'TAU!', '-the whole turn-',         'Set the divergence angle to a full turn.',      [628], custom());
+
+// ---- CAPSTONE ----------------------------------------------------------
+// DEV: node 1 has an empty factorisation, so the derivation rule can never
+// reach it. It is reachable only here.
+d(101, 'Capstone', 'unity', 'UNITY!', '-everything else, first-', 'Earn every other achievement.', [1], custom('derived'));
+
+export const ACHIEVEMENT_DEFS = defs;
 
 // ============================================================
 // THE GILDING RULE
 // ============================================================
-// Two things can make a node gold, and they are not the same thing.
+// **A node is gold if an EARNED achievement names it.** That is the whole rule,
+// and it is the biggest change from v1.
 //
-//  1. It was gilded DIRECTLY. Some achievement lists it in gildNodes. This is
-//     the only way to reach a node carrying a prime factor above 131, since no
-//     amount of prime-ownership can touch those.
+// v1 also derived: owning every prime in a number's factorisation lit the
+// number. That needed a conjunction to stop it running away — measured, three
+// easy achievements once lit 715 of 726 gold nodes in six taps. v2 solves the
+// same problem more directly by not deriving at all until the very end.
 //
-//  2. It DERIVED. Every prime in its factorisation is owned — not any, every.
-//     Owning 2 lights 2, 4, 8 and 16, but not 6, which also needs 3, and not
-//     10, which also needs 5. A number is yours when you own everything it is
-//     built from, which is the same claim the app already makes about colour.
+// **UNITY! is the flood.** Earn the capstone and every gilded prime gets its
+// parastichy line and all of its multiples at once. It is the last thing you
+// earn and it is meant to feel like the board catching fire.
 //
-// And owning a prime is a CONJUNCTION. A prime becomes owned only when EVERY
-// achievement that gilds it has been earned. Prime 11 is gilded by LUCAS!,
-// TWINNING!, COUSINS!, SEXY!, GERMAIN! and LOUDER!, so all six are needed —
-// each one on its own merely lights node 11 as a node, and nothing derives.
-//
-// That inversion is the load-bearing idea. The many routes to a prime used to
-// be alternatives, and three easy achievements consequently handed over 98% of
-// the board. Now they are requirements, and the same three light 31 nodes.
-//
-// A pleasant consequence nobody designed: the number of routes varies from two
-// to six, and it is the SMALL primes that need the most. So the thin primes
-// (59 and 127, two routes each) fall early, and 2, 3, 7, 11 and 13 — the ones
-// that build most of the number line — come last. The board floods near the
-// end, when a long conjunction finally closes.
-
-// Which achievements gild each selectable prime. Computed over the FULL design,
-// never over the enabled subset — these are the requirements, not the progress.
-export function primeRoutes(defs = ACHIEVEMENT_DEFS) {
-  const routes = new Map();
-  for (const p of SELECTABLE_PRIMES) {
-    routes.set(p, defs.filter(a => a.gildNodes.includes(p)).map(a => a.id));
-  }
-  return routes;
-}
-
-const ROUTES = primeRoutes();
-
-// `enabledIds` is what the player has earned AND left switched on in the trophy
-// room. The two are deliberately the same input: the room lets you mix and
-// match, so "what is gilded" is a question about the current view, not about
-// the ledger. Pass the unlocked set for the plain answer.
-export function computeGild(enabledIds, defs = ACHIEVEMENT_DEFS) {
+// One exception, deliberate: NEAT! draws 89's line without UNITY!, because the
+// near-straight spoke IS the achievement. Its multiples stay dark — the line is
+// the point, not the numbers sitting on it.
+export function computeGild(enabledIds, list = ACHIEVEMENT_DEFS) {
   const en = enabledIds instanceof Set ? enabledIds : new Set(enabledIds);
   const litNodes = new Set();
-  for (const a of defs) {
+  const litLines = new Set();
+  for (const a of list) {
     if (!en.has(a.id)) continue;
     for (const n of a.gildNodes) litNodes.add(n);
+    for (const p of a.gildLines) litLines.add(p);
   }
-
-  const ownedPrimes = new Set();
-  for (const p of SELECTABLE_PRIMES) {
-    const r = ROUTES.get(p);
-    if (r && r.length && r.every(id => en.has(id))) ownedPrimes.add(p);
+  const unity = en.has('unity');
+  if (unity) {
+    // Every gilded prime gets its line. Multiples come from isNodeGilded().
+    for (const n of litNodes) if (PSET.has(n)) litLines.add(n);
   }
-
-  // The UNITY! override. Once the capstone is earned and switched on, every
-  // prime currently lit becomes owned outright, whatever its conjunction says.
-  //
-  // DEV: this is what makes the trophy room's per-achievement toggles usable.
-  // Without it the dial is violently non-linear — switching off any single
-  // route to prime 2 un-owns 2 and takes most of the composites with it, which
-  // measured as 726 gold dropping to 137 from one toggle. With UNITY! on, a
-  // toggle only removes that achievement's own nodes and the derivation holds
-  // steady. Two modes, both wanted: UNITY! off is the exploratory dial, UNITY!
-  // on is the stable showcase.
-  if (en.has('unity')) {
-    for (const n of litNodes) if (PSET.has(n) && isPrimeNumber(n)) ownedPrimes.add(n);
-  }
-
-  return { litNodes, ownedPrimes };
+  return { litNodes, litLines, unity };
 }
 
 export function isNodeGilded(n, gild) {
   if (n === 0) return false;              // the Sun is its own thing
   if (gild.litNodes.has(n)) return true;
-  if (n === 1) return false;              // the unit: UNITY! or nothing
-  if (gild.ownedPrimes.size === 0) return false;
+  if (n === 1) return false;              // the unit: UNITY! names it or nothing
+  if (!gild.unity) return false;          // nothing derives before the capstone
   const f = primeFactorsOf(n);
-  return f.length > 0 && f.every(p => gild.ownedPrimes.has(p));
+  return f.length > 0 && f.every(p => gild.litNodes.has(p));
 }
 
-// Nodes no prime-ownership can ever reach: they carry a prime factor outside
-// the grid, so a direct gild is their only route. The design's headline claim.
-export function unreachableByPrimes(limit = TROPHY_N) {
-  const out = [];
-  for (let n = 2; n <= limit; n++) {
-    if (primeFactorsOf(n).some(p => !PSET.has(p))) out.push(n);
-  }
-  return out;
+export function isLineGilded(p, gild) {
+  return gild.litLines.has(p);
 }
 
 // Every node reachable with the whole list earned and switched on.
-export function gildForAll(defs = ACHIEVEMENT_DEFS) {
-  return computeGild(defs.map(a => a.id), defs);
+export function gildForAll(list = ACHIEVEMENT_DEFS) {
+  return computeGild(list.map(a => a.id), list);
+}
+
+// Nodes no achievement names and no derivation can reach. The design's headroom.
+export function darkNodes(limit = TROPHY_N, list = ACHIEVEMENT_DEFS) {
+  const g = gildForAll(list);
+  const out = [];
+  for (let n = 2; n <= limit; n++) if (!isNodeGilded(n, g)) out.push(n);
+  return out;
 }
 
 // ============================================================
-// CRITERIA
+// PREDICATE SUPPORT
 // ============================================================
-// What the player has to DO, in their words.
-//
-// NOT shown in the app while an achievement is locked — a locked row carries
-// its title and nothing else, because the mystery is the point and a list that
-// spells out the answer has spent it. These strings exist for two other
-// reasons: the Play Console requires a description per achievement, and the
-// earned row needs something to say. Do not delete them on the grounds that
-// nothing renders them.
-//
-// NOTE for §6: Play Games shows a standard achievement's description to
-// players BEFORE they earn it. If the concealment matters as much on the Play
-// Games side as it does in-app, these need to be the `hidden` kind there —
-// which is a real trade, since achievement hunters generally dislike a list
-// that is mostly hidden. Decide before creating them in the console.
-const CRITERIA = {
-  'art': "Manually change any appearance setting.",
-  'best': "Select exactly 37 and 73.",
-  'boing': "Let the morph reach the Spring form.",
-  'bophades': "Take node size to maximum.",
-  'ceiling': "Set N to 10000.",
-  'cousins': "Select exactly two primes that differ by 4.",
-  'dude': "Select exactly 2, 3, 5, and 7.",
-  'emirp': "Select exactly two primes that are each other's digit reversal.",
-  'empty-set': "Deselect every prime and switch off both 0 and 1.",
-  'euler': "Select exactly the ten primes generated by n^2+n+41 for n = 0..9.",
-  'exhaustive': "Manually switch on all integers in range.",
-  'fibonacci': "Select exactly the five Fibonacci primes and nothing else.",
-  'first': "Switch achievements on from the achievements tab.",
-  'germain': "Select exactly two primes p and q where q = 2p+1.",
-  'happy': "Select exactly the nine happy primes.",
-  'localhost': "Select exactly 127, with N set to 127.",
-  'louder': "Select exactly 11.",
-  'lucas': "Select exactly 2, 3, 7, 11, 29 and 47.",
-  'maximalist': "Take the N slider to its maximum, 2500.",
-  'meme': "Select exactly 3, 23 and 67.",
-  'neat': "Exactly two primes selected, one of them 89, with N at least 178.",
-  'nerd': "Open the classroom lens.",
-  'nice': "Select exactly 3 and 23.",
-  'night': "Switch off the zero node.",
-  'oops': "Get 20 or more nodes further than twice their rest distance from the Sun.",
-  'ouch': "With physics on, drag node 0.",
-  'parawhat': "Manually turn on or adjust parastichy line visibility.",
-  'perfect': "Select exactly 2, 3, 7 and 31.",
-  'ramanujan': "Set N to 840.",
-  'rawr': "Select exactly 17.",
-  'sexy': "Select exactly two primes that differ by 6.",
-  'sixseven': "Manually switch on prime 67.",
-  'smart': "Select exactly 101 and view it through the classroom lens.",
-  'squares': "Set N to 961.",
-  'trek': "Select exactly 47.",
-  'trippy': "Press Dazzle.",
-  'twinning': "Select exactly two primes that differ by 2.",
-  'unity': "Earn every other achievement.",
-  'void': "Deselect every prime.",
-  'zoomies': "Turn morph speed up to maximum.",
-  'perfect': "Select exactly 2, 3, 7 and 31.",
-  'ramanujan': "Set the range to 840.",
-  'lucas': "Select exactly 2, 3, 7, 11, 29 and 47.",
-  'squares': "Set the range to 961."
-};
-
-for (const a of ACHIEVEMENT_DEFS) a.criteria = CRITERIA[a.id] || '';
+// RUN! asks whether a set of primes is a run of consecutive primes. That is a
+// fact about the integers, not about the app, so it lives here where the
+// headless checker can reach it.
+export function isConsecutivePrimeRun(arr) {
+  if (arr.length < 2) return false;
+  const start = P1000.indexOf(arr[0]);
+  if (start < 0) return false;
+  return arr.every((v, i) => P1000[start + i] === v);
+}
 
 // ============================================================
-// BLURBS
+// LOOKUPS
 // ============================================================
-// The explanation, shown when an EARNED achievement is tapped open. Written at
-// a fifth-grade reading level except where the row is marked college in the
-// design sheet — MERSENNE!'s successor PERFECT!, HAPPY! and EULER! carry the
-// real argument, because those three have one worth making.
-const BLURBS = {
-  'fibonacci': "The Fibonacci numbers are 1, 1, 2, 3, 5, 8, 13, 21 and so on. Add the last two to get the next. Can be found on the spirals on a pinecone.",
-  'perfect': "A perfect number equals the sum of its proper divisors: 6 = 1+2+3, and 28 = 1+2+4+7+14. Euclid proved that 2^(p-1)(2^p - 1) is perfect whenever 2^p - 1 is prime, and Euler proved every even perfect number has that form. So each one is built from a Mersenne prime: 6 = 2x3, 28 = 4x7, 496 = 16x31. Only three exist below 1000; the next is 8128. Whether any odd perfect number exists is still open after two thousand years.",
-  'ramanujan': "A highly composite number has more divisors than every number below it. 840 has thirty-two, more than any number under a thousand. Ramanujan named and catalogued them in 1915. They are the exact opposite of primes: primes have no factors at all, and these have as many as it is possible to have.",
-  'lucas': "The Lucas numbers follow the same rule as the Fibonacci numbers -- add the last two to get the next -- but start 2, 1 instead of 1, 1. You get a completely different sequence that still grows at the golden ratio. The two are twins: change only where you begin.",
-  'squares': "Nodes are placed so that node n sits at a distance proportional to the square root of n. That means the square numbers -- 4, 9, 16, 25 and so on -- land at distances 2, 3, 4, 5: evenly spaced, marching straight outward, while everything around them crowds together. It only looks like that because of how this figure is built.",
-  'emirp': "Write a prime backwards. If you get a different prime, it is an emirp -- which is 'prime' spelled backwards. There are four pairs here: 13 and 31, 17 and 71, 37 and 73, 79 and 97.",
-  'twinning': "Twin primes are only 2 apart, like 11 and 13. Nobody knows whether they ever stop. People have been trying to find out since 1849.",
-  'cousins': "Primes 4 apart are called cousins. That is the real name.",
-  'sexy': "Primes 6 apart are called sexy primes. Sex is Latin for six. Mathematicians named these and nobody stopped them.",
-  'germain': "Pick a prime, double it, add 1. If that is prime too, the first one is a Sophie Germain prime. Sophie Germain had to sign her work with a man's name to get anyone to read it. She was one of the best mathematicians of her time.",
-  'happy': "Iterate the map sending a number to the sum of the squares of its digits. Every orbit is eventually periodic: above 1000 the map strictly decreases, so all trajectories fall into a bounded region and must cycle. In base 10 there are exactly two outcomes -- the fixed point 1, or the eight-cycle 4, 16, 37, 58, 89, 145, 42, 20. Numbers reaching 1 are called happy. Note this is a fact about base 10, not about the integers.",
-  'euler': "Euler's polynomial n^2 + n + 41 is prime for every n from 0 to 39. This is not luck. Rabinowitsch's theorem makes it exact: n^2 + n + p is prime for all n < p - 1 precisely when the imaginary quadratic field of discriminant 1 - 4p has class number 1. Here 1 - 4(41) = -163, and 163 is the largest Heegner number, so 41 is the largest p for which this can happen at all. It fails at n = 40, where 40^2 + 40 + 41 = 41(40 + 1) = 41^2.",
-  'unity': "1 is not prime, and it is not built out of primes either. It is called the unit -- the thing you count with. You get it last because you have to get everything else first.",
-  'first': "2 is the only even prime. Every other prime is odd.",
-  'louder': "11 is a repunit: written with nothing but 1s. It is the smallest two-digit prime, and the only two-digit prime that reads the same backwards.",
-  'rawr': "Ask people to pick a random number from 1 to 20 and more of them say 17 than anything else. Ask for 1 to 100 and they say 37.",
-  'best': "73 is the 21st prime. 21 is 7 times 3. Flip 73 around and you get 37, which is the 12th prime -- and 12 is 21 flipped around.",
-  'neat': "Each node sits a little further round the circle than the one before. Turn that far 89 times and you land almost exactly back where you started. So all the multiples of 89 stack up in a nearly straight line.",
-  'trek': "A writer on Star Trek had been at a college with a running joke that 47 turns up more often than chance allows. He started putting it in scripts, and it never left.",
-  'sixseven': "67 has no twin. Neither 65 nor 69 is prime, so it sits on its own.",
-  'smart': "101 reads the same forwards and backwards. It is the smallest three-digit prime.",
-  'localhost': "127 is the biggest number a computer can hold in one byte if it also needs room for a minus sign. It is also the address a computer uses to talk to itself.",
-  'ouch': "0 is the Sun. Every number divides into 0.",
-  'void': "Turn off every prime and two numbers are left: 0 and 1. They are the only ones not built out of primes.",
-  'empty-set': "Nothing at all. In maths that is a real thing with its own name and its own symbol.",
-  'night': "Twelve lunar months come to about 354 days, eleven short of a solar year. That gap is why calendars that follow the Moon drift through the seasons.",
-  'boing': "Spring is the bottom of the shape range. The app starts one step above it, so you have to wait for it to come back down.",
-  'trippy': "Dazzle turns on everything at once: every prime, a thousand numbers, pulse and colour drift together.",
-  'oops': "The springs can start pushing each other in rhythm and the whole shape begins to bounce. That is called resonance. It is the same thing that makes a swing go higher.",
-  'zoomies': "88 miles an hour, and 1.21 gigawatts.",
-  'maximalist': "The slider stops at 2,500. A slider covering the whole range would be too twitchy to use down where the interesting shapes are.",
-  'ceiling': "10,000 is as far as it goes. The slider stops at 2,500 because a slider that long would be too twitchy to use down where the interesting shapes are.",
-  'exhaustive': "Normally you only see multiples of the primes you picked. This fills in every number in between.",
-  'parawhat': "A parastichy is one of the spiral arms you see in a sunflower. In a real sunflower the arms are not really there -- your eye just joins up seeds that happen to line up. Here they are real: each line joins up the multiples of one prime.",
-  'nerd': "42.",
-  'art': "4 minutes 33 seconds of silence, written by John Cage in 1952. The piece is whatever you hear while nobody plays.",
-  'bophades': "2 is the only even prime, which makes it the oddest one of all.",
-  'nice': "nice.",
-  'dude': "What was this one for again?",
-  'meme': "The two greatest numbers of memery.",
-};
+export const BY_CLUSTER = (() => {
+  const m = new Map();
+  for (const a of ACHIEVEMENT_DEFS) {
+    if (!m.has(a.cluster)) m.set(a.cluster, []);
+    m.get(a.cluster).push(a);
+  }
+  return m;
+})();
 
-// ============================================================
-// HINTS
-// ============================================================
-// Shown on a LOCKED row. The brief was "point in the direction, not too hard or
-// easy", so the test applied to each was: could someone who knows a little
-// mathematics work it out from this, and would someone who knows none at least
-// know where in the app to look?
-//
-// None of them names the exact numbers or the exact control. CRITERIA does
-// that, and CRITERIA is never shown while locked.
-const HINTS = {
-  'fibonacci': "Nature's counting sequence holds only five primes. Find exactly those, and nothing else.",
-  'perfect': "Some numbers equal the sum of their own parts. Choose the primes that build the small ones.",
-  'ramanujan': "Somewhere below a thousand sits the number with more factors than anything smaller. Set the range there.",
-  'lucas': "Fibonacci's rule, started somewhere else. Its primes are in the grid.",
-  'squares': "The largest perfect square that still fits makes a good ceiling.",
-  'emirp': "Two primes that are one another, written backwards.",
-  'twinning': "Two primes with a single even number between them.",
-  'cousins': "Two primes, four apart.",
-  'sexy': "Two primes, six apart. The name really is Latin.",
-  'germain': "One prime, and a second that is double the first plus one.",
-  'happy': "Square the digits and add, over and over. Some primes end at 1. Gather them.",
-  'euler': "One famous formula makes forty primes in a row. Ten of them live in this grid.",
-  'unity': "Everything else, first.",
-  'first': "You are one tap from it.",
-  'louder': "A prime written with nothing but ones.",
-  'rawr': "Ask someone for a random number under twenty. Pick whatever they say.",
-  'best': "The twenty-first prime, together with its reflection.",
-  'neat': "One prime stacks its multiples almost in a straight line. Show it on its own, with room to run.",
-  'trek': "A number that follows a certain starship absolutely everywhere.",
-  'sixseven': "You already know this one.",
-  'smart': "A three-digit prime that reads the same both ways. Look at it through the classroom.",
-  'localhost': "There is no place like it \u2014 and the range should agree.",
-  'ouch': "The Sun is a node like any other. Take hold of it.",
-  'void': "Take all of them away.",
-  'empty-set': "Take everything away, then take away what was left.",
-  'night': "Put out the Sun.",
-  'boing': "Wait for the shape to reach the very bottom of its travel.",
-  'trippy': "There is a button for this.",
-  'oops': "Get the springs disagreeing with each other until the whole thing bucks.",
-  'zoomies': "Faster. All the way.",
-  'maximalist': "Push the slider as far as it will go.",
-  'ceiling': "The slider is not the real limit.",
-  'exhaustive': "Show the numbers you never asked for.",
-  'parawhat': "Those curving arms have a name. Change how they look.",
-  'nerd': "Drag the classroom across.",
-  'art': "Change how it looks, not what it is.",
-  'bophades': "Bigger. As big as it goes.",
-  'nice': "Two primes whose product is a number people find funny.",
-  'dude': "Four small primes multiply to a number with a certain reputation.",
-  'meme': "Two numbers the internet will not stop saying. One is prime, one is not.",
-};
+export const CLUSTER_ORDER = ['Tutorial', 'Series', 'Primes', 'Puzzles', 'Meme',
+                              'Lore', 'Geek', 'Calendar', 'Dial', 'Greeks', 'Capstone'];
 
-for (const a of ACHIEVEMENT_DEFS) {
-  a.blurb = BLURBS[a.id] || '';
-  a.hint = HINTS[a.id] || '';
+export function totalXP(list = ACHIEVEMENT_DEFS) {
+  return list.reduce((s, a) => s + a.xp, 0);
 }
