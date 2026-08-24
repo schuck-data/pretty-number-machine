@@ -532,6 +532,32 @@ an exported `register()`.
 places. `HOT_KEYS` declares which properties can change without a scene rebuild.
 Nothing enforces it: put a key in the wrong set and it fails silently.
 
+**Camera framing is a function of the viewport ASPECT, so it goes stale when
+the viewport changes shape.** `setCameraTopDown()` — what Dazzle uses — derives
+its distance from `threeCamera.aspect`, because the camera declares a VERTICAL
+fov and on a portrait phone the horizontal is the tighter constraint. The
+`ResizeObserver` updated the aspect and the projection matrix and stopped there,
+so the distance was never re-derived.
+
+Reported and reproduced 2026-08-24: open the sheet, press Dazzle, close the
+sheet, and the figure arrives far too close. Dazzle with the sheet up sees a
+411x384 viewport, aspect 1.07, and frames at distance 11.4. The sheet closes,
+the viewport becomes 411x914 and the aspect 0.45, where the right distance is
+11.4 / 0.45 = 25.3. The camera stayed at 11.4 — **more than twice as close as it
+should have been**, and only in that one order of operations, which is why it
+survived so long.
+
+The resize now re-derives the distance, but only while the camera is still where
+Dazzle put it. A `start` listener on OrbitControls clears that the instant the
+player orbits, pans or zooms, and `resetCamera()` clears it too because
+`HOME_CAM_POS` is a fixed vector with nothing to re-derive. The refit keeps the
+camera's DIRECTION and changes only its distance — re-running
+`setCameraTopDown()` outright would snap the azimuth back to zero, which is
+visible as a jump, and Dazzle turns auto-rotate on.
+
+**Anything else that frames from the aspect has the same problem**, and nothing
+guards against it generally.
+
 **`nd.mesh` is a de facto public API.** `physics.js` writes `nd.mesh.position`
 directly; `physics.js` and `info.js` both raycast against the array of node
 meshes; `lens.js` reads positions off it. This is why instancing is a project

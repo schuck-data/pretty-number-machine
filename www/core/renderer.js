@@ -1412,6 +1412,11 @@ export function init(el) {
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   threeControls = controls;
+  // The moment the player orbits, pans or zooms, the framing is theirs and a
+  // resize must not take it back. 'start' fires only on real interaction —
+  // controls.update() from auto-rotate or from refitTopDown() emits 'change',
+  // never this — so damping and the auto-rotate sweep cannot disarm it.
+  controls.addEventListener('start', () => { topDownFramed = false; });
 
   // Resize observer
   resizeObserver = new ResizeObserver(() => {
@@ -1424,6 +1429,15 @@ export function init(el) {
     // retina and a non-retina display changes devicePixelRatio without
     // recreating the renderer, and Three does not notice on its own.
     threeRenderer.setPixelRatio(pixelRatio());
+    // AND RE-FRAME. Updating the aspect without re-deriving the distance was a
+    // real bug: open the sheet, press Dazzle, close the sheet, and the figure
+    // arrived far too close. Measured on a Pixel 7 — Dazzle with the sheet up
+    // sees a 411x384 viewport, aspect 1.07, and frames at distance 11.4. The
+    // sheet closes, the viewport becomes 411x914 and the aspect 0.45, where
+    // the correct distance is 25.3. The camera stayed at 11.4, so the figure
+    // was more than twice as close as it should have been. No-ops unless the
+    // camera is still where Dazzle put it.
+    refitTopDown();
   });
   resizeObserver.observe(el);
 
@@ -1645,8 +1659,20 @@ export function rebuild(full) {
 // derived from the aspect rather than fixed: the vertical FOV is what the
 // camera declares, so on a portrait phone the horizontal is the tighter
 // constraint and a distance that frames the disk on a desktop crops it badly.
-export function setCameraTopDown() {
-  if (!threeCamera || !threeControls) return;
+// THE FRAMING IS A FUNCTION OF THE ASPECT, so it goes stale whenever the
+// viewport changes shape. This flag says the camera is currently sitting where
+// setCameraTopDown() put it and has not been touched since, which is the only
+// case where moving it on a resize is a correction rather than a theft.
+//
+// Cleared by any user interaction (the 'start' listener on OrbitControls) and
+// by resetCamera(), which puts the camera at a FIXED home position that is not
+// aspect-derived and must not be pulled around by this.
+let topDownFramed = false;
+
+// Distance at which the figure fills the frame, from the aspect. The vertical
+// FOV is what the camera declares, so on a portrait phone the HORIZONTAL is
+// the tighter constraint — which is the whole reason this cannot be a constant.
+function topDownDistance() {
   // Was 1.15. Pulled in to 1.06 — Dazzle fills the disk edge to edge, so the
   // extra air read as the figure sitting small in the frame rather than as
   // breathing room.
@@ -1654,7 +1680,26 @@ export function setCameraTopDown() {
   const halfFov = (threeCamera.fov * Math.PI / 180) / 2;
   const distV = fitR / Math.tan(halfFov);
   const distH = distV / Math.max(0.0001, threeCamera.aspect);
-  const d = Math.max(distV, distH);
+  return Math.max(distV, distH);
+}
+
+// Re-derive the distance after the viewport changes shape, KEEPING the
+// direction the camera is looking from. Re-running setCameraTopDown() outright
+// would also snap the azimuth back to zero, which is visible as a jump when
+// auto-rotate is on — and Dazzle turns auto-rotate on.
+function refitTopDown() {
+  if (!topDownFramed || !threeCamera || !threeControls) return;
+  const offset = threeCamera.position.clone().sub(threeControls.target);
+  if (offset.lengthSq() < 1e-9) return;
+  offset.setLength(topDownDistance());
+  threeCamera.position.copy(threeControls.target).add(offset);
+  threeControls.update();
+}
+
+export function setCameraTopDown() {
+  if (!threeCamera || !threeControls) return;
+  const d = topDownDistance();
+  topDownFramed = true;
 
   threeControls.target.set(0, 0, 0);
   // Not exactly (0, d, 0). A view direction parallel to the up vector is
@@ -1698,6 +1743,10 @@ export function resetMorph() {
 // rebuild it is paired with, not before, or the save clobbers it.
 export function resetCamera() {
   if (!threeCamera || !threeControls) return;
+  // HOME_CAM_POS is a fixed vector, not aspect-derived, so a later resize has
+  // nothing to re-derive. Leaving the flag set would have refitTopDown() drag
+  // the camera off that position the next time the sheet moved.
+  topDownFramed = false;
   threeCamera.position.copy(HOME_CAM_POS);
   threeCamera.up.set(0, 1, 0);
   threeControls.target.copy(HOME_CAM_TARGET);
