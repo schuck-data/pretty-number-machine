@@ -16,19 +16,26 @@ for v7**, which kept the count at 101 and changed what the list is made of.
 
 > **Read this first.**
 >
-> **v2 is built and running on a Pixel 7; v7 is built and NOT yet on hardware.**
+> **v2 and v7 are both built and verified on a Pixel 7.**
 > A hundred and one achievements in a tree, no conjunction, declarative
 > triggers, the accordion. Landed 2026-08-23 and shaken out on the device the
 > same day: unlocks, the ledger, the banner, the highlight, the labels, the
 > accordion, the accessibility pass. `npm run check` now covers it with **72
 > assertions**.
 >
-> **What v7 has NOT had is a phone.** The three new triggers, the criteria line,
-> the reference links and the trophy-room button have all been checked
-> headlessly and by reading the code, and nothing in this layer has ever
-> survived that alone — §8 is a list of six bugs that were invisible until the
-> app was on hardware with a real ledger behind it. Treat v7 as unverified until
-> somebody taps it.
+> **v7 was shaken out on a Pixel 7 on 2026-08-24**, build `v1.0.0-dev.8`, with
+> real touch events rather than dispatched ones — `adb shell input tap` produces
+> genuine MotionEvents, so `isTrusted` holds and the dom-triggered achievements
+> are actually being tested. DECOMPOSE!, GALLERY! and TEMPTED! each fired from a
+> finger; all 101 rows render; **no locked row leaks its criteria, its link or
+> the trophy button**; the toast carries criteria and is tappable even for the
+> twelve with no blurb; the trophy-room button applies the §9 preset and leaves
+> the row open; and a reference link opens Chrome with the app still behind it.
+>
+> One bug was found by opening the app and by nothing else: `achievement:unlocked`
+> did not carry `criteria`, so the toast rendered the literal string
+> "undefined". Every check was green. There is now a source tripwire asserting
+> the payload carries every field the toast prints.
 >
 > **Published visibility is decided: Tutorial Revealed, everything else Hidden.**
 > §12 has the reasoning, and it is the kind that is hard to reconstruct.
@@ -559,6 +566,35 @@ An hour went into this twice: once diagnosed correctly, once misdiagnosed as a
 stale console buffer, which sent the next debugging round in the wrong
 direction entirely.
 
+**Restoring a ledger needs a RELOAD, not a restart.** The procedure below works
+only if the write is the last thing that touches storage. Writing the two keys
+over CDP and then `am force-stop` + `am start` loses the write every time — the
+running app rewrites `pnm-platform-save-v1` from its own in-memory ledger on the
+way past, so the restore is overwritten by whatever the app already believed.
+**Write the keys, then `location.reload()` in the same CDP session.** The module
+re-reads storage on boot and keeps what it finds. Verified 2026-08-24: twelve
+unlocks restored exactly, three times, only ever by the reload route.
+
+**`adb shell input swipe` from the left edge is an Android back gesture, not a
+lens drag.** The lens handle sits at CSS x 0–44, which is device x 0–115 at
+2.625 dpr, and Android reserves roughly the first 52px for edge-back. A swipe
+starting at x=57 sends the whole app to the launcher and looks exactly like a
+crash. **Start at x=105** — still inside the handle, clear of the gesture zone.
+
+**A tap on a node outside the classroom layer does nothing, and that is
+correct.** `onCanvasDown()` returns early when `clientX - viewportRect().left >
+edgeLocalPx()`, where `edgeLocalPx()` is `openFraction * width`. So with the
+lens part-open, nodes on the right-hand side are not tappable and no
+`info:node` is emitted. Half an hour went into this looking like a broken
+DECOMPOSE! trigger; the trigger was fine and the node was simply outside the
+classroom. When testing, pick a node in the left third.
+
+**Anything that removes `#ach-toast` from the DOM kills every later toast.**
+`ensureToastEl()` is `if (toastEl) return toastEl;` — the module holds the
+reference, so a detached element is returned forever and nothing appears again.
+Nothing in the app does this; a test harness that tidies up between cases does,
+and it presents as "the toast stopped working" several steps later.
+
 **Installing wipes the ledger.** `adb install -r` does not clear the WebView's
 HTTP cache, so `pm clear` is necessary — and it takes the ledger with it. To
 preserve real progress across an install, read `pnm-achievements-v1` and
@@ -790,14 +826,16 @@ none is a redirect or a disambiguation page. Eleven were wrong on the first
 pass: CENTRAL! pointed at a disambiguation page, and every area-code article has
 been renamed at some point. Re-checking the whole set costs two API calls.
 
-**No Capacitor plugin is needed, and that was checked rather than assumed.**
+**No Capacitor plugin is needed. Confirmed on a Pixel 7, 2026-08-24.**
 `Bridge.launchIntent()` fires an `ACTION_VIEW` intent for any URL whose host is
 neither the app host nor in `allowNavigation`, and `capacitor.config.json` sets
 no `allowNavigation` at all. `setSupportMultipleWindows` is left at its default
 of false, so a `target="_blank"` link navigates in place and reaches
-`shouldOverrideUrlLoading`, which calls that same intent. The system browser
-opens and the app is still behind it. **Confirm once on a device anyway** — this
-is read from the Capacitor source, not observed running.
+`shouldOverrideUrlLoading`, which calls that same intent.
+
+Tapping REST!'s link brought `com.android.chrome` to the foreground on
+`en.wikipedia.org/wiki/Sabbath`, with the app still resident behind it and its
+ledger untouched. `@capacitor/browser` stays uninstalled.
 
 ### The trophy room is a button, not a tap
 

@@ -15,16 +15,19 @@ layer is built and verified on a Pixel 7; and the decomposition view is
 finished. The work ahead is connecting to Play Games Services, choosing a
 billing plugin, and getting it into the store — see `ANDROID-BUILD.md`.**
 
-> **v7 IS NOT ON HARDWARE YET, and that is the one thing to know before touching
-> anything.** The achievement list was reworked on 2026-08-24: three dropped,
-> three added, five gild sets widened, two clues rewritten, plus reference
-> links, criteria on unlocked rows and a trophy-room button. `npm run check`
-> passes with 72 assertions and the reasoning is written up in
-> `docs/ACHIEVEMENTS.md` §2a and §13 — but §8 of that document is a list of six
-> bugs in this exact layer that were invisible until the app was on a phone with
-> a real ledger behind it. **Nothing in v7 has been tapped.** The three new
-> triggers, the criteria line, the links and the button are the things to
-> exercise first.
+> **v7 is built and verified on a Pixel 7**, build `v1.0.0-dev.8`. The
+> achievement list was reworked on 2026-08-24: three dropped, three added, five
+> gild sets widened, two clues rewritten, plus reference links, criteria on
+> unlocked rows and a trophy-room button. `npm run check` passes with **78
+> assertions**; the reasoning is in `docs/ACHIEVEMENTS.md` §2a and §13 and the
+> device pass is summarised in §0.
+>
+> Verified on the device with REAL touch events: all three new triggers fire, all
+> 101 rows render, no locked row leaks criteria or link or button, the toast
+> carries criteria and is tappable even without a blurb, the trophy-room button
+> applies the §9 preset, and a reference link opens Chrome with the app still
+> behind it — **no `@capacitor/browser` needed**, which had been an open
+> question.
 
 ### What changed on 2026-08-24, in one place
 
