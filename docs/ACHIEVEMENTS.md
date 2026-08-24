@@ -23,7 +23,7 @@ for v7**, which kept the count at 101 and changed what the list is made of.
 > accordion, the accessibility pass. `npm run check` now covers it with **72
 > assertions**.
 >
-> **v7 was shaken out on a Pixel 7 on 2026-08-24**, build `v1.0.0-dev.8`, with
+> **v7 was shaken out on a Pixel 7 on 2026-08-24**, across a run of builds, with
 > real touch events rather than dispatched ones — `adb shell input tap` produces
 > genuine MotionEvents, so `isTrusted` holds and the dom-triggered achievements
 > are actually being tested. DECOMPOSE!, GALLERY! and TEMPTED! each fired from a
@@ -576,8 +576,14 @@ page that looks broken in ways your changes cannot explain: an unguarded
 you are editing, and no `[PNM] Failed to load module` alongside it.
 
 **The tell is the version string.** The footer reads `v0.14.5` when you are
-being served the root and `v1.0.0-dev.7` when you are actually on `www/`. Check
-it before believing anything else on the page.
+being served the root, because the published build is frozen at that. `www/`
+carries a DIFFERENT and higher version, which moves with every build — so the
+test is not "does it say X" but "does it say the same thing as
+`www/index.html`". Check that before believing anything else on the page.
+
+DEV: this used to name `www/`'s version outright, which made the instruction
+wrong within a day and would have sent the next person the wrong way. The frozen
+side of a comparison is the only side safe to write down.
 
 Unregistering the worker and clearing caches fixes it — until the next
 `preview_start`, which opens the root and registers it all over again. Doing
@@ -748,7 +754,7 @@ N=10000, at 26.7 and 34.6 fps.
 | `platform/index.js` | **done.** 101 store ids, generated from the data file |
 | `sheet.js` | **done.** Collapse-to-peek on focus, driven by an event so the seam holds |
 | `index.html` | **done.** Accordion styles |
-| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard, the gild ceiling, the blurb count, the default-state guard and the en-dash guard in. 54 assertions at the time; 81 now |
+| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard, the gild ceiling, the blurb count, the default-state guard and the en-dash guard in. 54 assertions at the time; see §11 for now |
 | `renderer.js` | **done 2026-08-24.** `buildRunShapes()` / `lerpRunShapes()`, drawn by `lens.js` and now rewarded by DECOMPOSE! |
 | `transport.js` | not needed. REST! binds to `#transport-btn` through the existing delegated `onTrusted`, so nothing had to be added |
 
@@ -1066,14 +1072,28 @@ trophy room.
 
 ---
 
-## 14. Still open, and one thing settled
+## 14. Decisions, and what is genuinely left
 
-**Dial.** Ten achievements, no integer content, a flat payoff every time, six of
-them US-only. Cutting to five is argued in `achievements-v7-proposal.xlsx`, and
-it needs replacements designed first — Puzzles and Greeks are the underweight
-clusters and the obvious home for them.
+**Dial stays at ten — SETTLED 2026-08-24.** The case for cutting it to five is
+in `achievements-v7-proposal.xlsx` and is not weak: no integer content, the
+trigger is typing a number into a slider, the payoff is the number you just
+typed, and six of the ten are US area codes that mean nothing abroad. Dakota
+read that and kept the cluster.
 
-**The trigger collisions — SETTLED 2026-08-24, as a guideline.**
+It is recorded rather than reopened. The argument is written down if the list is
+ever revisited, and the cost of acting on it — designing five replacements,
+ideally in Puzzles and Greeks — is the reason not to, since a cluster removed
+badly is worse than one kept knowingly.
+
+**OIL!'s blurb stays — SETTLED 2026-08-24.** *"5318008 was out of scope"*
+decodes on a calculator to something rude, and it is the one piece of shipped
+prose that does. Raised twice against the content-rating work and kept both
+times. The joke needs a calculator and the intent to use one; the criteria and
+the clue say nothing, and the link was dropped for exactly this reason. Do not
+"discover" it again and quietly fix it.
+
+**The trigger collisions — SETTLED 2026-08-24, as a guideline.** *(The one
+below is the only entry here that changed the code rather than confirming it.)*
 
 The rule in §3 read *"no two achievements may share an exact selection
 trigger"*, and the code never kept it. The checker compared literal `sel` arrays
@@ -1109,6 +1129,23 @@ The seven are pinned as an assertion, the same treatment ENIGMA! gets as a
 recorded exception, so an eighth is a decision somebody made rather than one
 nobody noticed. GOLDBACH! and NEAT! are deliberately left unpinned — which
 pairs they join depends on where the range slider is, not on the list.
+
+---
+
+### Genuinely left
+
+**Everything that paints is still untestable.** The ledger came out on
+2026-08-24 (§11) and took 23 assertions with it, which made this smaller but not
+small: the predicates, the row and toast rendering, the gilding paint and the
+trophy-room preset all live in `achievements.js`, which imports three.js and
+cannot be loaded in Node.
+
+Every bug this layer has produced was found by opening the app. That is the
+whole argument, and it is not urgent — it is the thing to do next if this file
+ever costs another one.
+
+Nothing else on the achievement side is open. The list, the rules, the copy, the
+links, the published split and the UI are all decided and built.
 
 ### SPARTA! is earned, not free
 

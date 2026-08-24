@@ -15,19 +15,38 @@ layer is built and verified on a Pixel 7; and the decomposition view is
 finished. The work ahead is connecting to Play Games Services, choosing a
 billing plugin, and getting it into the store — see `ANDROID-BUILD.md`.**
 
-> **v7 is built and verified on a Pixel 7**, build `v1.0.0-dev.8`. The
-> achievement list was reworked on 2026-08-24: three dropped, three added, five
-> gild sets widened, two clues rewritten, plus reference links, criteria on
-> unlocked rows and a trophy-room button. `npm run check` passes with **78
-> assertions**; the reasoning is in `docs/ACHIEVEMENTS.md` §2a and §13 and the
-> device pass is summarised in §0.
+> **v7 is built and verified on a Pixel 7.** The achievement list was reworked
+> on 2026-08-24 — three dropped, three added, five gild sets widened, two clues
+> rewritten, plus reference links, criteria on unlocked rows and a trophy-room
+> button — and then shaken out across a run of builds the same day. The
+> reasoning is in `docs/ACHIEVEMENTS.md` §2a, §9, §11 and §13; the assertion
+> count lives in §11 and nowhere else, because it went stale three times.
 >
-> Verified on the device with REAL touch events: all three new triggers fire, all
-> 101 rows render, no locked row leaks criteria or link or button, the toast
-> carries criteria and is tappable even without a blurb, the trophy-room button
-> applies the §9 preset, and a reference link opens Chrome with the app still
-> behind it — **no `@capacitor/browser` needed**, which had been an open
-> question.
+> **Verified on the device with REAL touch events** — `adb shell input tap`
+> produces genuine MotionEvents, so `isTrusted` holds and the dom-triggered
+> achievements are actually under test rather than being handed their unlock.
+> All three new triggers fire from a finger; all 101 rows render; no locked row
+> leaks its criteria, its link or the trophy button; the toast carries criteria
+> and is tappable even for the twelve with no blurb; the trophy-room button
+> applies the §9 preset; and a reference link opens Chrome with the app still
+> resident behind it — **no `@capacitor/browser` needed**, which had been an
+> open question.
+>
+> **Landed after that, same day, all verified on the device:**
+> the reference links retargeted for content rating (§13) — a link is a
+> machine-readable assertion in a way a number is not;
+> SUPERPRIME! gilding its whole family rather than the grid (§2a), which turned
+> out to be the cause of a "flat payoff" that had been recorded as a design
+> trade-off;
+> the capstone no longer countable by ids dropped from the design (§8);
+> two source tripwires that had been passing unconditionally since the day they
+> were written, one of them the SPARTA! guard (§8);
+> clear view moved to the top left and the drawer button back to the right
+> (`ADS.md` §3a);
+> the camera re-framing on resize, which Dazzle and the trophy room both needed
+> (§9, and HANDOFF's seams below);
+> and the ledger lifted into `achievements-ledger.js` so it can be tested at all
+> (§11).
 
 ### What changed on 2026-08-24, in one place
 
@@ -116,7 +135,7 @@ copies are live at schuckdata.com:
 | Path | Version | Role |
 |---|---|---|
 | `schuckdata.com/pretty-number-machine/` | `v0.14.5` | The **shipped** web build. Public, indexed. Frozen apart from live defect fixes |
-| `schuckdata.com/pretty-number-machine/v1/` | `v1.0.0-dev.7` | The **v1 build**, feature-complete. `noindex`. This is the code the Android app is built from |
+| `schuckdata.com/pretty-number-machine/v1/` | `v1.0.0-dev.7` | The **v1 build**, feature-complete. `noindex`. **Frozen.** The Android app was built from this during the Capacitor spike and is NOT any more — step 2 gave the app its own copy at `www/`, which `capacitor.config.json` points `webDir` at. `v1/` is its ancestor, not its source |
 
 They are independent applications sharing an origin: separate service workers,
 scopes and cache namespaces (`pnm-` and `pnmv1-`). Append `?debug` to either
@@ -624,7 +643,7 @@ parse check of every module and a run of the achievement table exporter.
 |---|---|
 | `tools/check.mjs` | Precache paths exist, `CACHE_VERSION` matches `CACHE_PREFIX`, the UI version label agrees, no hardcoded frame step, prime colours reach 4.5:1 |
 | `tools/check-achievements.mjs` | The number sets, the gilding and payoff rules, the ledger's merge contract, no two achievements declaring the same selection, nothing true at the defaults, the published Revealed/Hidden split, and the reference links including a content-rating denylist. Count lives in `ACHIEVEMENTS.md` §11, in one place only |
-| `tools/check-ads.mjs` | 43 assertions. Every deck whole, prices agreeing with themselves, **the pitch not giving the joke away**, no development bypass that entitles without a purchase, the two shimmer cadences |
+| `tools/check-ads.mjs` | Every deck whole, prices agreeing with themselves, **the pitch not giving the joke away**, no development bypass that entitles without a purchase, the two shimmer cadences |
 
 Several of those are **source greps rather than behavioural tests**, and that
 is deliberate rather than lazy: `achievements.js`, `ads.js` and `lens.js` all

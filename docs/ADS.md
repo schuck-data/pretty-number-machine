@@ -362,7 +362,7 @@ window hides exactly the overflow that matters.
 | `www/platform/index.js` | `PRODUCT_IDS` and the billing adapter. The only thing that talks to a store |
 | `www/index.html` | The plus button, and all the styling |
 | `www/core/state.js` | `adsIntrude` — default false, and a HOT key so toggling it does not rebuild a thousand meshes to start a timer |
-| `tools/check-ads.mjs` | 34 assertions, in `npm run check` and CI |
+| `tools/check-ads.mjs` | The ads checks, in `npm run check` and CI. **The count is not written here** — it was, it said 34 while the file was at 43, and a number in prose has no way to notice it has gone wrong. Run the command |
 
 The module is `hidden: true`, so it has no panel section.
 
