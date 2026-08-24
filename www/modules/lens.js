@@ -40,7 +40,7 @@
 import * as THREE from 'three';
 import { registerModule, state, on } from '../core/state.js';
 import { showInfoAt, hideInfo } from './info.js';
-import { primeFactorsOf } from '../core/math.js';
+import { primeFactorsOf, getPrimeRGB } from '../core/math.js';
 import { buildRunShapes, lerpRunShapes } from '../core/renderer.js';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
@@ -336,31 +336,52 @@ const mod = {
 // DECOMPOSITION — what a number is made of
 // ============================================================
 // Tap a node with the lens open and the figure answers the question the lens
-// exists to ask: **what is this number built from?** The node swells, every
-// prime in its factorisation swells with it, and a silver line runs from each
-// of those primes up to it along that prime's own parastichy family.
+// exists to ask: **what is this number built from?** The node lifts, every
+// prime in its factorisation lifts with it, a run climbs from each prime to it
+// along that prime's own parastichy family — and everything else in the scene
+// steps back.
 //
-// The lines are the point. A prime's parastichy curve is the sequence of its
+// The runs are the point. A prime's parastichy curve is the sequence of its
 // multiples — p, 2p, 3p, … — so the stretch from p up to n IS the repeated
 // addition that builds n out of p. Drawing only that stretch, rather than the
 // whole family, is the difference between "here is where 7 lives" and "here is
 // how 7 gets to 42".
 //
-// The geometry comes from renderer.js's buildRunShapes(), which is the same
-// machinery the real curves use — Catmull-Rom through POLAR knots, not straight
-// segments between nodes. The note there says why that distinction is
-// load-bearing and what the first attempt looked like when it was not.
+// Geometry comes from renderer.js's buildRunShapes(), the same machinery the
+// real curves use. The note there says why that matters.
 //
-// DEV: runs are built for a prime whether or not it is SELECTED. Tapping 42
-// with only {2, 3} switched on still draws the 7-run, because a decomposition
-// that silently omits a factor is worse than no decomposition at all.
-const DECOMP_LINE_WIDTH = 3.4;
-const DECOMP_GLOW = 0.9;
+// ---- WHY IT BRIGHTENS AND DIMS RATHER THAN RECOLOURING ----
+//
+// The first version painted the whole decomposition silver, and it threw away
+// the one thing this app is FOR. Colour here is not decoration: a node's colour
+// IS its factorisation, so a silver 42 has been stripped of the very fact the
+// decomposition is trying to explain. Worse, it made 42 look like every other
+// highlighted thing rather than like itself.
+//
+// So nothing is recoloured. What is in the decomposition keeps its own colour
+// and gains light — pulled toward white and given a silver emissive glow — and
+// everything else keeps its colour and loses light. The reading stays the same,
+// the emphasis changes, and the answer to "why is 42 yellow" is still visible
+// while you are being shown why.
+//
+// DEV: this drives node colour every frame from a stash taken on the tap, which
+// means COLOUR DRIFT IS SUSPENDED while a decomposition is up. That is a real
+// behaviour change and it is deliberate: drift is ambient movement, and having
+// the emphasis breathe underneath a fixed explanation reads as a fault. Ends
+// the moment the decomposition is cleared.
+const DECOMP_LINE_WIDTH = 3.6;
+const DECOMP_GLOW = 0.85;
+const LIFT_TARGET = 1.75;      // scale multiplier for the tapped node
+const LIFT_FACTOR = 1.4;       // ...and for each of its primes
+const BRIGHTEN = 0.42;         // how far a participant is pulled toward white
+const DIM = 0.22;              // what everything else is multiplied down to
 
 let sceneRef = null;
 let decompN = null;
-let decompRuns = [];         // { line, run, buf }
-let decompNodes = [];        // { nd, scale, emissive, intensity } — what to put back
+let decompRuns = [];           // { line, run, buf }
+let decompSet = null;          // every node ON the runs, endpoints included
+let decompFactors = null;      // just the primes, for the extra lift
+let nodeStash = null;          // n -> { color, emissive, intensity, scale }
 
 function clearDecomposition() {
   for (const r of decompRuns) {
@@ -369,22 +390,34 @@ function clearDecomposition() {
     r.line.material?.dispose();
   }
   decompRuns = [];
-  // Give back what was borrowed. The renderer owns these meshes; this module
-  // only ever borrows their appearance and must hand it back exactly.
-  for (const st of decompNodes) {
-    const m = st.nd?.mesh;
-    if (!m) continue;
-    m.scale.setScalar(st.scale);
-    if (m.material?.emissive) {
-      m.material.emissive.copy(st.emissive);
-      m.material.emissiveIntensity = st.intensity;
+
+  // Give everything back. The renderer owns these meshes and materials; this
+  // module only ever borrows their appearance and must hand it back exactly.
+  if (nodeStash) {
+    for (const nd of nodesRef) {
+      const st = nodeStash.get(nd.n);
+      const m = nd.mesh;
+      if (!st || !m) continue;
+      m.material?.color?.copy(st.color);
+      nd.baseColor?.copy(st.color);
+      if (m.material?.emissive) {
+        m.material.emissive.copy(st.emissive);
+        m.material.emissiveIntensity = st.intensity;
+      }
+      m.scale.setScalar(st.scale);
     }
   }
-  decompNodes = [];
+  nodeStash = null;
+  decompSet = null;
+  decompFactors = null;
   decompN = null;
 }
 
 function buildDecomposition(n) {
+  // Tapping the same number again puts the figure back. The decomposition is a
+  // mode you are in, so it needs a way out that is not "find some empty space".
+  if (decompN === n) { clearDecomposition(); return; }
+
   clearDecomposition();
   if (!sceneRef || !nodesRef.length || !n || n < 2) return;
 
@@ -395,31 +428,45 @@ function buildDecomposition(n) {
   // without a special case, because primeFactorsOf returns nothing for them.
   const factors = primeFactorsOf(n);
   if (!factors.length) return;
+
   decompN = n;
+  decompFactors = new Set(factors);
+  // Every node ON the runs, not merely the endpoints. The multiples between p
+  // and n are what the run is made of, so dimming them would leave a bright
+  // line threaded through dark beads it is supposed to be joining.
+  decompSet = new Set([n, ...factors]);
+  for (const p of factors) for (let k = p; k <= n; k += p) decompSet.add(k);
 
   const W = rendererEl ? rendererEl.width : 800;
   const H = rendererEl ? rendererEl.height : 600;
+  const primeRGB = getPrimeRGB(state.primes || [], state.colorScheme);
 
   for (const p of factors) {
     const run = buildRunShapes(p, n);
     if (!run) continue;
-
     const buf = new Float32Array(run.numPts * 3);
     lerpRunShapes(run, state.dimension, buf);
 
     const geo = new LineGeometry();
     geo.setPositions(buf);
+    // The prime's OWN colour, brightened — not silver. A run is a statement
+    // about one prime, and this figure already has a colour that means that
+    // prime. Lit rather than recoloured, same rule as the nodes.
+    // getPrimeRGB takes the whole selection and returns a MAP, because the
+    // scheme assigns colours by POSITION in that selection — there is no such
+    // thing as "the colour of 7" without knowing what else is switched on. A
+    // prime that is not selected therefore has no colour in this figure at all,
+    // and its run falls back to silver rather than borrowing a hue that already
+    // means something else.
+    const rgb = primeRGB[p] || [0.85, 0.88, 0.93];
+    const col = new THREE.Color(rgb[0], rgb[1], rgb[2]).lerp(new THREE.Color(1, 1, 1), 0.45);
     const mat = new LineMaterial({
-      // Silver rather than the prime's own colour. This figure is already
-      // coloured BY factorisation, so drawing the run in the prime's hue would
-      // repeat what the nodes already say. A neutral line means "this is the
-      // path", and leaves colour meaning the one thing it always means here.
-      color: 0xe8edf3,
+      color: col.getHex(),
       linewidth: DECOMP_LINE_WIDTH,
       worldUnits: false,
       resolution: new THREE.Vector2(W, H),
       transparent: true,
-      opacity: 0.95,
+      opacity: 0.98,
       // Drawn over the figure rather than through it. The run is an explanation
       // laid on top, not another object in the scene, and one that disappears
       // behind the sphere explains nothing.
@@ -429,55 +476,97 @@ function buildDecomposition(n) {
     line.computeLineDistances();
     line.frustumCulled = false;
     line.renderOrder = 3;
+    line.userData.decompRun = true;
     sceneRef.add(line);
     decompRuns.push({ line, run, buf });
   }
 
-  // The nodes: the target, and each prime in it. Stash before touching.
-  for (const k of new Set([n, ...factors])) {
-    const nd = byN.get(k);
-    if (!nd || !nd.mesh) continue;
-    decompNodes.push({
-      nd,
-      scale: nd.mesh.scale.x,
-      emissive: nd.mesh.material?.emissive?.clone() || new THREE.Color(0, 0, 0),
-      intensity: nd.mesh.material?.emissiveIntensity ?? 0,
+  // Stash EVERY node, because every node is about to be either lit or dimmed.
+  // Done once, here, rather than per frame.
+  nodeStash = new Map();
+  for (const nd of nodesRef) {
+    const m = nd.mesh;
+    if (!m) continue;
+    nodeStash.set(nd.n, {
+      color: m.material?.color?.clone() || new THREE.Color(1, 1, 1),
+      emissive: m.material?.emissive?.clone() || new THREE.Color(0, 0, 0),
+      intensity: m.material?.emissiveIntensity ?? 0,
+      scale: m.scale.x,
     });
   }
 }
 
+const _white = new THREE.Color(1, 1, 1);
+const _tmp = new THREE.Color();
+
 // Re-asserted every frame, and it has to be: the renderer's pulse, colour-drift
 // and gilding passes all write these same properties and would win otherwise.
 // Same reasoning as the achievement highlight — see modules/achievements.js.
-// The set is tiny by construction (a number below 10000 has at most five
-// distinct prime factors), so this is a handful of writes per frame.
+// Module animate() runs after those passes and before render(), which is the
+// one place a value like this survives.
 function paintDecomposition() {
-  if (!decompNodes.length && !decompRuns.length) return;
+  if (!decompSet) return;
   if (!isOpen()) { clearDecomposition(); return; }
 
-  for (const st of decompNodes) {
-    const m = st.nd.mesh;
-    if (!m) continue;
-    const isTarget = st.nd.n === decompN;
-    m.scale.setScalar(st.scale * (isTarget ? 1.75 : 1.4));
-    if (m.material?.emissive) {
-      m.material.emissive.setRGB(0.62, 0.68, 0.78);
-      m.material.emissiveIntensity = isTarget ? DECOMP_GLOW : DECOMP_GLOW * 0.6;
+  for (const nd of nodesRef) {
+    const m = nd.mesh;
+    const st = nodeStash?.get(nd.n);
+    if (!m || !st) continue;
+    const inSet = decompSet.has(nd.n);
+
+    if (inSet) {
+      // Its own colour, lit. Never replaced.
+      _tmp.copy(st.color).lerp(_white, BRIGHTEN);
+      m.material?.color?.copy(_tmp);
+      nd.baseColor?.copy(_tmp);
+      // The endpoints of the argument — n itself and the primes that make it —
+      // are lifted and glow fully. The multiples between them are on the run
+      // rather than being the point of it, so they are lit but not raised.
+      const isTarget = nd.n === decompN;
+      const isFactor = decompFactors.has(nd.n);
+      if (m.material?.emissive) {
+        m.material.emissive.setRGB(0.72, 0.78, 0.88);   // the silver, as GLOW
+        m.material.emissiveIntensity = (isTarget || isFactor) ? DECOMP_GLOW : DECOMP_GLOW * 0.3;
+      }
+      if (isTarget) m.scale.setScalar(st.scale * LIFT_TARGET);
+      else if (isFactor) m.scale.setScalar(st.scale * LIFT_FACTOR);
+      else m.scale.setScalar(st.scale);
+    } else {
+      // Its own colour, dimmed. Still legible, no longer competing.
+      _tmp.copy(st.color).multiplyScalar(DIM);
+      m.material?.color?.copy(_tmp);
+      nd.baseColor?.copy(_tmp);
+      if (m.material?.emissive) m.material.emissiveIntensity = st.intensity * DIM;
     }
   }
 
-  // The morph runs underneath this, so the runs have to travel with it or the
-  // explanation comes unstuck from the thing it explains. Only the lerp happens
-  // here — the shape arrays were built once, on the tap. Same division of
-  // labour the renderer uses for its own curves.
+  // The other parastichy curves step back too, or the runs are lost in a web of
+  // equally bright lines. The renderer rewrites every line's colour from its
+  // liveColor each frame, so multiplying here cannot compound.
+  sceneRef?.traverse((o) => {
+    if (!o.isLine2 || o.userData.decompRun) return;
+    o.material?.color?.multiplyScalar(DIM);
+  });
+
+  // The morph runs underneath this, so the runs travel with it. Only the lerp
+  // happens here — the shape arrays were built once, on the tap.
   for (const r of decompRuns) {
     lerpRunShapes(r.run, state.dimension, r.buf);
     r.line.geometry.setPositions(r.buf);
   }
 }
 
+// The decomposition OUTLIVES THE TOOLTIP, and that separation is the point.
+// They answer different questions — the tooltip is a card of arithmetic, the
+// decomposition is a state the figure is in — so dismissing one must not take
+// the other. You can put the card away and go on turning the figure to look at
+// what it told you.
+//
+// Which leaves three ways out, all deliberate: tap the same node again, close
+// the lens, or rebuild the scene. Notably NOT a tap on empty space, because
+// that is how an orbit drag begins and losing the decomposition every time you
+// went to move the figure would make it unusable.
 on('info:node', ({ n }) => { if (isOpen()) buildDecomposition(n); });
-on('info:cleared', () => clearDecomposition());
 
 export function register() {
   registerModule('lens', mod);

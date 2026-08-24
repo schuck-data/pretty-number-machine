@@ -142,9 +142,26 @@ its background before it. `npm run check` covers it with 60 assertions.
   knots the real curves use, sliced to the run, and lerped across the morph.
 
   `modules/lens.js` uses it for tap-to-decompose: tap a node with the lens open
-  and the node swells, its primes swell, and a silver run climbs from each prime
-  to it. **The gilded half of the design (`ACHIEVEMENTS.md` §2) can now use the
-  same two functions** rather than needing rendering work of its own.
+  and the node lifts, its primes lift, a run climbs from each prime to it, and
+  everything else steps back. **The gilded half of the design
+  (`ACHIEVEMENTS.md` §2) can now use the same two functions** rather than
+  needing rendering work of its own.
+
+  **Nothing is recoloured — things are lit or dimmed.** The first version
+  painted the decomposition silver and threw away the one thing this app is
+  for: a node's colour IS its factorisation, so a silver 42 has been stripped
+  of the fact the decomposition exists to explain. Participants keep their
+  colour and gain light; everything else keeps its colour and loses it. A prime
+  that is not selected has no colour in this figure at all — `getPrimeRGB`
+  assigns by position in the selection — so its run falls back to silver rather
+  than borrowing a hue that already means something else.
+
+  **The decomposition outlives the tooltip.** They answer different questions:
+  the tooltip is a card of arithmetic, the decomposition is a state the figure
+  is in. So you can dismiss the card and go on turning the figure to look at
+  what it told you. Three ways out, all deliberate — tap the same node again,
+  close the lens, rebuild the scene — and notably NOT a tap on empty space,
+  because that is how an orbit drag begins.
 
   The trap, recorded because the wrong version looked plausible: a polyline
   through the multiples cuts straight chords across the figure. `core/math.js`
