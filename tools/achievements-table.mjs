@@ -37,6 +37,10 @@ const rows = D.ACHIEVEMENT_DEFS.map(a => ({
   criteria: a.criteria || '',
   clue: a.clue || '',
   blurb: a.blurb || '',
+  // v7. Kept OUT of the Play Console column set below: the console has no field
+  // for it, and a stray column is exactly the sort of thing that gets pasted in
+  // by accident. It is here so the design sheet can carry it.
+  link: a.link || '',
   xp: a.xp,
   gild_nodes: a.gildNodes.length
     ? (a.gildNodes.length > 14
@@ -50,7 +54,7 @@ if (process.argv.includes('--json')) {
   console.log(JSON.stringify(rows, null, 1));
 } else {
   const cols = ['no', 'name', 'cluster', 'branch', 'initial_state',
-                'criteria', 'clue', 'blurb', 'xp', 'gild_nodes', 'gild_lines'];
+                'criteria', 'clue', 'blurb', 'link', 'xp', 'gild_nodes', 'gild_lines'];
   console.log(cols.join('	'));
   for (const r of rows) console.log(cols.map(c => String(r[c]).replace(/	/g, ' ')).join('	'));
 }

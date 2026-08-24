@@ -2,15 +2,33 @@
 
 **Written:** 2026-08-21. **Revised 2026-08-23**, when the list was redesigned
 from forty achievements to a hundred and one, and again later that day when the
-two open Play Console decisions were settled — see §12.
+two open Play Console decisions were settled — see §12. **Revised 2026-08-24
+for v7**, which kept the count at 101 and changed what the list is made of.
+
+> **v7, in one paragraph.** Three achievements were dropped (CEILING!,
+> MERSENNE!, WHOLE!) and three added (DECOMPOSE!, GALLERY!, TEMPTED!), holding
+> the total at 101 and the XP at 2000. Five gild sets were widened so the payoff
+> is no longer identical to the selection that earned it — the rule is now
+> asserted, see §2a. Two clues that could only be solved by arriving with the
+> answer were rewritten. Every achievement that needs one gained a **reference
+> link**, and every unlocked row now shows its **criteria**. §13 covers the
+> three UI changes and why the trophy room did not become automatic.
 
 > **Read this first.**
 >
-> **v2 is built and running on a Pixel 7, apart from one piece.** A hundred and
-> one achievements in a tree, no conjunction, declarative triggers, the
-> accordion. Landed 2026-08-23 and shaken out on the device the same day:
-> unlocks, the ledger, the banner, the highlight, the labels, the accordion, the
-> accessibility pass. `npm run check` covers it with 60 assertions.
+> **v2 is built and running on a Pixel 7; v7 is built and NOT yet on hardware.**
+> A hundred and one achievements in a tree, no conjunction, declarative
+> triggers, the accordion. Landed 2026-08-23 and shaken out on the device the
+> same day: unlocks, the ledger, the banner, the highlight, the labels, the
+> accordion, the accessibility pass. `npm run check` now covers it with **72
+> assertions**.
+>
+> **What v7 has NOT had is a phone.** The three new triggers, the criteria line,
+> the reference links and the trophy-room button have all been checked
+> headlessly and by reading the code, and nothing in this layer has ever
+> survived that alone — §8 is a list of six bugs that were invisible until the
+> app was on hardware with a real ledger behind it. Treat v7 as unverified until
+> somebody taps it.
 >
 > **Published visibility is decided: Tutorial Revealed, everything else Hidden.**
 > §12 has the reasoning, and it is the kind that is hard to reconstruct.
@@ -27,9 +45,11 @@ two open Play Console decisions were settled — see §12.
 > invisible until the app was on hardware with a real ledger behind it. Do not
 > believe a browser about anything that paints.
 >
-> **`docs/achievements-v6.xlsx` is the authoritative list.** Names, clues,
-> criteria, gild sets and blurbs live there. `achievements-data.js` was built
-> from it, and the two are now a genuine second source of truth — see §10.
+> **`achievements-data.js` is now the authoritative list**, and the two-sources
+> problem in §10 is settled by that. `docs/achievements-v6.xlsx` describes v2
+> and is history. `docs/achievements-v7-proposal.xlsx` is the design record for
+> this revision — what changed, what was rejected, and why — and it is a
+> record, not a source: it was generated FROM the code and is not read back.
 
 Where this disagrees with the code, the code is right and this should be fixed.
 
@@ -37,10 +57,13 @@ Where this disagrees with the code, the code is right and this should be fixed.
 
 ## 0. Status
 
-| | v1 — replaced | v2 — built 2026-08-23 |
-|---|---|---|
-| Count | 40 | **101** |
-| XP | 45 each, 1800 of 2000 | **15 each, UNITY! takes the remaining 500** |
+| | v1 — replaced | v2 — built 2026-08-23 | v7 — built 2026-08-24 |
+|---|---|---|---|
+| Count | 40 | 101 | **101, different membership** |
+| XP | 45 each, 1800 of 2000 | 15 each, UNITY! takes 500 | unchanged |
+| Payoff | gild = whatever was named | gild = whatever was named | **gild ≠ selection, asserted (§2a)** |
+| Explanation | blurb | blurb | **blurb + criteria + reference link (§13)** |
+| Published | n/a | 16 revealed / 85 hidden | **18 revealed / 83 hidden** |
 | Grouping | flat list | tree: Tutorial · Math · Culture · Capstone, eleven clusters |
 | Gilding | direct + derivation, gated by a conjunction | **direct only. No derivation until UNITY!** |
 | Trigger | ad hoc per achievement | **factor selection, dialling, or a stated relationship** |
@@ -54,9 +77,10 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | `www/modules/achievements-data.js` | The number sets, the definitions, and the gilding rule. **No Three.js, no renderer** — so it can be checked headlessly |
 | `www/modules/achievements.js` | The ledger, the predicates, the UI, the toast, the sound, the gilding paint |
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
-| `tools/check-achievements.mjs` | 60 assertions, in `npm run check` and CI |
+| `tools/check-achievements.mjs` | **72 assertions**, in `npm run check` and CI |
 | `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data, including the Play Console `initial_state` column. **Proofread the console paste here.** Rewritten 2026-08-23 for the v2 field names, having quietly thrown since the rebuild; now runs in CI so it cannot rot again |
-| `docs/achievements-v6.xlsx` | **The v2 list.** Authoritative |
+| `docs/achievements-v6.xlsx` | The v2 list. **History** — superseded by the code |
+| `docs/achievements-v7-proposal.xlsx` | The v7 design record: every row assessed, drops, additions, rejections |
 
 Achievements are **opt-in**: nothing is recorded until the player turns them on,
 and turning them on is FIRST!. That is a design choice, not a privacy hedge —
@@ -142,25 +166,75 @@ starting from one of its prime factors, is the app drawing a factorisation.
 
 ---
 
+## 2a. The payoff rule — added in v7
+
+**A gild set may not be the selection that earned it.** Tapping eight primes and
+lighting the same eight teaches nothing; the point of a gild is to show you
+something that was not already on the screen. Selecting `{2, 3, 37}` and
+watching 666 assemble is the app teaching you what factorisation feels like.
+Selecting `{5, 53}` and lighting 5 and 53 is a receipt.
+
+Sixteen achievements gilded exactly their own selection in v2. Ten of those are
+single-prime jokes where the payoff is the recognition — `-so random-` → 17 —
+and those are fine and were left alone. The six that did real work and returned
+nothing were fixed by **widening the gild to the pattern the clue already
+describes**, which costs no slots:
+
+| | was | now |
+|---|---|---|
+| PRIME DIGITS! | the 8 primes you tapped | all **84** numbers written only in 2/3/5/7 |
+| SATOR! | node 25 alone | all **107** palindromes above 1 |
+| STRIDE! | 113 and 127 | **113–127 inclusive** — the hole, not its edges |
+| BALANCED! | 5 and 53 | 3, 5, 7 and 47, 53, 59 — the symmetry the blurb describes |
+| BEST! | 37 and 73 | 12, 21, 37, 73 — the whole four-number joke |
+| MERSENNE! | the 4 primes you tapped | **dropped**; PERFECT! covers the subject and pays off |
+
+`check-achievements.mjs` now asserts this, and **SUPERPRIME! is the recorded
+exception**: eleven taps returning the same eleven nodes. It survives because the
+idea — count along the primes and land on a prime position — is the most
+intuitive thing in the cluster and no gild set expresses it any better.
+
+**Node 1 is not available to any of this.** The first version of
+`PALINDROME_NODES` counted from 1, and 1 is a palindrome, so SATOR! lit the node
+that belongs to UNITY! alone. The checker caught it; there is now an assertion
+naming it.
+
+---
+
 ## 3. The list
 
 **`docs/achievements-v6.xlsx` is authoritative.** Every achievement carries a
 branch, cluster, number, id, name, clue, criteria, gild set, optional blurb and
 XP.
 
-| # | Cluster | Count | Branch |
-|---|---|---|---|
-| 1–16 | Tutorial | 16 | Tutorial |
-| 17–19 | Series | 3 | Math |
-| 20–33 | Primes | 14 | Math |
-| 34–38 | Puzzles | 5 | Math |
-| 39–51 | Meme | 13 | Culture |
-| 52–63 | Lore | 12 | Culture |
-| 64–79 | Geek | 16 | Culture |
-| 80–87 | Calendar | 8 | Culture |
-| 88–97 | Dial | 10 | Culture |
-| 98–100 | Greeks | 3 | Culture |
-| 101 | Capstone | 1 | — |
+| # | Cluster | Count | Branch | v7 |
+|---|---|---|---|---|
+| 1–18 | Tutorial | 18 | Tutorial | −CEILING!, +DECOMPOSE!, +GALLERY!, +TEMPTED! |
+| 19–21 | Series | 3 | Math | |
+| 22–34 | Primes | 13 | Math | −MERSENNE! |
+| 35–39 | Puzzles | 5 | Math | |
+| 40–52 | Meme | 13 | Culture | |
+| 53–63 | Lore | 11 | Culture | −WHOLE! |
+| 64–79 | Geek | 16 | Culture | |
+| 80–87 | Calendar | 8 | Culture | |
+| 88–97 | Dial | 10 | Culture | |
+| 98–100 | Greeks | 3 | Culture | |
+| 101 | Capstone | 1 | — | |
+
+**Tutorial grew because that is where a new feature belongs.** Every Tutorial
+entry points at something the player would otherwise never find, and the
+decomposition view, the trophy room and the ad shop were all shipping with
+nothing pointing at them. CEILING! paid for one of the three: it duplicated
+MAXIMALIST!, it was the only configuration in the app below refresh cap — 26.7
+fps on a Pixel 7, §9 — and its blurb was *"Okay let's not break your phone."* A
+tutorial that rewards degrading the app is teaching the wrong lesson.
+
+**Dial is still 10 and that is the open question.** A tenth of the list, no
+integer content — the trigger is typing a number into a slider, which is the
+exact thing §1 calls *entering a password* — a flat payoff every time, and six
+of the ten are US area codes that mean nothing abroad. Cutting it to five is
+argued in `achievements-v7-proposal.xlsx`; it needs replacement achievements
+designed first, so it was left alone rather than done badly.
 
 **Tutorial is softly ordered.** It is a suggested tour of the app's functionality
 and the app's only tutorial. All of it is visible from the start and it can be
@@ -303,10 +377,15 @@ Discordians are as attached to five as to twenty-three. The discord is the joke.
 **Do not "correct" it.**
 
 **SIT! is a range trigger outside Dial.** Range 8 leaves a spare eight-node
-figure, which suits the Eightfold Path. CEILING! is the only other one, and it is
-Tutorial.
+figure, which suits the Eightfold Path. **It is now the only one** — CEILING!
+was the other, and v7 dropped it.
 
-**WHOLE! was renamed off THELEMA! but kept `_do what thou wilt_`.** Intentional.
+**SATOR! is no longer an exception here.** It used to gild the single node 25 on
+the grounds that the word square has twenty-five letters, which put it in the
+factor-convention check as a recorded oddity. In v7 it gilds every palindrome,
+so it does not reach that check at all. ENIGMA! is now the only entry in it.
+
+**SUPERPRIME! is the recorded exception to the payoff rule** — §2a.
 
 **REST! triggers on pausing the transport** and gilds all 142 multiples of 7 —
 the largest gild set in the design. It is also the only achievement that touches
@@ -330,12 +409,26 @@ interchangeable.
 | `state` | A config value. Swept on `stateChange`, on `build`, and by a 5 Hz backstop in `animate()` |
 | `dom` | A real gesture on a named control, guarded by `event.isTrusted` |
 | `sampled` | Polled in `animate()` — the morph and the physics resonance |
-| `event` | A bus event. Only `physics:dragStart`, added for OUCH! |
+| `event` | A bus event. `physics:dragStart` for OUCH!, and from v7 `lens:decompose` for DECOMPOSE! and `ads:paywall` for TEMPTED! |
 | `derived` | Computed from the ledger. UNITY! only |
 
 v2 adds no new kinds. Dialling is a `state` trigger on N; the relational Math
 predicates are `state` triggers on the prime selection; REST! needs a `dom` or
 `event` hook on the transport, which nothing currently watches.
+
+**v7 adds no new kinds either**, and each of its three cost one line at the
+source:
+
+- **DECOMPOSE!** — `lens:decompose`, emitted inside `buildDecomposition()`
+  rather than at the tap. The tap can be a *dismissal*: tapping the same number
+  twice clears the view, and clearing a decomposition is not performing one.
+- **TEMPTED!** — `ads:paywall`, emitted beside the existing `markPaywallSeen()`
+  in `openPaywall()`, which had already identified exactly the right moment. It
+  fires on the **door, never on the transaction**; an achievement that paid out
+  for a purchase would be a different kind of product.
+- **GALLERY!** — a `dom` binding on `#achievements-btn`, the cup that already
+  opens the trophy room. A second listener on the same button, so the room still
+  opens exactly as before.
 
 **`event.isTrusted` is what makes "manually" mean something.** Programmatic
 `.value` and `.checked` assignment fires nothing at all, and anything from
@@ -519,8 +612,8 @@ N=10000, at 26.7 and 34.6 fps.
 | `platform/index.js` | **done.** 101 store ids, generated from the data file |
 | `sheet.js` | **done.** Collapse-to-peek on focus, driven by an event so the seam holds |
 | `index.html` | **done.** Accordion styles |
-| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard, the gild ceiling, the blurb count, the default-state guard and the en-dash guard in. 54 assertions |
-| `renderer.js` | **NOT DONE.** Partial parastichy segments for the decomposition view |
+| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard, the gild ceiling, the blurb count, the default-state guard and the en-dash guard in. 54 assertions at the time; 72 now |
+| `renderer.js` | **done 2026-08-24.** `buildRunShapes()` / `lerpRunShapes()`, drawn by `lens.js` and now rewarded by DECOMPOSE! |
 | `transport.js` | not needed. REST! binds to `#transport-btn` through the existing delegated `onTrusted`, so nothing had to be added |
 
 ### The remaining piece
@@ -531,12 +624,29 @@ line through every multiple of its prime. That is a sub-segment of existing
 geometry, and it is the reason 666 is worth looking at: three curves converging
 on it, each starting at one of its prime factors.
 
-### Two sources of truth
+### Two sources of truth — SETTLED 2026-08-24
 
-`achievements-data.js` was generated from `achievements-v6.xlsx` by hand, once.
-They will drift. Either give `tools/achievements-table.mjs` an importer that
-regenerates the definitions, or accept the code as authoritative and delete the
-spreadsheet. **Deciding nothing is the option that goes wrong.**
+**The code is authoritative.** `achievements-v6.xlsx` describes v2 and is now
+history; it was not updated for v7 and should not be. The second option in the
+original note was taken, minus the deletion — the file stays as a record of
+where the list came from.
+
+`achievements-v7-proposal.xlsx` is a **design record, not a source**. It was
+generated from `achievements-data.js`, annotated, and read back by a human only.
+Nothing imports it and nothing should.
+
+### What v7 touched
+
+| File | Change |
+|---|---|
+| `achievements-data.js` | 3 dropped, 3 added, renumbered 1–101, 5 gild sets widened, 2 clues rewritten, `PRIME_DIGIT_NODES` / `PALINDROME_NODES` / `STRIDE_GAP` added, `LINKS` added and merged onto every definition as `link` |
+| `achievements.js` | 3 predicates and their bindings; criteria on the row and the toast; the reference link; the trophy-room button and its handler; the row's ignore list widened to `input, button, a` |
+| `lens.js` | one `emit('lens:decompose', { n })` |
+| `ads.js` | one `emit('ads:paywall', { id })` |
+| `index.html` | styles for `.ach-criteria`, `.ach-link`, `.ach-trophy-btn`, `.ach-toast-criteria` |
+| `platform/index.js` | store ids regenerated from the data file |
+| `achievements-table.mjs` | a `link` column, deliberately outside the Play Console set |
+| `check-achievements.mjs` | 60 → 72 assertions |
 
 ---
 
@@ -546,10 +656,10 @@ spreadsheet. **Deciding nothing is the option that goes wrong.**
 npm run check
 ```
 
-Runs `tools/check.mjs` and `tools/check-achievements.mjs` — 54 assertions over
-the list shape, the XP budget, trigger uniqueness, the dial guard, the computed
-families, the gilding rule and the gild-set ceiling. Dependency-free,
-in CI.
+Runs `tools/check.mjs` and `tools/check-achievements.mjs` — **72 assertions**
+over the list shape, the XP budget, trigger uniqueness, the dial guard, the
+computed families, the gilding rule, the gild-set ceiling, and from v7 the
+payoff rule and the reference links. Dependency-free, in CI.
 
 ```bash
 node tools/achievements-table.mjs        # TSV
@@ -582,7 +692,12 @@ the app, undoing §4 entirely.
 **The Tutorial cluster ships Revealed; Math, Culture and Capstone ship Hidden.**
 Tutorial is the ordered tour — its clues are nudges, not riddles, and giving away
 "Press Dazzle" costs nothing — so a hunter browsing the list finds a real on-ramp
-rather than 101 mystery entries. That is 16 revealed and 85 hidden.
+rather than 101 mystery entries. That was 16 revealed and 85 hidden; **v7 moved
+it to 18 and 83** when Tutorial grew.
+
+**Do that arithmetic before the console is told, not after.** The split is free
+to change today and effectively permanent once Play Games has it, which is why
+the checker pins the exact pair.
 
 **Dakota's reason, which is the part worth keeping:** hidden criteria are what
 let achievement hunters *collaborate*. A solved list is read alone; a concealed
@@ -592,11 +707,175 @@ thing that makes a community around the game possible.
 Lives in code as `REVEALED_CLUSTERS` in `achievements-data.js`, which gives every
 definition a `hidden` field; `tools/achievements-table.mjs` prints it as the
 `initial_state` column, which is the Play Console's own field name. The checker
-pins the split at 16/85, because it is near-permanent once the console is told.
+pins the split at 18/83, because it is near-permanent once the console is told.
 
 Not foreclosed: PGS has a **reveal** call, so a hidden achievement can be opened
 up programmatically once a player is close, filling the list in as they play.
 A later refinement; nothing here blocks it.
+
+---
+
+## 12a. The golden angle moved to PHI!
+
+Decided 2026-08-23. **PHI! gilds 137 and PARAWHAT?! gilds 34 and 55.**
+
+PHI! used to gild 161 — the digits of φ, matching PI! at 314 and TAU! at 628 —
+while 137, the golden ANGLE, belonged to PARAWHAT?!. But PHI!'s criteria is
+"set the divergence angle back to the golden angle", so 137 is the number a
+player goes looking for, and finding it lit under a different achievement is a
+small betrayal of the clue.
+
+PI! and TAU! keep their digits, because their angles are 180 and 360 and
+neither means anything on this figure. PHI! is the one Greek whose angle is
+worth more than its decimals, which is the whole reason the golden angle has a
+name.
+
+PARAWHAT?! took **34 and 55** in exchange: consecutive Fibonacci numbers, and
+the two spiral counts you get if you count the parastichy families on a
+sunflower — one number per family. It is what would be in front of you if you
+did what the achievement asks.
+
+---
+
+---
+
+## 13. What an earned row shows — added 2026-08-24
+
+Three changes, all about the moment *after* an unlock rather than before it.
+None touches a locked row, and that constraint shapes all three: **the clue is
+still the only way in** (§4).
+
+### The criteria, on the row and on the toast
+
+Until v7 nothing displayed `criteria`. It existed because the Play Console
+requires a public description per achievement, and a comment on the definitions
+said so and asked that it not be tidied away.
+
+It is shown now because **arriving on an achievement by accident is common**,
+and documented in at least four separate ways:
+
+- seven two-prime selections also satisfy a relational predicate — `{7, 13}`
+  earns QUARTER! and SEXY! together, see §14;
+- GOLDBACH! and NEAT! stack on top of those whenever the range lines up;
+- two dials are reachable without dialling, §8, accepted on 2026-08-23;
+- REST! fires on pausing the transport, which players do for unrelated reasons.
+
+The clue deliberately does not say what you did. The criteria does. On the toast
+it sits above the blurb, because the toast is the exact moment somebody asks
+*what did I just do?*
+
+**Consequence:** every toast is now tappable. It used to be tappable only when
+there was a blurb, which left twelve dead taps. Safe against the swallowed-taps
+bug in §8 — the `:not(.visible)` backstop in the stylesheet is what actually
+guarantees that, never the class.
+
+### The reference link
+
+87 of the 101 carry one; the rest are jokes a footnote would only flatten. They
+appear on **earned rows only** — a link names the answer as surely as a blurb
+does.
+
+**Stored as a `link` field, never as markup inside the blurb.** Blurbs go to the
+Play Console through `achievements-table.mjs`, and an anchor written into blurb
+text would leak into that column. `link` exists in the export but sits
+deliberately outside the console column set.
+
+**The twelve with no blurb need it most** — for MASONIC!, ENIGMA!, CATCH!,
+JACKPOT! and the rest, the link is not a footnote but the entire explanation.
+The checker asserts nothing has neither. MEME! is the single recorded exception,
+because an encyclopedia article cannot deliver a punchline.
+
+**Every title was verified against the Wikipedia API** — all resolve directly,
+none is a redirect or a disambiguation page. Eleven were wrong on the first
+pass: CENTRAL! pointed at a disambiguation page, and every area-code article has
+been renamed at some point. Re-checking the whole set costs two API calls.
+
+**No Capacitor plugin is needed, and that was checked rather than assumed.**
+`Bridge.launchIntent()` fires an `ACTION_VIEW` intent for any URL whose host is
+neither the app host nor in `allowNavigation`, and `capacitor.config.json` sets
+no `allowNavigation` at all. `setSupportMultipleWindows` is left at its default
+of false, so a `target="_blank"` link navigates in place and reaches
+`shouldOverrideUrlLoading`, which calls that same intent. The system browser
+opens and the app is still behind it. **Confirm once on a device anyway** — this
+is read from the Capacitor source, not observed running.
+
+### The trophy room is a button, not a tap
+
+The ask was for tapping an achievement to take you into trophy room view. It
+does not, and the reason is worth keeping.
+
+**Half the mechanism was already there.** `setFocus()` calls `fitFigureTo()`,
+which raises the range and switches all-integers on — but only when something in
+the gild set is genuinely not being drawn — and it *stashes* what it replaced in
+`rangeBeforeFocus` / `allIntBeforeFocus`, which `restoreFigure()` puts back. Tap
+to look, tap again to go back, already scoped to two knobs.
+
+**`applyTrophyRoom()` is not like that.** It clicks `#reset-btn` first, which
+writes about forty DOM values by hand plus `resetMorph()` and `resetCamera()`,
+and it stashes **nothing** — destructive by design, deliberately matching Dazzle
+(§9). Wiring that to a row tap would discard whatever the player had built every
+time they opened a row to read a blurb. It would also reverse §5's *"the panel
+must not move on its own"*, which was decided after a much smaller version of
+the same motion was built and removed.
+
+So the tap stays light and reversible, and the destructive version gets an
+explicit button inside the opened row — consented, exactly as the cup and Dazzle
+already are. It pairs with GALLERY!: the achievement teaches that the cup exists,
+the button gives a reason to press it.
+
+**If the automatic version is ever wanted**, the work is making the trophy room
+reversible — snapshot the whole config before applying, restore on unfocus, the
+same shape as `rangeBeforeFocus` but wider. §9's warning that *"reset does not
+reset everything"* has already been a bug twice, and it applies in reverse: a
+restore that misses a knob is the same bug in the same place.
+
+### Blurbs do not explain the app
+
+A blurb carries the mathematics or the joke. It is not the place for development
+history, for which control to press, or for an advert for a feature. Four were
+trimmed in v7 — PARAWHAT?! had picked up how the app came to be written,
+SUPERPRIME! and HEINZ! each ended by naming furniture, and STRIDE! had a factual
+error besides. **The tell is a second half that arrives for no apparent reason.**
+
+Machinery is fine where it *is* the subject: FIRST! explains gilding because that
+is what FIRST! is for, PI! describes the figure collapsing because that is the
+achievement, and GALLERY! describes the trophy room because it is about the
+trophy room.
+
+---
+
+## 14. Still open
+
+**Dial.** Ten achievements, no integer content, a flat payoff every time, six of
+them US-only. Cutting to five is argued in `achievements-v7-proposal.xlsx`, and
+it needs replacements designed first — Puzzles and Greeks are the underweight
+clusters and the obvious home for them.
+
+**The trigger collisions.** `check-achievements.mjs` enforces "no two
+achievements share an exact selection" over literal `sel` arrays only. The
+relational predicates in `achievements.js` are never compared against them, and
+`pairWhere()` accepts *any* two-prime selection — so seven literals double-fire,
+and CARDS! triple-fires:
+
+| Achievement | Selection | Also fires |
+|---|---|---|
+| CARDS! | {3, 7} | COUSINS!, GERMAIN! |
+| BEST! | {37, 73} | EMIRP! |
+| LIGHTSPEED! | {13, 23} | SQUARE UP! |
+| MEMORY! | {2, 5} | GERMAIN! |
+| INHERITED! | {2, 23} | SQUARE UP! |
+| QUARTER! | {7, 13} | SEXY! |
+| SHORTEST! | {2, 7} | SQUARE UP! |
+
+GOLDBACH! and NEAT! widen it further, both being two-prime predicates gated on
+the range.
+
+**This may well be a feature.** Two unlocks from one tap is a small *oh, that as
+well* — and showing the criteria (§13) removes the confusion that was the main
+argument against it. But the doc and the code presently disagree about whether
+the rule holds, and the checker reports green either way. Decide it, then either
+record the expected list as an assertion — the treatment ENIGMA! already gets —
+or change seven selections.
 
 ### SPARTA! is earned, not free
 
@@ -637,51 +916,33 @@ its dial.
 
 ---
 
-## 12a. The golden angle moved to PHI!
+### Carried over, still open
 
-Decided 2026-08-23. **PHI! gilds 137 and PARAWHAT?! gilds 34 and 55.**
-
-PHI! used to gild 161 — the digits of φ, matching PI! at 314 and TAU! at 628 —
-while 137, the golden ANGLE, belonged to PARAWHAT?!. But PHI!'s criteria is
-"set the divergence angle back to the golden angle", so 137 is the number a
-player goes looking for, and finding it lit under a different achievement is a
-small betrayal of the clue.
-
-PI! and TAU! keep their digits, because their angles are 180 and 360 and
-neither means anything on this figure. PHI! is the one Greek whose angle is
-worth more than its decimals, which is the whole reason the golden angle has a
-name.
-
-PARAWHAT?! took **34 and 55** in exchange: consecutive Fibonacci numbers, and
-the two spiral counts you get if you count the parastichy families on a
-sunflower — one number per family. It is what would be in front of you if you
-did what the achievement asks.
-
----
-
-## 13. Open
-
-- **Play Console XP limits are unverified.** v2 gives UNITY! 500 XP, so a
+- **Play Console XP limits are unverified.** UNITY! takes 500 XP, so a
   per-achievement maximum below that would break the budget. Check before
-  creating anything in the console
-
-- **`criteria` is the public string.** It is the Play Console description. For
-  the 16 Revealed Tutorial achievements it is visible in the Play Games app
-  before anyone earns it; for the 85 Hidden ones it appears on unlock. The
-  in-app clue is separate and stays cryptic either way. A typo there ships, and
-  `tools/achievements-table.mjs` is where to proofread all 101 at once
-
-- **Re-read the Math clues now that nothing backs them up.** See §4: the locked
-  preview is gone, so a clue that was fair beside a highlight may not be fair on
-  its own
-- **REST! at 142 nodes** is the largest gild set. Trim or accept
-- **SUPERPRIME! needs eleven taps**, SATOR! seven. The longest selections here
-- **Series is three members** and would fold into Primes without loss
-- **The label threshold** for the locked-row preview is unsettled. Working
-  proposal: label sets of eight or fewer, show larger ones as shape only
+  creating anything in the console.
+- **`criteria` is the public string**, and from v7 it is also shown in-app
+  (§13). For the 18 Revealed Tutorial achievements it is visible in the Play
+  Games app before anyone earns it; for the 83 Hidden ones it appears on unlock.
+  A typo ships either way, and `tools/achievements-table.mjs` is where to
+  proofread all 101 at once.
+- **REST! at 142 nodes** is still the largest gild set. Trim or accept.
+- **Series is three members** and would fold into Primes without loss.
 - **Accessibility.** Every toggle in the panel is a zero-size checkbox behind a
-  styled track, so the accessibility tree shows nothing. Pre-existing, not new,
-  but the accordion is the moment to fix it
-- **No toast or sound settings persist.** Sound defaults on and resets each launch
-- **CEILING! costs real frames** — 26.7 fps on a Pixel 7 — and it is an
-  achievement that deliberately sends players there
+  styled track, so the accessibility tree shows nothing. Pre-existing, and the
+  new trophy-room button is a real `<button>` precisely so it does not add to
+  the pile.
+- **No toast or sound settings persist.** Sound defaults on and resets each
+  launch.
+
+### Closed by v7
+
+- ~~CEILING! costs real frames — 26.7 fps on a Pixel 7~~ — dropped.
+- ~~SUPERPRIME! needs eleven taps, SATOR! seven~~ — SATOR! is unchanged in
+  effort but now pays off; SUPERPRIME! is recorded as the payoff-rule exception
+  in §2a rather than left as a loose end.
+- ~~Re-read the Math clues now that nothing backs them up~~ — done for the two
+  that could only be solved by already knowing the answer, LUCAS! and COLLATZ!.
+  The rest were read and left.
+- ~~The label threshold for the locked-row preview~~ — the locked-row preview
+  does not exist; §5 and §8 record what replaced it.

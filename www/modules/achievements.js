@@ -80,6 +80,13 @@ const nearAngle = (got, want) => Math.abs((got ?? 0) - want) <= ANGLE_EPS;
 // that only exists in a browser.
 export const BUS_BINDINGS = {
   ouch: 'physics:dragStart',
+  // Tapping a node under the classroom lens. The lens owns the gesture and the
+  // rendering; all this needs to know is that a decomposition happened.
+  decompose: 'lens:decompose',
+  // Opening the ad shop. Bound to the paywall specifically, NOT to a purchase:
+  // an achievement that paid out for buying something would be a different kind
+  // of product, and the joke stops being funny the moment it costs money.
+  tempted: 'ads:paywall',
 };
 
 export const DOM_BINDINGS = {
@@ -98,6 +105,10 @@ export const DOM_BINDINGS = {
   // button rather than to `state.paused`, because scrubbing pauses the morph as
   // a side effect and Reset writes the flag directly — neither should award it.
   rest:       { selector: '#transport-btn', event: 'click pointerup' },
+  // The cup. Same control the trophy room already hangs off — the listener
+  // below is a second one on the same button, not a replacement, so the room
+  // still opens exactly as it did.
+  gallery:    { selector: '#achievements-btn', event: 'click' },
 };
 
 // ============================================================
@@ -128,10 +139,15 @@ const CUSTOM = {
   bophades:   (el) => +el.value >= 2.0,
   maximalist: (el) => +el.value >= 2500,
   trippy:     () => true,
-  ceiling:    () => resolveN() >= MAX_N,
   zoomies:    () => state.shapeDriftSpeed >= 2.0,
   boing:      (ctx) => Math.abs(ctx.dim - 0.0) <= 0.01,
   nerd:       () => state.lensOpen === true,
+  // Any real decomposition counts. lens.js only emits for n >= 2 with at least
+  // one prime factor, so there is nothing further to guard here.
+  decompose:  (d) => (d?.n ?? 0) >= 2,
+  gallery:    () => true,                // the tap IS the achievement
+  tempted:    () => true,                // so is opening the shop
+
   ouch:       (d) => d?.n === 0,
   oops:       (ctx) => countDisplaced(ctx) >= 20,
   night:      () => state.showZero === false,
@@ -317,7 +333,12 @@ async function unlock(id) {
   // gilded" and would have shown up on the figure as gilding that lagged one
   // unlock behind.
   invalidateGild();
-  emit('achievement:unlocked', { id, name: a.name, clue: a.clue, blurb: a.blurb, xp: a.xp });
+  // CARRY EVERYTHING THE TOAST RENDERS. This payload is what queueToast()
+  // receives, so a field missing here is a literal "undefined" on screen rather
+  // than an absent line — which is exactly how `criteria` shipped the first
+  // time round, caught in the browser and not by the checker.
+  emit('achievement:unlocked',
+       { id, name: a.name, clue: a.clue, criteria: a.criteria, blurb: a.blurb, link: a.link, xp: a.xp });
 
   // Fire and forget. A failure to reach Play Games must not roll back the local
   // ledger — reconciliation on the next start will push it again, and unlocks
@@ -549,8 +570,21 @@ function showNext() {
     `<div class="ach-toast-kicker">Achievement</div>` +
     `<div class="ach-toast-name">${a.name}</div>` +
     `<div class="ach-toast-sub">${a.clue}</div>` +
+    // THE CRITERIA, shown from v7 on. Until now nothing displayed it and a
+    // comment on the definitions said so. It earns its place because arriving
+    // on an achievement BY ACCIDENT is common and documented: seven two-prime
+    // selections also satisfy a relational predicate, GOLDBACH! and NEAT! stack
+    // on top of those whenever the range lines up, two dials are reachable
+    // without dialling (ACHIEVEMENTS.md §8), and REST! fires on a pause the
+    // player made for unrelated reasons. The toast is the exact moment somebody
+    // asks what they just did, so it is the right place to answer.
+    (a.criteria ? `<div class="ach-toast-criteria">${a.criteria}</div>` : '') +
     (a.blurb ? `<div class="ach-toast-blurb">${a.blurb}</div>` : '');
-  el.classList.toggle('tappable', !!a.blurb);
+  // Every toast now has something worth opening — criteria is mandatory on
+  // every definition, so the twelve without a blurb are no longer dead taps.
+  // Safe against the swallowed-taps bug in §8: the :not(.visible) backstop in
+  // the stylesheet turns pointer-events off regardless of this class.
+  el.classList.add('tappable');
 
   // prefersReducedMotion is already worked out in core/state.js, so honour it
   // rather than asking again. The toast still appears — it just fades instead
@@ -1329,7 +1363,30 @@ function buildRow(a, enabled) {
     // sheet, the checker and the Play Console paste all need it.
     `<div class="ach-name">${a.name}</div>` +
     `<div class="ach-hint">${a.clue}</div>` +
-    (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '');
+    // EARNED ROWS ONLY, all three of these. The criteria says plainly what was
+    // done, which the clue deliberately does not; the link is for whoever the
+    // joke or the mathematics passed by; the button offers the trophy room.
+    // On a LOCKED row the criteria would be a walkthrough and the link would
+    // name the answer, so neither may ever appear there — see §4.
+    (got ? `<div class="ach-criteria">${a.criteria}</div>` : '') +
+    (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '') +
+    (got && a.link
+      ? `<a class="ach-link" href="${a.link}" target="_blank" rel="noopener noreferrer">Read more</a>`
+      : '') +
+    // THE TROPHY ROOM IS OPT-IN, and that is the whole design of this button.
+    //
+    // The ask was for a row tap to take you straight there. It cannot:
+    // applyTrophyRoom() clicks #reset-btn, which writes about forty DOM values
+    // plus resetMorph() and resetCamera(), and stashes NOTHING. Wiring that to
+    // the tap would discard whatever the player had built every time they
+    // opened a row to read a blurb — and §5 is explicit that the panel must not
+    // move on its own.
+    //
+    // So the tap stays what it is: setFocus(), which is light and REVERSIBLE
+    // (fitFigureTo stashes the range and the all-integers flag, restoreFigure
+    // puts them back). The destructive version gets a button, exactly as the
+    // cup and Dazzle already do.
+    (got ? `<button type="button" class="ach-trophy-btn">See it in the trophy room</button>` : '');
 
   // ONLY AN EARNED ROW IS TAPPABLE. A locked one shows its clue and nothing
   // else — no highlight, no preview, no hint about which numbers are involved.
@@ -1344,7 +1401,11 @@ function buildRow(a, enabled) {
       // The checkbox is a control in its own right and must not double as a
       // disclosure toggle: ticking it decides whether this achievement's gold
       // is SHOWN, tapping the row decides which one is being INSPECTED.
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+      // The checkbox, the trophy button and the reference link are all
+      // controls in their own right. Tapping the ROW decides what is being
+      // inspected; tapping one of these does its own thing and must not also
+      // collapse the row out from under the player.
+      if (e.target.closest('input, button, a')) return;
       const nowFocused = setFocus(a.id);
       // Only one row is ever open, because only one can be highlighted.
       for (const other of listEl.querySelectorAll('.ach-row')) {
@@ -1354,6 +1415,20 @@ function buildRow(a, enabled) {
       row.classList.toggle('focused', nowFocused === a.id);
     });
   }
+
+  // The opt-in trophy room. Focus is set AFTER the room is applied, because
+  // applyTrophyRoom() clicks #reset-btn and the rebuild that follows would
+  // otherwise land on top of the highlight and wipe it.
+  text.querySelector('.ach-trophy-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    applyTrophyRoom();
+    renderList();
+    setFocus(a.id);
+    const again = [...(listEl?.querySelectorAll('.ach-row') || [])]
+      .find(r => r.querySelector('.ach-name')?.textContent.endsWith(a.name));
+    again?.classList.add('open', 'focused');
+    again?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
 
   row.appendChild(cb);
   row.appendChild(text);

@@ -43,8 +43,10 @@ const GRID = new Set(SELECTABLE_PRIMES);
 // ============================================================
 console.log('\n[shape] the list');
 eq('achievements', A.length, 101);
+// v7: Tutorial 16 -> 18 (CEILING! dropped; DECOMPOSE!, GALLERY! and TEMPTED!
+// added), Primes 14 -> 13 (MERSENNE! dropped), Lore 12 -> 11 (WHOLE! dropped).
 eq('clusters', D.CLUSTER_ORDER.map(c => (D.BY_CLUSTER.get(c) || []).length),
-   [16, 3, 14, 5, 13, 12, 16, 8, 10, 3, 1]);
+   [18, 3, 13, 5, 13, 11, 16, 8, 10, 3, 1]);
 
 const ids = A.map(a => a.id);
 eq('unique ids', new Set(ids).size, A.length);
@@ -58,11 +60,11 @@ eq('every definition has name, clue and criteria', missing, []);
 // was rebuilt from the spreadsheet and the blurb column was simply not carried
 // across. Nothing failed, nothing warned, and the reward for earning an
 // achievement was an empty box for as long as it took somebody to tap one.
-eq('achievements carrying a blurb', A.filter(a => a.blurb).length, 88);
+eq('achievements carrying a blurb', A.filter(a => a.blurb).length, 89);
 // Blurbs are prose that ships to players. A double hyphen is a typewriter
 // artefact, not punctuation.
 eq('blurbs using -- instead of an en dash', A.filter(a => a.blurb.includes('--')).map(a => a.name), []);
-const mustExplain = ['perfect', 'fermat', 'mersenne', 'heinz', 'angel', 'metonic', 'freezing'];
+const mustExplain = ['perfect', 'fermat', 'decompose', 'heinz', 'angel', 'metonic', 'freezing'];
 eq('the ones with real mathematics behind them all explain themselves',
    mustExplain.filter(id => !A.find(a => a.id === id)?.blurb), []);
 
@@ -124,9 +126,9 @@ for (const a of A) {
 eq('only the recorded exceptions break the factor convention', exceptions, [
   // The Law of Fives: 2+3=5, so 5 opens 23. The discord is the joke.
   'ENIGMA!: gilds 23 {23} but selects {5}',
-  // The clue is "reads the same every way", so the trigger is the palindromic
-  // primes rather than 25's factors. 25 is what the square LOOKS like: 5x5.
-  'SATOR!: gilds 25 {5} but selects {2,3,5,7,11,101,131}',
+  // SATOR! used to sit here too, gilding the single node 25. In v7 it gilds
+  // every palindrome instead, so it no longer reaches this check at all — the
+  // check only looks at achievements that gild exactly one node.
 ]);
 
 // ============================================================
@@ -191,6 +193,21 @@ eq('selections that equal the default selection', freeAtRest, [
 // 900-line file, and removing it silently restores a bug that took a phone and
 // a real ledger to find. A grep is a poor test and a good tripwire.
 const SRC = readFileSync(new URL('../www/modules/achievements.js', import.meta.url), 'utf8');
+
+// The toast renders straight off the achievement:unlocked PAYLOAD, not off the
+// definition — so a field the template prints but the payload omits arrives as
+// the string "undefined" on screen. That is exactly how `criteria` shipped for
+// about ten minutes in v7: the checker was green, and only opening the app
+// showed it. A source tripwire, in the same spirit as the SPARTA! one below.
+const payload = SRC.match(/emit\('achievement:unlocked',[\s\S]{0,300}?\}\);/)?.[0] || '';
+for (const field of ['name', 'clue', 'criteria', 'blurb', 'link', 'xp']) {
+  // `\\b` and not `\b`: inside a template literal `\b` is the BACKSPACE
+  // character, so the word boundary has to survive as two characters into the
+  // RegExp constructor. Written the obvious way, every one of these fails.
+  yes(new RegExp(`\\b${field}:`).test(payload),
+      `the unlock payload carries ${field}`,
+      `achievement:unlocked does not carry ${field} — the toast will print "undefined"`);
+}
 ok('SPARTA! overrides its generated test with the range gate',
    /sparta:\s*\(\)\s*=>\s*isExactly\(\[2,\s*3,\s*5\]\)\s*&&\s*resolveN\(\)\s*===\s*300/.test(SRC));
 
@@ -216,6 +233,9 @@ const revealed = A.filter(a => !a.hidden).map(a => a.name);
 const clustersRevealed = [...new Set(A.filter(a => !a.hidden).map(a => a.cluster))];
 eq('clusters published Revealed', clustersRevealed, ['Tutorial']);
 eq('Revealed count', revealed.length, A.filter(a => a.cluster === 'Tutorial').length);
+// PINNED. Near-permanent once the Play Console is told, and it moved in v7 when
+// Tutorial grew: 16/85 became 18/83.
+eq('the published split', [revealed.length, A.length - revealed.length], [18, 83]);
 ok(`  ${revealed.length} revealed, ${A.length - revealed.length} hidden`);
 
 // ============================================================
@@ -235,6 +255,33 @@ eq('super-primes in the grid', D.SUPER_PRIMES, [3,5,11,17,31,41,59,67,83,109,127
 eq('the two prime-ish families overlap only at 3 and 5',
    D.SUPER_PRIMES.filter(p => D.PRIME_DIGIT_PRIMES.includes(p)), [3, 5]);
 eq('multiples of 7', D.REST_NODES.length, 142);
+// v7 PAYOFF SETS. Each replaced a gild set identical to the selection that
+// earned it — see docs/ACHIEVEMENTS.md §2a.
+eq('numbers written only in prime digits', D.PRIME_DIGIT_NODES.length, 84);
+eq('palindromes below the ceiling', D.PALINDROME_NODES.length, 107);
+// 1 IS A PALINDROME and must not be in that set: it belongs to UNITY! alone.
+// This assertion exists because the first version of PALINDROME_NODES counted
+// from 1 and lit node 1 the moment SATOR! was earned.
+yes(!D.PALINDROME_NODES.includes(1), 'the palindrome set leaves node 1 to UNITY!');
+eq('the widest prime gap, inclusive', D.STRIDE_GAP,
+   [113,114,115,116,117,118,119,120,121,122,123,124,125,126,127]);
+// The prime-digit NODES must be a superset of the prime-digit PRIMES: the
+// selection is the primes, the payoff is every number written that way.
+yes(D.PRIME_DIGIT_PRIMES.every(p => D.PRIME_DIGIT_NODES.includes(p)),
+    'every prime-digit prime is among the prime-digit nodes');
+// And the rule behind the change: a payoff identical to its own input teaches
+// nothing, so no multi-prime selection may gild exactly the primes it names.
+const flat = A.filter(a => a.sel && a.sel.length > 1
+                            && a.gildNodes.length === a.sel.length
+                            && a.sel.every(p => a.gildNodes.includes(p)))
+              .map(a => a.name);
+eq('multi-prime selections whose payoff is just the selection back', flat, [
+  // SUPERPRIME! is the knowing exception: 11 taps returning the same 11 nodes.
+  // Kept because the IDEA — count along the primes and land on a prime position
+  // — is the most intuitive thing in the cluster, and no gild set expresses it
+  // any better. Recorded so it stays a decision rather than an oversight.
+  'SUPERPRIME!',
+]);
 eq('repdigits', D.REPDIGITS, [111,222,333,444,555,666,777,888,999]);
 eq('every repdigit is a multiple of 37', D.REPDIGITS.every(n => n % 37 === 0), true);
 eq('run targets', D.RUN_TARGETS, [17,23,31,41,53,59,67,71,83,97,101,109,127,131]);
@@ -243,6 +290,27 @@ eq('squares two primes can reach', D.SQUARE_UP_NODES, [9,16,25,36,49,64,81,100,1
 // prime is odd and two odds always sum to an even number.
 const oddSquares = D.SQUARE_UP_NODES.filter(n => n % 2 === 1);
 eq('the odd squares all need 2', oddSquares.every(s => isPrimeNumber(s - 2)), true);
+
+// ============================================================
+console.log('\n[links] the reference links');
+// Added in v7. A link only ever appears on an EARNED row, so it cannot give an
+// answer away — but a broken or non-https one ships to players either way.
+const links = A.filter(a => a.link);
+ok(`${links.length} of ${A.length} carry a reference link`);
+eq('links that are not https', links.filter(a => !a.link.startsWith('https://')).map(a => a.name), []);
+eq('links that are not Wikipedia articles',
+   links.filter(a => !a.link.startsWith('https://en.wikipedia.org/wiki/')).map(a => a.name), []);
+// A title with a raw space in it would 404. They are stored percent-encoded.
+eq('links containing a raw space', links.filter(a => a.link.includes(' ')).map(a => a.name), []);
+// The ones with NO blurb are exactly the ones a link has to carry, because for
+// them it is the whole explanation rather than a footnote.
+const unexplained = A.filter(a => !a.blurb && !a.link).map(a => a.name);
+eq('achievements with neither a blurb nor a link', unexplained, [
+  // A joke a footnote would only flatten. If you know the reference the clue is
+  // the whole payload; if you do not, an encyclopedia article will not deliver
+  // a punchline.
+  'MEME!',
+]);
 
 // ============================================================
 console.log('\n[gilding] nothing derives before the capstone');

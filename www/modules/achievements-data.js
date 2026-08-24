@@ -157,6 +157,48 @@ export const SQUARE_UP_NODES = (() => {
   return [...out].sort((x, y) => x - y);
 })();
 
+// PAYOFF SETS — added in v7.
+//
+// Each of these replaces a gild set that was identical to the SELECTION that
+// earned it. Tapping eight primes and lighting the same eight teaches nothing;
+// the point of a gild is to show you something you did not already have on
+// screen. See docs/ACHIEVEMENTS.md §2a.
+//
+// All three are well inside the 150-node ceiling that check-achievements.mjs
+// pins — the largest set in the design is still REST! at 142.
+
+// PRIME DIGITS! — every number written with nothing but 2, 3, 5 and 7, not just
+// the eight PRIMES that are. Eighty-four of them, and the scatter is the point:
+// it makes the base-ten fact visible instead of merely asserted.
+export const PRIME_DIGIT_NODES = (() => {
+  const out = [];
+  for (let n = 2; n <= TROPHY_N; n++) {
+    if (String(n).split('').every(c => '2357'.includes(c))) out.push(n);
+  }
+  return out;
+})();
+
+// SATOR! — every palindrome below the ceiling. The clue is "reads the same every
+// way", and now the payoff reads that way too. It used to gild the single node
+// 25, on the grounds that the word square has twenty-five letters, which is a
+// long walk for a small view.
+export const PALINDROME_NODES = (() => {
+  const out = [];
+  // FROM 2, NOT 1. 1 is a palindrome and must still stay dark: it belongs to
+  // UNITY! and to nothing else, because it is the one number that is not built
+  // out of primes. check-achievements.mjs caught this the first time round.
+  for (let n = 2; n <= TROPHY_N; n++) if (isPalindrome(n)) out.push(n);
+  return out;
+})();
+
+// STRIDE! — the whole gap, not its two endpoints. The clue describes a stretch
+// of number line with no primes in it, so the hole is what should light up.
+export const STRIDE_GAP = (() => {
+  const out = [];
+  for (let n = 113; n <= 127; n++) out.push(n);
+  return out;
+})();
+
 // ============================================================
 // THE DEFINITIONS
 // ============================================================
@@ -247,77 +289,86 @@ d(3,  'Tutorial', 'parawhat',   'PARAWHAT?!',   '-pe-RAS-te-kee-',              
 d(4,  'Tutorial', 'art',        'ART!',         '-change how it looks, not what it is-','Change any appearance setting.',                       [433],  custom('dom'));
 d(5,  'Tutorial', 'bophades',   'ORBS!',        '-so big-',                            'Take node size to its maximum.',                        [8],    custom('dom'));
 d(6,  'Tutorial', 'maximalist', 'MAXIMALIST!',  '-push the slider all the way-',       'Take the range slider to its maximum, 2500.',           [999],  custom('dom'));
-d(7,  'Tutorial', 'ceiling',    'CEILING!',     '-the slider was lying-',              'Set the range to 10000.',                               [997],  custom());
-d(8,  'Tutorial', 'zoomies',    'ZOOMIES!',     '-faster, all the way-',               'Turn morph speed up to maximum.',                       [88, 121], custom());
-d(9,  'Tutorial', 'boing',      'BOING!',       '-wait for the bottom-',               'Let the morph reach the Spring form.',                  [6],    custom('sampled'));
-d(10, 'Tutorial', 'trippy',     'TRIPPY!',      '-there is a button for this-',        'Press Dazzle.',                                         [815],  custom('dom'));
-d(11, 'Tutorial', 'nerd',       'NERD!',        '-drag the classroom across-',         'Open the classroom lens.',                              [42],   custom());
+d(7,  'Tutorial', 'zoomies',    'ZOOMIES!',     '-faster, all the way-',               'Turn morph speed up to maximum.',                       [88, 121], custom());
+d(8,  'Tutorial', 'boing',      'BOING!',       '-wait for the bottom-',               'Let the morph reach the Spring form.',                  [6],    custom('sampled'));
+d(9,  'Tutorial', 'trippy',     'TRIPPY!',      '-there is a button for this-',        'Press Dazzle.',                                         [815],  custom('dom'));
+d(10, 'Tutorial', 'nerd',       'NERD!',        '-drag the classroom across-',         'Open the classroom lens.',                              [42],   custom());
+// DECOMPOSE! is the second half of NERD!, not a duplicate of it: NERD! rewards
+// opening the lens, this rewards using it. Gilds 30 because 2 x 3 x 5 is the
+// cleanest three-distinct-factor number on the board — three runs converging,
+// which is the whole argument for the view. 42 belongs to NERD! already.
+d(11, 'Tutorial', 'decompose',  'DECOMPOSE!',   '-take one apart-',                    'Tap a number under the classroom lens to break it into its prime factors.', [30], custom('event'));
 d(12, 'Tutorial', 'ouch',       'OUCH!',        '-take hold of the Sun-',              'With physics on, drag node 0.',                         [149],  custom('event'));
 d(13, 'Tutorial', 'oops',       'OOPS!',        '-make the springs disagree-',         'Get 20 or more nodes further than twice their rest distance from the Sun.', [641], custom('sampled'));
 d(14, 'Tutorial', 'night',      'NIGHT!',       '-put out the Sun-',                   'Switch off the zero node.',                             [354],  custom());
 d(15, 'Tutorial', 'void',       'VOID!',        '-take every prime away-',             'Deselect every prime.',                                 [],     custom());
 d(16, 'Tutorial', 'empty-set',  'EMPTY SET!',   '-then take away what was left-',      'Deselect every prime and switch off both 0 and 1.',     [86],   custom());
+// The last two corner controls. Both are "this feature exists" invitations —
+// the trophy room and the ad shop are the only major features with nothing
+// pointing at them.
+d(17, 'Tutorial', 'gallery',    'GALLERY!',     '-see what you have won-',             'Open the trophy room.',                                 [100],  custom('dom'));
+// TEMPTED! fires on OPENING the shop and never on buying. An achievement that
+// paid out for a purchase would be a different kind of product entirely.
+d(18, 'Tutorial', 'tempted',    'TEMPTED!',     '-open the shop, buy nothing-',        'Open the advertisement shop.',                          [99],   custom('event'));
 
 // ---- MATH · SERIES ------------------------------------------------------
-d(17, 'Series', 'fibonacci', 'FIBONACCI!', '-how nature counts-',            'Select exactly the five Fibonacci primes and nothing else.', FIB_NODES,   sel(2, 3, 5, 13, 89));
-d(18, 'Series', 'lucas',     'LUCAS!',     '-fibonacci, but different-',     'Select exactly 2, 3, 7, 11, 29 and 47.',                     LUCAS_NODES, sel(2, 3, 7, 11, 29, 47));
-d(19, 'Series', 'perfect',   'PERFECT!',   '-equal to the sum of its parts-','Select exactly 2, 3, 7 and 31.',   [...SERIES.perfect, ...PERFECT_NODES], sel(2, 3, 7, 31));
+d(19, 'Series', 'fibonacci', 'FIBONACCI!', '-how nature counts-',            'Select exactly the five Fibonacci primes and nothing else.', FIB_NODES,   sel(2, 3, 5, 13, 89));
+d(20, 'Series', 'lucas',     'LUCAS!',     '-two and one, then add as before-',     'Select exactly 2, 3, 7, 11, 29 and 47.',                     LUCAS_NODES, sel(2, 3, 7, 11, 29, 47));
+d(21, 'Series', 'perfect',   'PERFECT!',   '-equal to the sum of its parts-','Select exactly 2, 3, 7 and 31.',   [...SERIES.perfect, ...PERFECT_NODES], sel(2, 3, 7, 31));
 
 // ---- MATH · PRIMES ------------------------------------------------------
-d(20, 'Primes', 'twinning',    'TWINNING!',     '-one even number between them-',        "Select exactly two primes that differ by 2.",                SERIES.twins,   custom());
-d(21, 'Primes', 'cousins',     'COUSINS!',      '-four apart-',                          'Select exactly two primes that differ by 4.',                SERIES.cousins, custom());
-d(22, 'Primes', 'sexy',        'SEXY!',         '-six apart, and that is the real name-','Select exactly two primes that differ by 6.',                SERIES.sexy,    custom());
-d(23, 'Primes', 'germain',     'GERMAIN!',      '-double it, add one-',                  'Select exactly two primes p and q where q = 2p+1.',          SERIES.germain, custom());
-d(24, 'Primes', 'emirp',       'EMIRP!',        '-read it the other way-',               "Select exactly two primes that are each other's digit reversal.", SERIES.emirp, custom());
-d(25, 'Primes', 'mersenne',    'MERSENNE!',     '-one less than a power of two-',        'Select exactly 3, 7, 31 and 127.',                           [3, 7, 31, 127],        sel(3, 7, 31, 127));
-d(26, 'Primes', 'fermat',      'FERMAT!',       '-one more than a power of two-',        'Select exactly 3, 5 and 17.',                                [3, 5, 17, 255, 257],   sel(3, 5, 17));
-d(27, 'Primes', 'neat',        'NEAT!',         '-almost a straight line-',              'Two primes selected, one of them 89, with the range at least 178.', [89],             custom(), { gildLines: [89] });
-d(28, 'Primes', 'louder',      'LOUDER!',       '-these ones go to-',                    'Select exactly 11.',                                         [11],                   sel(11));
-d(29, 'Primes', 'smart',       'SMART!',        '-intro class-',                         'Select exactly 101 and view it through the classroom lens.', [101],                  custom());
-d(30, 'Primes', 'balanced',    'BALANCED!',     '-exactly halfway between its neighbours-','Select exactly 5 and 53.',                                 [5, 53],                sel(5, 53));
-d(31, 'Primes', 'stride',      'STRIDE!',       '-the widest step-',                     'Select exactly 113 and 127.',                                [113, 127],             sel(113, 127));
-d(32, 'Primes', 'all-prime',   'PRIME DIGITS!', '-every digit too-',                     'Select exactly 2, 3, 5, 7, 23, 37, 53 and 73.',              PRIME_DIGIT_PRIMES,     sel(...PRIME_DIGIT_PRIMES));
-d(33, 'Primes', 'super-prime', 'SUPERPRIME!',   '-count the primes and land on one-',    'Select exactly 3, 5, 11, 17, 31, 41, 59, 67, 83, 109 and 127.', SUPER_PRIMES,        sel(...SUPER_PRIMES));
+d(22, 'Primes', 'twinning',    'TWINNING!',     '-one even number between them-',        "Select exactly two primes that differ by 2.",                SERIES.twins,   custom());
+d(23, 'Primes', 'cousins',     'COUSINS!',      '-four apart-',                          'Select exactly two primes that differ by 4.',                SERIES.cousins, custom());
+d(24, 'Primes', 'sexy',        'SEXY!',         '-six apart, and that is the real name-','Select exactly two primes that differ by 6.',                SERIES.sexy,    custom());
+d(25, 'Primes', 'germain',     'GERMAIN!',      '-double it, add one-',                  'Select exactly two primes p and q where q = 2p+1.',          SERIES.germain, custom());
+d(26, 'Primes', 'emirp',       'EMIRP!',        '-read it the other way-',               "Select exactly two primes that are each other's digit reversal.", SERIES.emirp, custom());
+d(27, 'Primes', 'fermat',      'FERMAT!',       '-one more than a power of two-',        'Select exactly 3, 5 and 17.',                                [3, 5, 17, 255, 257],   sel(3, 5, 17));
+d(28, 'Primes', 'neat',        'NEAT!',         '-almost a straight line-',              'Two primes selected, one of them 89, with the range at least 178.', [89],             custom(), { gildLines: [89] });
+d(29, 'Primes', 'louder',      'LOUDER!',       '-these ones go to-',                    'Select exactly 11.',                                         [11],                   sel(11));
+d(30, 'Primes', 'smart',       'SMART!',        '-intro class-',                         'Select exactly 101 and view it through the classroom lens.', [101],                  custom());
+d(31, 'Primes', 'balanced',    'BALANCED!',     '-exactly halfway between its neighbours-','Select exactly 5 and 53.',                       [3, 5, 7, 47, 53, 59],            sel(5, 53));
+d(32, 'Primes', 'stride',      'STRIDE!',       '-the widest step-',                     'Select exactly 113 and 127.',                    STRIDE_GAP,                       sel(113, 127));
+d(33, 'Primes', 'all-prime',   'PRIME DIGITS!', '-every digit too-',                     'Select exactly 2, 3, 5, 7, 23, 37, 53 and 73.',  PRIME_DIGIT_NODES,                sel(...PRIME_DIGIT_PRIMES));
+d(34, 'Primes', 'super-prime', 'SUPERPRIME!',   '-count the primes and land on one-',    'Select exactly 3, 5, 11, 17, 31, 41, 59, 67, 83, 109 and 127.', SUPER_PRIMES,        sel(...SUPER_PRIMES));
 
 // ---- MATH · PUZZLES -----------------------------------------------------
-d(34, 'Puzzles', 'goldbach',  'GOLDBACH!',   '-two make an even-',                'With the range set to an even number, select exactly two primes that add up to it.', GOLDBACH_EVENS,  custom());
-d(35, 'Puzzles', 'collatz',   'COLLATZ!',    '-the long way down-',               'Select exactly 13 and 67.',                                   [871],            sel(13, 67));
-d(36, 'Puzzles', 'run',       'RUN!',        '-a run of them adds up to another-','Select three or more primes in a row together with the prime they add up to.', RUN_TARGETS, custom());
-d(37, 'Puzzles', 'stairs',    'STAIRS!',     '-three evenly spaced-',             'Select exactly three primes that are evenly spaced.',         [3, 5, 7],        custom());
-d(38, 'Puzzles', 'square-up', 'SQUARE UP!',  '-two that add to a square-',        'Select exactly two primes that add up to a square number.',   SQUARE_UP_NODES,  custom());
+d(35, 'Puzzles', 'goldbach',  'GOLDBACH!',   '-two make an even-',                'With the range set to an even number, select exactly two primes that add up to it.', GOLDBACH_EVENS,  custom());
+d(36, 'Puzzles', 'collatz',   'COLLATZ!',    '-halve it, or triple it and add one-',               'Select exactly 13 and 67.',                                   [871],            sel(13, 67));
+d(37, 'Puzzles', 'run',       'RUN!',        '-a run of them adds up to another-','Select three or more primes in a row together with the prime they add up to.', RUN_TARGETS, custom());
+d(38, 'Puzzles', 'stairs',    'STAIRS!',     '-three evenly spaced-',             'Select exactly three primes that are evenly spaced.',         [3, 5, 7],        custom());
+d(39, 'Puzzles', 'square-up', 'SQUARE UP!',  '-two that add to a square-',        'Select exactly two primes that add up to a square number.',   SQUARE_UP_NODES,  custom());
 
 // ---- CULTURE · MEME -----------------------------------------------------
-d(39, 'Meme', 'nice',    'NICE!',     '-nice-',                'Select exactly 3 and 23.',       [69],  sel(3, 23));
-d(40, 'Meme', 'dude',    'DUDE!',     '-what was I saying?-',  'Select exactly 2, 3, 5 and 7.',  [420], sel(2, 3, 5, 7));
-d(41, 'Meme', 'meme',    'MEME!',     '-kids these days-',     'Select exactly 67.',             [67],  sel(67));
-d(42, 'Meme', 'oil',     'OIL!',      '-upside down-',         'Select exactly 2, 5 and 71.',    [710], sel(2, 5, 71));
-d(43, 'Meme', 'catch',   'CATCH!',    '-damned either way-',   'Select exactly 2 and 11.',       [22],  sel(2, 11));
-d(44, 'Meme', 'route',   'ROUTE!',    '-get your kicks-',      'Select exactly 2, 3 and 11.',    [66],  sel(2, 3, 11));
-d(45, 'Meme', 'cards',   'CARDS!',    '-hit me-',              'Select exactly 3 and 7.',        [21],  sel(3, 7));
-d(46, 'Meme', 'jackpot', 'JACKPOT!',  '-three of a kind-',     'Select exactly 3, 7 and 37.',    [777], sel(3, 7, 37));
-d(47, 'Meme', 'heinz',   'HEINZ!',    '-varieties-',           'Select exactly 3 and 19.',       [57],  sel(3, 19));
-d(48, 'Meme', 'slurpee', 'SLURPEE!',  '-any time-',            'Select exactly 3 and 79.',       [711], sel(3, 79));
-d(49, 'Meme', 'sparta',  'SPARTA!',   '-this is-',             'Select exactly 2, 3 and 5, with the range at 300.', [300], sel(2, 3, 5));
-d(50, 'Meme', 'jumbo',   'JUMBO!',    '-upper deck-',          'Select exactly 3 and 83.',       [747], sel(3, 83));
-d(51, 'Meme', 'deck',    'DECK!',     '-a full one-',          'Select exactly 2 and 13.',       [52],  sel(2, 13));
+d(40, 'Meme', 'nice',    'NICE!',     '-nice-',                'Select exactly 3 and 23.',       [69],  sel(3, 23));
+d(41, 'Meme', 'dude',    'DUDE!',     '-what was I saying?-',  'Select exactly 2, 3, 5 and 7.',  [420], sel(2, 3, 5, 7));
+d(42, 'Meme', 'meme',    'MEME!',     '-kids these days-',     'Select exactly 67.',             [67],  sel(67));
+d(43, 'Meme', 'oil',     'OIL!',      '-upside down-',         'Select exactly 2, 5 and 71.',    [710], sel(2, 5, 71));
+d(44, 'Meme', 'catch',   'CATCH!',    '-damned either way-',   'Select exactly 2 and 11.',       [22],  sel(2, 11));
+d(45, 'Meme', 'route',   'ROUTE!',    '-get your kicks-',      'Select exactly 2, 3 and 11.',    [66],  sel(2, 3, 11));
+d(46, 'Meme', 'cards',   'CARDS!',    '-hit me-',              'Select exactly 3 and 7.',        [21],  sel(3, 7));
+d(47, 'Meme', 'jackpot', 'JACKPOT!',  '-three of a kind-',     'Select exactly 3, 7 and 37.',    [777], sel(3, 7, 37));
+d(48, 'Meme', 'heinz',   'HEINZ!',    '-varieties-',           'Select exactly 3 and 19.',       [57],  sel(3, 19));
+d(49, 'Meme', 'slurpee', 'SLURPEE!',  '-any time-',            'Select exactly 3 and 79.',       [711], sel(3, 79));
+d(50, 'Meme', 'sparta',  'SPARTA!',   '-this is-',             'Select exactly 2, 3 and 5, with the range at 300.', [300], sel(2, 3, 5));
+d(51, 'Meme', 'jumbo',   'JUMBO!',    '-upper deck-',          'Select exactly 3 and 83.',       [747], sel(3, 83));
+d(52, 'Meme', 'deck',    'DECK!',     '-a full one-',          'Select exactly 2 and 13.',       [52],  sel(2, 13));
 
 // ---- CULTURE · LORE -----------------------------------------------------
-d(52, 'Lore', 'beast',       'BEAST!',       '-number of a man-',       'Select exactly 2, 3 and 37.',       [666],      sel(2, 3, 37));
-d(53, 'Lore', 'angel',       'ANGEL!',       '-a repeating message-',   'Select exactly 2, 3, 5, 7 and 37.', REPDIGITS,  sel(2, 3, 5, 7, 37));
-d(54, 'Lore', 'lucky',       'LUCKY!',       '-*th heaven-',            'Select exactly 7.',                 [7],        sel(7));
-d(55, 'Lore', 'unlucky',     'UNLUCKY!',     '-fourteenth floor-',      'Select exactly 13.',                [13],       sel(13));
+d(53, 'Lore', 'beast',       'BEAST!',       '-number of a man-',       'Select exactly 2, 3 and 37.',       [666],      sel(2, 3, 37));
+d(54, 'Lore', 'angel',       'ANGEL!',       '-a repeating message-',   'Select exactly 2, 3, 5, 7 and 37.', REPDIGITS,  sel(2, 3, 5, 7, 37));
+d(55, 'Lore', 'lucky',       'LUCKY!',       '-*th heaven-',            'Select exactly 7.',                 [7],        sel(7));
+d(56, 'Lore', 'unlucky',     'UNLUCKY!',     '-fourteenth floor-',      'Select exactly 13.',                [13],       sel(13));
 // DELIBERATE: the trigger does NOT match the gilded node's factors. 5 opens 23
 // — the Law of Fives, 2+3=5. The only such exception in the design, and the
 // discord is the joke. Do not "correct" it. See docs/ACHIEVEMENTS.md §6.
-d(56, 'Lore', 'enigma',      'ENIGMA!',      '-fnord-',                 'Select exactly 5.',                 [23],       sel(5));
-d(57, 'Lore', 'masonic',     'MASONIC!',     '-the highest degree-',    'Select exactly 3 and 11.',          [33],       sel(3, 11));
-d(58, 'Lore', 'thelema',     'WHOLE!',       '-do what thou wilt-',     'Select exactly 3 and 31.',          [93],       sel(3, 31));
+d(57, 'Lore', 'enigma',      'ENIGMA!',      '-fnord-',                 'Select exactly 5.',                 [23],       sel(5));
+d(58, 'Lore', 'masonic',     'MASONIC!',     '-the highest degree-',    'Select exactly 3 and 11.',          [33],       sel(3, 11));
 d(59, 'Lore', 'other-beast', 'OTHER BEAST!', '-the older manuscript-',  'Select exactly 2, 7 and 11.',       [616],      sel(2, 7, 11));
 d(60, 'Lore', 'rest',        'REST!',        '-gotta take breaks-',     'Pause the transport.',              REST_NODES, custom('dom'));
 // DELIBERATE: a range trigger outside the Dial cluster. Range 8 leaves a spare
 // eight-node figure, which suits the idea.
 d(61, 'Lore', 'eightfold',   'SIT!',         '-the middle way-',        'Set the range to 8.',               [8],        range(8));
-d(62, 'Lore', 'sator',       'SATOR!',       '-reads the same every way-','Select all palindromic primes.',  [25],       sel(...PALINDROMIC_PRIMES));
+d(62, 'Lore', 'sator',       'SATOR!',       '-reads the same every way-','Select all palindromic primes.',  PALINDROME_NODES, sel(...PALINDROMIC_PRIMES));
 d(63, 'Lore', 'choirs',      'CHOIRS!',      '-nine ranks of them-',    'Select exactly 3.',                 [9],        sel(3));
 
 // ---- CULTURE · GEEK -----------------------------------------------------
@@ -327,7 +378,7 @@ d(66, 'Geek', 'bradbury',   'BRADBURY!',   '-burning point-',             'Selec
 d(67, 'Geek', 'trek',       '1701!',       '-deck 47, sector 47-',        'Select exactly 47.',                                 [47],  sel(47));
 d(68, 'Geek', 'localhost',  'LOCALHOST!',  '-no place like it-',          'Select exactly 127, with the range set to 127.',     [127], custom());
 d(69, 'Geek', 'rawr',       'RAWR!',       '-so random-',                 'Select exactly 17.',                                 [17],  sel(17));
-d(70, 'Geek', 'best',       'BEST!',       '-the twenty-first, reflected-','Select exactly 37 and 73.',                         [37, 73], sel(37, 73));
+d(70, 'Geek', 'best',       'BEST!',       '-the twenty-first, reflected-','Select exactly 37 and 73.',                         [12, 21, 37, 73], sel(37, 73));
 d(71, 'Geek', 'concert-a',  'CONCERT A!',  '-tune up-',                   'Select exactly 2, 5 and 11.',                        [440], sel(2, 5, 11));
 d(72, 'Geek', 'lightspeed', 'LIGHTSPEED!', '-in a vacuum-',               'Select exactly 13 and 23.',                          [299], sel(13, 23));
 d(73, 'Geek', 'memory',     'MEMORY!',     '-ought to be enough-',        'Select exactly 2 and 5.',                            [640], sel(2, 5));
@@ -373,14 +424,14 @@ d(97, 'Dial', 'nola',       'NOLA!',       '-the big easy-',               'Set 
 // its criteria is about the golden angle, so 137 is the number a player goes
 // looking for. PI! and TAU! keep their digits (314, 628) because their angles
 // are 180 and 360, which mean nothing on this figure.
-d(98,  'Greeks', 'phi', 'PHI!', '-the angle nature picks-', 'Set the divergence angle back to the golden angle.', [137], custom('dom'));
-d(99,  'Greeks', 'pi',  'PI!',  '-half a turn-',            'Set the divergence angle to 180 degrees.',      [314], custom());
-d(100, 'Greeks', 'tau', 'TAU!', '-the whole turn-',         'Set the divergence angle to a full turn.',      [628], custom());
+d(98, 'Greeks', 'phi', 'PHI!', '-the angle nature picks-', 'Set the divergence angle back to the golden angle.', [137], custom('dom'));
+d(99, 'Greeks', 'pi',  'PI!',  '-half a turn-',            'Set the divergence angle to 180 degrees.',      [314], custom());
+d(100,'Greeks', 'tau', 'TAU!', '-the whole turn-',         'Set the divergence angle to a full turn.',      [628], custom());
 
 // ---- CAPSTONE ----------------------------------------------------------
 // DEV: node 1 has an empty factorisation, so the derivation rule can never
 // reach it. It is reachable only here.
-d(101, 'Capstone', 'unity', 'UNITY!', '-everything else, first-', 'Earn every other achievement.', [1], custom('derived'));
+d(101,'Capstone', 'unity', 'UNITY!', '-everything else, first-', 'Earn every other achievement.', [1], custom('derived'));
 
 export const ACHIEVEMENT_DEFS = defs;
 
@@ -406,14 +457,17 @@ const BLURBS = {
     'out! (In the world of Primes, 2 comes 1st.)',
   'exhaustive': 'You\'ve discovered the many toggles that change the shape of the Pretty Number Machine. Nice!',
   'parawhat':
-    'Counting by prime multiples looks cool, and visualizing them was the initial motivation for ' +
-    'Pretty Number Machine. Now you get to see them at the touch of a button. This is the texture ' +
-    'of the numberline implicit in the concept of quantity. You\'re unlocking the arcane mysteries ' +
-    'of the universe on a phone app! The future is wild!',
+    'Counting by prime multiples looks cool. This is the texture of the numberline implicit in ' +
+    'the concept of quantity. You\'re unlocking the arcane mysteries of the universe on a phone ' +
+    'app! The future is wild!',
   'art': 'Art cannot be explained, it must be EXPERIENCED!',
+  'decompose':
+    'Every natural number has a unique collection of primes that make it up, and every collection ' +
+    'of primes makes a natural number. This is the backbone of all mathematics.',
+  'gallery': 'The trophy room shows you all that you\'ve unlocked. Look at that!',
+  'tempted': 'Spare a coin?',
   'bophades': 'Wow, they\'re huge!',
   'maximalist': 'So many!',
-  'ceiling': 'Okay let\'s not break your phone.',
   'zoomies': '88 miles an hour, and 1.21 gigawatts.',
   'boing': 'Boingyboingyboingy! 6 looks kinda like a spring, right?',
   'trippy':
@@ -462,11 +516,6 @@ const BLURBS = {
     'Write a prime backwards. If you get a different prime, it is an emirp – which is \'prime\' ' +
     'spelled backwards. There are four pairs in the grid: 13 and 31, 17 and 71, 37 and 73, 79 and ' +
     '97.',
-  'mersenne':
-    'Take a power of two and subtract one: 4-1 = 3, 8-1 = 7, 32-1 = 31, 128-1 = 127. When the ' +
-    'result is prime it is called a Mersenne prime, and the exponent has to be prime for it to work ' +
-    'at all. All four that fit in this grid are here. Every even perfect number is built from one ' +
-    'of them.',
   'fermat':
     '3, 5 and 17 are each one more than a power of two: 2+1, 4+1, 16+1. Fermat believed every ' +
     'number of that shape was prime.',
@@ -480,19 +529,20 @@ const BLURBS = {
     'the only two primes in this grid that are the average of the primes on either side of them – ' +
     'everywhere else the gap in front and the gap behind are different sizes.',
   'stride':
-    'After 113 the next prime is 127. Fourteen numbers in a row with nothing prime among them, the ' +
-    'widest gap anywhere in this grid. Gaps grow without limit, and you can force one as long as ' +
+    'After 113 the next prime is 127. Thirteen numbers in a row with nothing prime among them, ' +
+    'the widest gap anywhere in this grid. Gaps grow without limit, and you can force one as long ' +
+    'as ' +
     'you like: take any n, and n!+2, n!+3, all the way to n!+n are every one of them composite, ' +
     'because n!+k always has k as a factor.',
   'all-prime':
-    '2, 3, 5 and 7 are the prime digits. Eight primes in this grid are written with nothing else. ' +
-    'Worth noticing that this is a fact about writing in base ten rather than about the numbers ' +
-    'themselves – change base and the set dissolves.',
+    '2, 3, 5 and 7 are the prime digits. Eight primes are written with nothing else, and ' +
+    'eighty-four numbers altogether. Worth noticing that this is a fact about writing in base ten ' +
+    'rather than about the numbers themselves – change base and the set dissolves.',
   'super-prime':
     '2 is the 1st prime, 3 is the 2nd, 5 is the 3rd, 7 is the 4th. Now ask which primes sit at a ' +
     'prime position – the 2nd, the 3rd, the 5th, the 7th, and so on. You get 3, 5, 11, 17, 31, 41, ' +
-    '59, 67, 83, 109 and 127. Primes counted by primes, and you can do the whole thing by counting ' +
-    'along the panel.',
+    '59, 67, 83, 109 and 127. Primes counted by primes, and you can do the whole thing by ' +
+    'counting.',
   'goldbach':
     'Every even number bigger than 2 seems to be the sum of two primes. 100 = 3 + 97. 232 = 101 + ' +
     '131. Nobody has ever found an exception, and nobody has ever proved there isn\'t one – it has ' +
@@ -520,8 +570,8 @@ const BLURBS = {
   'oil': '5318008 was out of scope.',
   'heinz':
     '57 varieties, yes. But 57 is also the Grothendieck prime: one of the greatest mathematicians ' +
-    'of the century, asked for an example of a prime number, said 57. It is not one, and here you ' +
-    'can watch it come apart into 3 x 19.',
+    'of the century, asked for an example of a prime number, said 57. It is not one: it is ' +
+    '3 x 19.',
   'deck': 'Fifty-two cards: four suits of thirteen.',
   'beast':
     'The number of the beast, from Revelation. It is also the sum of the squares of the first seven ' +
@@ -545,8 +595,9 @@ const BLURBS = {
     'SATOR AREPO TENET OPERA ROTAS – a five-by-five Latin word square that reads the same left to ' +
     'right, right to left, top to bottom and bottom to top. One was scratched into a wall at ' +
     'Pompeii before AD 79, and they kept turning up across Europe for the next thousand years, ' +
-    'carved on churches and carried as charms. Twenty-five letters, which is also five times five, ' +
-    'so the number is the shape.',
+    'carved on churches and carried as charms. Twenty-five letters, five by five, so the number ' +
+    'is the shape. A number that reads the same in both directions is a palindrome, and there are ' +
+    'a hundred and eight of them below a thousand.',
   'choirs':
     'Pseudo-Dionysius sorted the angels into nine choirs in the sixth century: seraphim, cherubim, ' +
     'thrones, dominions, virtues, powers, principalities, archangels, angels. It is the reason ' +
@@ -662,12 +713,124 @@ const BLURBS = {
     'do, every gilded prime finally gets its line and all of its multiples.',
 };
 
+
+// ============================================================
+// LINKS
+// ============================================================
+// A reference for anyone the joke or the mathematics passed by. Shown on an
+// EARNED row underneath the blurb, never on a locked one — a link is as much a
+// giveaway as a blurb is.
+//
+// WHY A FIELD RATHER THAN MARKUP IN THE BLURB: blurbs are shared with the Play
+// Console paste through tools/achievements-table.mjs, and an anchor written
+// into blurb text would leak straight into that column.
+//
+// 87 of the 101 carry one. The rest are jokes that a footnote would only
+// flatten — ORBS!, TRIPPY!, MEME! and the like. The ones that need it MOST are
+// the twelve with no blurb at all, where the link is not a footnote but the
+// entire explanation.
+//
+// Every title was checked against the Wikipedia API: all resolve directly, and
+// none is a redirect or a disambiguation page. Eleven were wrong on the first
+// pass — CENTRAL! pointed at a disambiguation page, and every area-code article
+// has been renamed at some point. Re-check with two API calls if they rot.
+const LINKS = {
+  'all-prime': 'https://en.wikipedia.org/wiki/Decimal',
+  'aloha': 'https://en.wikipedia.org/wiki/Area_code_808',
+  'angel': 'https://en.wikipedia.org/wiki/Repdigit',
+  'balanced': 'https://en.wikipedia.org/wiki/Balanced_prime',
+  'bay': 'https://en.wikipedia.org/wiki/Area_codes_415_and_628',
+  'beast': 'https://en.wikipedia.org/wiki/Number_of_the_beast',
+  'best': 'https://en.wikipedia.org/wiki/73_%28number%29',
+  'body-heat': 'https://en.wikipedia.org/wiki/Human_body_temperature',
+  'boiling': 'https://en.wikipedia.org/wiki/Fahrenheit',
+  'bradbury': 'https://en.wikipedia.org/wiki/Fahrenheit_451',
+  'cards': 'https://en.wikipedia.org/wiki/Blackjack',
+  'catch': 'https://en.wikipedia.org/wiki/Catch-22_%28logic%29',
+  'central': 'https://en.wikipedia.org/wiki/Fictitious_telephone_number',
+  'choirs': 'https://en.wikipedia.org/wiki/Hierarchy_of_angels',
+  'collatz': 'https://en.wikipedia.org/wiki/Collatz_conjecture',
+  'concert-a': 'https://en.wikipedia.org/wiki/A440_%28pitch_standard%29',
+  'cousins': 'https://en.wikipedia.org/wiki/Cousin_prime',
+  'deck': 'https://en.wikipedia.org/wiki/Standard_52-card_deck',
+  'decompose': 'https://en.wikipedia.org/wiki/Fundamental_theorem_of_arithmetic',
+  'dude': 'https://en.wikipedia.org/wiki/420_%28cannabis_culture%29',
+  'eightfold': 'https://en.wikipedia.org/wiki/Noble_Eightfold_Path',
+  'elements': 'https://en.wikipedia.org/wiki/Periodic_table',
+  'emirp': 'https://en.wikipedia.org/wiki/Emirp',
+  'empty-set': 'https://en.wikipedia.org/wiki/Empty_set',
+  'enigma': 'https://en.wikipedia.org/wiki/23_enigma',
+  'exhaustive': 'https://en.wikipedia.org/wiki/Natural_number',
+  'fermat': 'https://en.wikipedia.org/wiki/Fermat_number',
+  'fibonacci': 'https://en.wikipedia.org/wiki/Fibonacci_sequence',
+  'freezing': 'https://en.wikipedia.org/wiki/Kelvin',
+  'germain': 'https://en.wikipedia.org/wiki/Safe_and_Sophie_Germain_primes',
+  'goldbach': 'https://en.wikipedia.org/wiki/Goldbach%27s_conjecture',
+  'graceland': 'https://en.wikipedia.org/wiki/Area_code_901',
+  'heinz': 'https://en.wikipedia.org/wiki/57_%28number%29',
+  'help': 'https://en.wikipedia.org/wiki/911_%28emergency_telephone_number%29',
+  'inherited': 'https://en.wikipedia.org/wiki/Chromosome',
+  'jackpot': 'https://en.wikipedia.org/wiki/Slot_machine',
+  'jumbo': 'https://en.wikipedia.org/wiki/Boeing_747',
+  'leap': 'https://en.wikipedia.org/wiki/Leap_year',
+  'lightspeed': 'https://en.wikipedia.org/wiki/Speed_of_light',
+  'localhost': 'https://en.wikipedia.org/wiki/Localhost',
+  'longest': 'https://en.wikipedia.org/wiki/Gregorian_calendar',
+  'louder': 'https://en.wikipedia.org/wiki/Up_to_eleven',
+  'lucas': 'https://en.wikipedia.org/wiki/Lucas_number',
+  'lucky': 'https://en.wikipedia.org/wiki/7',
+  'masonic': 'https://en.wikipedia.org/wiki/Scottish_Rite',
+  'memory': 'https://en.wikipedia.org/wiki/Conventional_memory',
+  'metonic': 'https://en.wikipedia.org/wiki/Metonic_cycle',
+  'months': 'https://en.wikipedia.org/wiki/Month',
+  'moon': 'https://en.wikipedia.org/wiki/Lunar_month',
+  'motor-city': 'https://en.wikipedia.org/wiki/Area_codes_313_and_679',
+  'neat': 'https://en.wikipedia.org/wiki/Golden_angle',
+  'nice': 'https://en.wikipedia.org/wiki/69_%28number%29',
+  'nola': 'https://en.wikipedia.org/wiki/Area_code_504',
+  'not-found': 'https://en.wikipedia.org/wiki/HTTP_404',
+  'ny': 'https://en.wikipedia.org/wiki/Area_codes_212%2C_646%2C_and_332',
+  'oil': 'https://en.wikipedia.org/wiki/Calculator_spelling',
+  'other-beast': 'https://en.wikipedia.org/wiki/Number_of_the_beast',
+  'parawhat': 'https://en.wikipedia.org/wiki/Phyllotaxis',
+  'perfect': 'https://en.wikipedia.org/wiki/Perfect_number',
+  'phi': 'https://en.wikipedia.org/wiki/Golden_angle',
+  'pi': 'https://en.wikipedia.org/wiki/Pi',
+  'quarter': 'https://en.wikipedia.org/wiki/Week',
+  'rawr': 'https://en.wikipedia.org/wiki/17_%28number%29',
+  'rest': 'https://en.wikipedia.org/wiki/Sabbath',
+  'route': 'https://en.wikipedia.org/wiki/U.S._Route_66',
+  'run': 'https://en.wikipedia.org/wiki/Prime_number',
+  'sator': 'https://en.wikipedia.org/wiki/Sator_Square',
+  'sexy': 'https://en.wikipedia.org/wiki/Sexy_primes',
+  'shortest': 'https://en.wikipedia.org/wiki/February',
+  'skeleton': 'https://en.wikipedia.org/wiki/Human_skeleton',
+  'slurpee': 'https://en.wikipedia.org/wiki/Slurpee',
+  'smart': 'https://en.wikipedia.org/wiki/101_%28number%29',
+  'space-city': 'https://en.wikipedia.org/wiki/Area_codes_713%2C_281%2C_832%2C_346%2C_and_621',
+  'sparta': 'https://en.wikipedia.org/wiki/Battle_of_Thermopylae',
+  'square-up': 'https://en.wikipedia.org/wiki/Square_number',
+  'stairs': 'https://en.wikipedia.org/wiki/Primes_in_arithmetic_progression',
+  'stride': 'https://en.wikipedia.org/wiki/Prime_gap',
+  'super-prime': 'https://en.wikipedia.org/wiki/Super-prime',
+  'tau': 'https://en.wikipedia.org/wiki/Tau_%28mathematics%29',
+  'teapot': 'https://en.wikipedia.org/wiki/Hyper_Text_Coffee_Pot_Control_Protocol',
+  'trek': 'https://en.wikipedia.org/wiki/47_%28number%29',
+  'twinning': 'https://en.wikipedia.org/wiki/Twin_prime',
+  'unity': 'https://en.wikipedia.org/wiki/1',
+  'unlucky': 'https://en.wikipedia.org/wiki/Triskaidekaphobia',
+  'vice': 'https://en.wikipedia.org/wiki/Area_codes_305%2C_786%2C_and_645',
+  'void': 'https://en.wikipedia.org/wiki/1',
+  'year': 'https://en.wikipedia.org/wiki/Tropical_year',
+};
+
 // DEV: the en-dash pass happens HERE rather than in the strings above, because
 // a long blurb is wrapped across several literals and a " -- " that straddles
 // the join never appears contiguously in the source. BEST! was the one that got
 // away when this was done with a search and replace.
 for (const a of ACHIEVEMENT_DEFS) {
   a.blurb = (BLURBS[a.id] || '').replace(/ -- /g, ' – ');
+  a.link = LINKS[a.id] || '';
 }
 
 // ============================================================

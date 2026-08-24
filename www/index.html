@@ -719,6 +719,35 @@
     border-left: 2px solid rgba(212, 175, 55, 0.35);
   }
   .ach-row.open .ach-blurb { display: block; }
+  /* THE CRITERIA. Plain statement of what was done, above the blurb and set
+     apart from it: the blurb is the reward, this is the receipt. Earned rows
+     only — on a locked row it would be a walkthrough. */
+  .ach-criteria {
+    display: none;
+    font-size: 0.75rem; color: var(--text-faint); line-height: 1.4;
+    margin-top: 5px; padding-left: 8px;
+    border-left: 2px solid rgba(212, 175, 55, 0.18);
+  }
+  .ach-row.open .ach-criteria { display: block; }
+  .ach-link {
+    display: none;
+    font-size: 0.75rem; color: rgba(212, 175, 55, 0.85);
+    margin-top: 6px; margin-left: 8px; text-decoration: underline;
+  }
+  .ach-row.open .ach-link { display: inline-block; }
+  .ach-link:hover { color: rgba(233, 200, 100, 1); }
+  /* Opt-in, because the trophy room is destructive. See the note in
+     achievements.js where this button is built. */
+  .ach-trophy-btn {
+    display: none;
+    margin-top: 8px; margin-left: 8px; padding: 4px 9px;
+    font: inherit; font-size: 0.72rem; letter-spacing: 0.04em;
+    color: var(--text-dim); background: rgba(212, 175, 55, 0.09);
+    border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 4px;
+    cursor: pointer;
+  }
+  .ach-row.open .ach-trophy-btn { display: block; }
+  .ach-trophy-btn:hover { color: rgba(233, 200, 100, 1); background: rgba(212, 175, 55, 0.16); }
   .ach-row.focused { background: rgba(212, 175, 55, 0.07); }
   .ach-row.focused .ach-name { color: rgba(233, 200, 100, 1); }
   /* A locked row is not tappable and highlights nothing. The clue is all it
@@ -798,6 +827,14 @@
   }
   #ach-toast.open { max-width: min(88vw, 400px); }
   #ach-toast.open .ach-toast-blurb { display: block; }
+  /* Answers "what did I just do?" at the moment it is asked. Visible as soon as
+     the toast opens, above the blurb. */
+  .ach-toast-criteria {
+    display: none;
+    font-size: 0.75rem; color: var(--text-faint); line-height: 1.45;
+    margin-top: 7px; text-align: left;
+  }
+  #ach-toast.open .ach-toast-criteria { display: block; }
   /* The OS asked for less movement, so it fades in place. It still appears —
      reduced motion is not reduced information. */
   #ach-toast.no-motion { transition: opacity 0.24s ease; transform: translate(-50%, 0); }

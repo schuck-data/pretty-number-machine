@@ -4,16 +4,27 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15. **Last revised: 2026-08-24**, at the end of a long
-session that added the ads layer, rebuilt the corner controls twice, and
-finished the decomposition view. Everything below is current as of `cb240fd`
-on `capacitor-spike`.
+**Written:** 2026-08-15. **Last revised: 2026-08-24**, twice — first at the end
+of a long session that added the ads layer, rebuilt the corner controls twice
+and finished the decomposition view, and then again for the **v7 achievement
+revision**. Everything below is current as of `capacitor-spike`.
 
 **The web app is feature-complete; it builds and runs as an Android app; the
 achievement layer is built and verified on a Pixel 7 and a Pixel 9; the ads
 layer is built and verified on a Pixel 7; and the decomposition view is
 finished. The work ahead is connecting to Play Games Services, choosing a
 billing plugin, and getting it into the store — see `ANDROID-BUILD.md`.**
+
+> **v7 IS NOT ON HARDWARE YET, and that is the one thing to know before touching
+> anything.** The achievement list was reworked on 2026-08-24: three dropped,
+> three added, five gild sets widened, two clues rewritten, plus reference
+> links, criteria on unlocked rows and a trophy-room button. `npm run check`
+> passes with 72 assertions and the reasoning is written up in
+> `docs/ACHIEVEMENTS.md` §2a and §13 — but §8 of that document is a list of six
+> bugs in this exact layer that were invisible until the app was on a phone with
+> a real ledger behind it. **Nothing in v7 has been tapped.** The three new
+> triggers, the criteria line, the links and the button are the things to
+> exercise first.
 
 ### What changed on 2026-08-24, in one place
 
@@ -28,6 +39,27 @@ of things that did not exist before it, each with the document that owns it:
 | **Partial parastichy curves** — `buildRunShapes()` / `lerpRunShapes()` | `www/core/renderer.js` | This document, §1 |
 | **Two "this feature exists" invitations** | `achievements.js`, `ads.js`, `index.html` | This document, §1 |
 | **A note from the author** in the panel | `www/index.html` | — |
+
+### And then, later the same day: the v7 achievement revision
+
+| Landed | Where it lives | Design record |
+|---|---|---|
+| **3 dropped, 3 added** — out: CEILING!, MERSENNE!, WHOLE!. In: DECOMPOSE!, GALLERY!, TEMPTED! | `achievements-data.js` | `ACHIEVEMENTS.md` §3 |
+| **The payoff rule** — a gild set may no longer be the selection that earned it; 5 widened | `achievements-data.js` | **`ACHIEVEMENTS.md` §2a** |
+| **Reference links** — 87 of 101, every title verified against the Wikipedia API | `achievements-data.js`, `achievements.js` | `ACHIEVEMENTS.md` §13 |
+| **Criteria on unlocked rows and toasts** — because arriving by accident is common | `achievements.js`, `index.html` | `ACHIEVEMENTS.md` §13 |
+| **A trophy-room button**, not an automatic jump — the room is destructive | `achievements.js` | `ACHIEVEMENTS.md` §13 |
+| **Two new bus events** — `lens:decompose`, `ads:paywall` | `lens.js`, `ads.js` | `ACHIEVEMENTS.md` §7 |
+| **The design record** — every row assessed, with the drops and the rejections | — | `docs/achievements-v7-proposal.xlsx` |
+
+Two things worth carrying forward from that work:
+
+- **The count and the published split are now 101 and 18/83.** The split was
+  16/85 and is pinned by the checker, because it is effectively permanent once
+  the Play Console is told. Do the arithmetic before publishing, not after.
+- **`achievements-data.js` is now the single source of truth.** The
+  two-sources problem in `ACHIEVEMENTS.md` §10 is settled: `achievements-v6.xlsx`
+  is history and the v7 spreadsheet is a record, not an input.
 
 **Three things were built wrong first and rebuilt.** They are written up where
 they happened, because in each case the wrong version looked right:

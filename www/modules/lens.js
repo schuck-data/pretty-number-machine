@@ -38,7 +38,7 @@
 //     bound to right-click.
 
 import * as THREE from 'three';
-import { registerModule, state, on } from '../core/state.js';
+import { registerModule, state, on, emit } from '../core/state.js';
 import { showInfoAt, hideInfo } from './info.js';
 import { primeFactorsOf, getPrimeRGB } from '../core/math.js';
 import { interpolatedPos } from '../core/positions.js';
@@ -572,6 +572,11 @@ function buildDecomposition(n) {
 
   decompN = n;
   decompFactors = new Set(factors);
+  // DECOMPOSE! listens for this. Emitted here rather than at the tap, because
+  // the tap can be a dismissal — buildDecomposition() returns early above when
+  // the same number is tapped twice — and clearing a decomposition is not
+  // performing one.
+  emit('lens:decompose', { n });
   // The terms of the argument, and nothing else. The multiples between p and n
   // are lit because they are what the run is made of, but they are not being
   // named — naming them would put back the clutter the dimming just removed.

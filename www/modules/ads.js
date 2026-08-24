@@ -277,6 +277,9 @@ function paywallHTML(p) {
 function openPaywall(p) {
   closeArmed = true;              // a shop you cannot leave is not a joke
   markPaywallSeen();
+  // TEMPTED! listens for this. It fires on the DOOR, never on the transaction:
+  // see the note in achievements.js BUS_BINDINGS.
+  emit('ads:paywall', { id: p.id });
   openOverlay(paywallHTML(p));
   const buy = overlay.querySelector('[data-buy]');
   const status = overlay.querySelector('.ads-status');
