@@ -206,7 +206,7 @@ In parallel, and needing only Dakota:
 |---|---|---|
 | Package name | `com.schuckdata.pnm` | Becomes permanent at first upload to Play. Chosen; not yet locked |
 | Distribution model | **Free**, with **two non-consumable** in-app products | Revised 2026-08-23 from a single $0.99 unlock. An app ever offered free can never become paid. Free is the deliberate choice, so the one-way door is irrelevant — but it is a door |
-| The products | **$0.99 addition ads, $4.99 multiplication ads.** Advertising AS the product: you pay to be shown commercials for mathematical operators. Neither grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever. `docs/ADS.md` |
+| The products | **$0.99 addition ads, $4.95 multiplication ads.** Advertising AS the product: you pay to be shown commercials for mathematical operators. Neither grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever. `docs/ADS.md` |
 | Purchases and achievements | **Purchases grant nothing.** All 101 stay earnable by playing | Arithmetic, not principle: UNITY! needs all-but-one, and that slack is UNITY! itself, so any paid achievement paywalls the capstone |
 | Achievements | Local ledger is the source of truth; PGS is the public record and cross-device copy | Works offline and signed out. See `ANDROID-BUILD.md` §3 |
 | Achievement visibility | **Tutorial (16) publishes Revealed; the other 85 publish Hidden** | Decided 2026-08-23. Hidden criteria are what let hunters collaborate on the clues rather than read the answers. Near-permanent once the console is told. `ACHIEVEMENTS.md` §12 |

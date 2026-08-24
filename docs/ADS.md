@@ -10,7 +10,7 @@
 > consent framework — the entire deck is ten slides of markup in the bundle.
 >
 > **Two products**, replacing the single $0.99 unlock the older documents
-> describe: `ads-addition` at $0.99 and `ads-multiplication` at $4.99. The
+> describe: `ads-addition` at $0.99 and `ads-multiplication` at $4.95. The
 > second button does not exist until the first is owned.
 >
 > **Billing is not wired.** No Capacitor billing plugin has been chosen — that
@@ -46,15 +46,14 @@ up. The rules that keep it in register:
   `check-ads.mjs` fails on one.
 
 One deliberate exception. `why-five` is about the transaction — it explains the
-$4.99 tier — and it stays in character while being about money, because a player
+$4.95 tier — and it stays in character while being about money, because a player
 who has just paid five times more is already thinking it.
 
-**That slide's small print came from a failing test.** The checker asserted the
-price ratio was 5 and got 5.0404…, because $4.99 is not five times $0.99. Rather
-than round the claim, the small print now accounts for the difference: *"Five
-times $0.99 is $4.95. The remaining four cents are for the multiplication."*
-The discrepancy is pinned in `check-ads.mjs`, so if the prices ever move, the
-line that names four cents fails rather than quietly becoming wrong.
+**The price started at $4.99 and a failing test is why it did not stay there.**
+The checker asserted the ratio was 5 and got 5.0404…, because $4.99 is not five
+times $0.99. The price is now $4.95, which is exactly five times, and the
+assertion pins the exact ratio — so if the two ever move apart again, the slide
+that claims "five times" fails rather than quietly becoming a lie.
 
 ---
 
@@ -63,7 +62,7 @@ line that names four cents fails rather than quietly becoming wrong.
 | Product | Price | Deck | Unlocks |
 |---|---|---|---|
 | `ads-addition` | $0.99 | `+`, `Σ`, `SUM()`, `⊕`, and a Sesame-Street plus | The plus button in the corner stack |
-| `ads-multiplication` | $4.99 | `×`, `*`, `·`, `∏`, and the price slide | A second button, which does not exist until addition is owned |
+| `ads-multiplication` | $4.95 | `×`, `*`, `·`, `∏`, and the price slide | A second button, which does not exist until addition is owned |
 
 The growing shop is a merchandising joke as much as a UI decision: the stack
 gains a door after you have used the first one, rather than opening with two
@@ -79,11 +78,20 @@ All 101 stay earnable by playing. See `ACHIEVEMENTS.md` §12.
 
 ## 3. Slideshow, and the intrusion setting
 
-**The slideshow is manual by default and it does not autoplay.** An advert you
-paid for should not be able to end before you have read it, and the copy *is*
-the product — the joke is in the small print. Play is offered and it is slow
-(6.5 seconds a slide). The deck wraps rather than dead-ending on a disabled
-arrow.
+**The slideshow plays itself, ten seconds a slide.** A deck that waits to be
+advanced is a gallery, and this is meant to behave like the thing it parodies —
+you open it and it starts, the way a commercial break does. Ten seconds is long
+on purpose: the copy *is* the product and the punchline is usually the small
+print at the bottom, so the dwell has to cover reading the whole slide rather
+than glancing at it. Pause and the arrows are there for anyone who wants longer,
+and touching an arrow stops the timer — somebody steering by hand has stopped
+watching and started reading. The deck wraps rather than dead-ending on a
+disabled arrow.
+
+Slides cross-fade with a direction-aware slide: the incoming one enters from the
+side the deck moved. The first slide of a session gets a plain fade, because one
+that flies in from nowhere reads as a glitch rather than a transition. Reduced
+motion keeps the fade and drops the movement.
 
 **Intrusion is off by default and must stay that way.** The funnier version of
 this joke is the one where the adverts behave like adverts — a banner over the
@@ -144,13 +152,25 @@ platform has not heard of is pushed *to* the platform, because the player earned
 it and the app is the authority. A cached entitlement is not: the player did not
 earn it, they bought it, and only the store knows whether that happened.
 
-**The trap, found on a Pixel 7 and worth the whole section.** "There is no store
-here" and "the store says you own nothing" arrive looking identical — both are
-an empty entitlement list. The first version of `reconcile()` overwrote its
-cache whenever `restore()` returned an array, so with no billing plugin wired,
-a seeded entitlement vanished on every launch. **Offline is the same shape of
-failure**, and it would have shipped: a player on a plane gets no store either,
-and would have watched their purchase disappear.
+**`available` is Play's own distinction, not a workaround for a missing one.**
+An earlier version of this section claimed offline was the risk. That was wrong,
+and worth correcting rather than deleting: Play Billing's `queryPurchasesAsync()`
+reads the Play Store app's local cache of entitlements, so it answers correctly
+without a network round-trip. Offline is a solved problem and PNM did not need
+to solve it again.
+
+What Play *does* need to tell the app is whether it managed to answer at all,
+and it does that through `BillingResult.responseCode` — `OK` versus
+`SERVICE_DISCONNECTED`, `SERVICE_UNAVAILABLE`, `BILLING_UNAVAILABLE`. A plugin
+maps those onto `available`, so nothing above `platform/index.js` handles a Play
+constant.
+
+**The trap, found on a Pixel 7.** "There is no store here" and "the store says
+you own nothing" arrive looking identical — both are an empty entitlement list.
+The first version of `reconcile()` overwrote its cache whenever `restore()`
+returned an array, so with no billing plugin wired, a seeded entitlement vanished
+on every launch. The same would happen on a real device any time the billing
+service is disconnected.
 
 The adapter now marks a real answer with `available: true`, and only a real
 answer may take something away. Anything else — no plugin, no network, a plugin
@@ -211,7 +231,7 @@ The module is `hidden: true`, so it has no panel section.
 - **The intrusion cadence is 90 seconds**, chosen rather than measured. It has
   not been lived with
 - **Five slides per product**, and the decks want more before this is worth
-  $4.99 — the price slide gets away with the joke once
+  $4.95 — the price slide gets away with the joke once
 - **`adsIntrude` does not persist.** It resets each launch, alongside the toast
   and sound settings (`ACHIEVEMENTS.md` §13). Same fix, whenever that happens
 - **No restore-purchases button.** `restore()` runs at startup, which covers a
