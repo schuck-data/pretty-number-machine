@@ -1079,6 +1079,27 @@ export function initPanel() {
   $('corner-reset')?.addEventListener('click', resetToDefaults);
   $('dazzle-btn')?.addEventListener('click', applyDazzle);
 
+  // CLEAR VIEW. One class on <body> does the hiding — index.html holds the
+  // list of what counts as an interface, so a new overlay is added there and
+  // not here.
+  //
+  // DEV: it collapses the panel on the way in rather than only hiding it. A
+  // panel that is display:none but still `open` comes back mid-scroll when the
+  // view is restored, which reads as the app having lost its place.
+  //
+  // Not in DEFAULT_CONFIG and not saved: clear view is a way of LOOKING at the
+  // figure for a moment, not a setting, and an app that reopened with every
+  // control hidden would look broken. Reset does not need to know about it for
+  // the same reason — but the restore button is always reachable, which is what
+  // makes that safe.
+  const setClearView = (on) => {
+    document.body.classList.toggle('clear-view', on);
+    if (on) $('panel')?.classList.add('collapsed');
+    emit('clearView', { on });
+  };
+  $('clear-view-btn')?.addEventListener('click', () => setClearView(true));
+  $('restore-ui')?.addEventListener('click', () => setClearView(false));
+
 
   // Update N display
   updateN();

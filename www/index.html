@@ -460,57 +460,105 @@
   #transport-readout.visible { opacity: 1; }
 
   /* ==========================================================
-     CORNER RESET — deliberately faint. It undoes everything, so
-     it should be findable but never invite a stray tap.
+     THE CORNER STACK — the buttons at the top right.
+
+     One flex column. Every child is the same faint circle, so the shared
+     look lives in one rule rather than being copied per button; the only
+     per-button property left is which glyph it holds and how big that
+     glyph is.
+
+     Deliberately faint, all of them. Reset undoes everything and Dazzle
+     changes everything, so both should be findable and neither should
+     invite a stray tap. The others inherit that restraint because a row
+     of controls where one shouts is a row you read wrong.
+
+     --corner-size and --lens-gap-h are the only numbers here, and the
+     coarse-pointer rule at the bottom changes both in one place. Nothing
+     hand-computes an offset any more.
      ========================================================== */
-  #corner-reset {
+  #corner-stack {
+    --corner-size: 34px;
+    --lens-gap-h: 46px;
     position: absolute; z-index: 20;
     top: calc(12px + env(safe-area-inset-top));
     right: calc(12px + env(safe-area-inset-right));
-    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  }
+  #corner-stack button {
+    width: var(--corner-size); height: var(--corner-size); border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     background: transparent; border: 1px solid var(--border-corner);
     color: var(--text-corner);
-    cursor: pointer; padding: 0;
+    cursor: pointer; padding: 0; flex: none;
     transition: color 0.2s, border-color 0.2s, background 0.2s;
   }
-  #corner-reset svg { width: 16px; height: 16px; display: block; }
-  @media (pointer: coarse) { #corner-reset { width: 44px; height: 44px; } }
+  #corner-stack button svg { width: 16px; height: 16px; display: block; }
+  #achievements-btn svg { width: 17px; height: 17px; }
+  #dazzle-btn svg { width: 18px; height: 18px; }
+  #ads-btn svg { width: 19px; height: 19px; }
 
-  /* ==========================================================
-     ACHIEVEMENTS — sits to the LEFT of the corner Reset rather
-     than under it, because it is not the same kind of control:
-     Reset and Dazzle both change everything in one tap, and this
-     opens a panel. Same faint styling so it does not shout, and
-     the same inline-SVG rule — a trophy emoji would carry colour
-     presentation and Android would ignore `color` outright, the
-     trap that turned the transport buttons orange.
-
-     It fills in when there is something to show, so an untouched
-     install has three identical faint circles and a played one
-     has a gold-rimmed cup.
-     ========================================================== */
-  #achievements-btn {
-    position: absolute; z-index: 20;
-    top: calc(12px + env(safe-area-inset-top));
-    /* 12 right inset + the Reset's 34 + an 8 gap. */
-    right: calc(54px + env(safe-area-inset-right));
-    width: 34px; height: 34px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: transparent; border: 1px solid var(--border-corner);
-    color: var(--text-corner);
-    cursor: pointer; padding: 0;
-    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  /* The lens handle's parking space. Not a button, takes no pointer events,
+     and exists only to hold a hole open in the column. */
+  #lens-gap {
+    width: var(--corner-size); height: var(--lens-gap-h);
+    flex: none; pointer-events: none;
   }
-  #achievements-btn svg { width: 17px; height: 17px; display: block; }
+
+  /* The achievements cup fills in when there is something to show, so an
+     untouched install has a column of identical faint circles and a played
+     one has a gold-rimmed cup partway down it. */
   #achievements-btn.has-progress {
     color: rgba(212, 175, 55, 0.75);
     border-color: rgba(212, 175, 55, 0.35);
   }
-  @media (pointer: coarse) {
-    /* Reset grows to 44, so the gap beside it moves with it. */
-    #achievements-btn { width: 44px; height: 44px; right: calc(64px + env(safe-area-inset-right)); }
+
+  /* Owned products light their button the same way the cup does — the one
+     signal in this column that says "you have this" rather than "you can
+     press this". */
+  #corner-stack button.owned {
+    color: rgba(212, 175, 55, 0.75);
+    border-color: rgba(212, 175, 55, 0.35);
   }
+
+  @media (pointer: coarse) {
+    /* One place. The gap grows with the handle it is holding space for. */
+    #corner-stack { --corner-size: 44px; --lens-gap-h: 52px; }
+  }
+
+  /* ==========================================================
+     CLEAR VIEW — the figure with the screen to itself.
+
+     Everything chrome-like is hidden by a single class on <body> rather
+     than by each module being asked to hide itself, because a module that
+     forgets is a control stranded on a clear screen and nothing would warn
+     you. The list below is therefore the definition of "interface", and a
+     new overlay has to be added to it.
+     ========================================================== */
+  body.clear-view #corner-stack,
+  body.clear-view #panel,
+  body.clear-view #transport,
+  body.clear-view #transport-readout,
+  body.clear-view #lens-handle,
+  body.clear-view #sheet-handle,
+  body.clear-view #ach-labels {
+    display: none !important;
+  }
+
+  #restore-ui {
+    position: absolute; z-index: 21;
+    top: calc(12px + env(safe-area-inset-top));
+    left: calc(12px + env(safe-area-inset-left));
+    width: 34px; height: 34px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(12, 12, 15, 0.45);
+    border: 1px solid var(--border-corner);
+    color: var(--text-corner);
+    cursor: pointer; padding: 0;
+  }
+  #restore-ui svg { width: 16px; height: 16px; display: block; }
+  /* Only ever visible in clear view, and then it is the only thing visible. */
+  body.clear-view #restore-ui { display: flex; }
+  @media (pointer: coarse) { #restore-ui { width: 44px; height: 44px; } }
 
   /* The achievements list. Built by modules/achievements.js, styled here so
      it follows the panel's theme rather than carrying its own colours. */
@@ -744,36 +792,6 @@
   .ach-toast-sub { font-size: 0.8125rem; color: var(--text-dim); font-style: italic; margin-top: 2px; }
 
   /* ==========================================================
-     DAZZLE — Reset with a different normal. Sits directly under
-     the corner Reset and is styled identically, because it is
-     the same kind of control: one tap, everything changes.
-
-     The daisy is inline SVG in currentColor, NOT the 🌼
-     character. Emoji carry colour presentation, so Android
-     substitutes its own glyph and ignores `color` outright —
-     which is exactly how the transport buttons ended up orange
-     (see PLAN.md rev 7). A drawn daisy stays as faint as the
-     Reset beside it and follows the theme.
-     ========================================================== */
-  #dazzle-btn {
-    position: absolute; z-index: 20;
-    /* 12 top inset + the Reset's 34 + an 8 gap. */
-    top: calc(54px + env(safe-area-inset-top));
-    right: calc(12px + env(safe-area-inset-right));
-    width: 34px; height: 34px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: transparent; border: 1px solid var(--border-corner);
-    color: var(--text-corner);
-    cursor: pointer; padding: 0;
-    transition: color 0.2s, border-color 0.2s, background 0.2s;
-  }
-  #dazzle-btn svg { width: 18px; height: 18px; display: block; }
-  @media (pointer: coarse) {
-    /* Reset grows to 44, so the gap below it has to move down with it. */
-    #dazzle-btn { width: 44px; height: 44px; top: calc(64px + env(safe-area-inset-top)); }
-  }
-
-  /* ==========================================================
      LENS — the classroom layer, dragged across the figure.
 
      The board sits ON TOP of the canvas and blends with `lighten`:
@@ -848,15 +866,17 @@
      height the two controls would land on top of each other. */
   #lens-handle {
     position: absolute; z-index: 19;
-    /* Clears the Dazzle button, which the handle collides with once the lens
-       is dragged most of the way open — the handle travels rightward while
-       Dazzle is pinned to the right edge, and both sat at the same height.
-       Dazzle wins the tap (z-index 20 against this one's 19), so the handle
-       became unusable exactly where you finish the drag.
-       12 top inset + the Reset's 34 + an 8 gap + Dazzle's 34 + an 8 gap. */
+    /* This height is the SAME hole that #lens-gap holds open in the corner
+       stack, and the two must agree: the handle travels rightward as the
+       lens opens and finishes its drag against that column, so if it does
+       not line up with the gap it lands on a button instead. The button
+       wins the tap (z-index 20 against this one's 19) and the handle
+       becomes unusable exactly where you finish the drag — which is how
+       this was found the first time, when Dazzle sat here.
+       12 top inset + the Reset's 34 + an 8 gap. */
     /* The left inset matters in landscape, where a phone reports ~52px of
        cutout on that edge. At left:0 the handle sat underneath it. */
-    top: calc(96px + env(safe-area-inset-top));
+    top: calc(54px + env(safe-area-inset-top));
     left: env(safe-area-inset-left);
     width: 34px; height: 46px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; gap: 4px;
@@ -898,7 +918,8 @@
      12 + 44 + 8 + 44 + 8 = 116. Without moving `top` here the handle would
      still overlap Dazzle on exactly the devices where it matters most. */
   @media (pointer: coarse) {
-    #lens-handle { width: 44px; height: 52px; top: calc(116px + env(safe-area-inset-top)); }
+    /* Matches --corner-size 44 + the 12 inset. See #lens-gap. */
+    #lens-handle { width: 44px; height: 52px; top: calc(64px + env(safe-area-inset-top)); }
   }
 
   #panel::-webkit-scrollbar { width: 3px; }
@@ -1327,43 +1348,107 @@
         aria-label="Scroll back to the top of the panel">&uarr; Top</button>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
-<!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
-     across platforms and some render as colour emoji, which is exactly how
-     the transport button ended up orange on Android. -->
-<!-- A cup on a stem, drawn rather than typed, for the reason given in the CSS
-     and repeated everywhere in this file: emoji carry colour presentation and
-     Android substitutes its own glyph. -->
-<button id="achievements-btn" type="button" title="Achievements" aria-label="Achievements">
+<!-- ==========================================================
+     THE CORNER STACK — one flex column, not six positioned buttons.
+
+     Every control here used to carry its own hand-computed `top`, each
+     written as "12 top inset + the Reset's 34 + an 8 gap" and each needing
+     a second value for the coarse-pointer case where the buttons grow to
+     44. Five buttons is eleven numbers that must all agree, and the
+     project has already been bitten twice by hand-maintained lists of
+     exactly that kind (see the note on Reset in docs/HANDOFF.md). A flex
+     column computes them instead, so adding a sixth control is one element
+     and no arithmetic.
+
+     #lens-gap is a real, empty element and it earns its place: the lens
+     handle travels rightward as the lens opens and comes to rest AT this
+     column. The gap is the hole it parks in. Sizing it in the same flow as
+     the buttons is what keeps the hole aligned with the handle when either
+     one changes size.
+     ========================================================== -->
+<div id="corner-stack">
+  <!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
+       across platforms and some render as colour emoji, which is exactly how
+       the transport button ended up orange on Android. -->
+  <button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 3-6.7"/>
+      <path d="M3 4v5h5"/>
+    </svg>
+  </button>
+
+  <!-- The parking space for the lens handle. Empty on purpose. -->
+  <div id="lens-gap" aria-hidden="true"></div>
+
+  <!-- A sparkle: two four-pointed stars with concave sides, drawn rather than
+       typed. The first attempt was a daisy of eight radial petals and read as a
+       gear — at 18px, anything with that many evenly spaced lobes does. Concave
+       sides are what separate a sparkle from a star or a cog.
+       Not the sparkle character: emoji carry colour presentation, so Android
+       substitutes its own glyph and ignores `color` — the trap that made the
+       transport buttons orange on Android. -->
+  <button id="dazzle-btn" type="button" title="Dazzle" aria-label="Dazzle">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M10 3 Q11 12 17 13 Q11 14 10 23 Q9 14 3 13 Q9 12 10 3 Z"/>
+      <path d="M18.5 2 Q19 5.5 22.5 6 Q19 6.5 18.5 10 Q18 6.5 14.5 6 Q18 5.5 18.5 2 Z"/>
+    </svg>
+  </button>
+
+  <!-- A cup on a stem, drawn rather than typed, for the reason given above and
+       repeated everywhere in this file. -->
+  <button id="achievements-btn" type="button" title="Achievements" aria-label="Achievements">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M7 4h10v5a5 5 0 0 1-10 0z"/>
+      <path d="M7 6H4.5a2.5 2.5 0 0 0 2.5 2.5"/>
+      <path d="M17 6h2.5A2.5 2.5 0 0 1 17 8.5"/>
+      <path d="M12 14v3"/>
+      <path d="M9 20h6"/>
+      <path d="M10 17h4l.5 3h-5z"/>
+    </svg>
+  </button>
+
+  <!-- ADS. A plus sign, which is both the icon and the product: what is for
+       sale behind it is advertising for the addition operator. modules/ads.js
+       owns everything past the tap; this is only the door. The multiplication
+       button is created by that module and inserted after this one, because it
+       does not exist until the first product is owned. -->
+  <button id="ads-btn" type="button" title="Ads" aria-label="Ads">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" aria-hidden="true">
+      <path d="M12 5v14"/>
+      <path d="M5 12h14"/>
+    </svg>
+  </button>
+
+  <!-- CLEAR VIEW. Hides every interface so the figure has the screen to
+       itself. The way back is #restore-ui in the opposite corner, which is
+       deliberately the ONLY thing left on screen — a clear view you cannot
+       leave is a trap, and putting the exit where the controls were would
+       defeat the point of hiding them. -->
+  <button id="clear-view-btn" type="button" title="Clear view" aria-label="Hide all controls">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/>
+      <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9"/>
+      <path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/>
+      <path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>
+    </svg>
+  </button>
+</div>
+
+<!-- The way out of clear view. Top LEFT, opposite the stack it replaces. -->
+<button id="restore-ui" type="button" title="Show controls" aria-label="Show controls">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M7 4h10v5a5 5 0 0 1-10 0z"/>
-    <path d="M7 6H4.5a2.5 2.5 0 0 0 2.5 2.5"/>
-    <path d="M17 6h2.5A2.5 2.5 0 0 1 17 8.5"/>
-    <path d="M12 14v3"/>
-    <path d="M9 20h6"/>
-    <path d="M10 17h4l.5 3h-5z"/>
+    <path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5V9"/>
+    <path d="M20 9V5.5A1.5 1.5 0 0 0 18.5 4H15"/>
+    <path d="M15 20h3.5a1.5 1.5 0 0 0 1.5-1.5V15"/>
+    <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20H9"/>
   </svg>
 </button>
-<button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M3 12a9 9 0 1 0 3-6.7"/>
-    <path d="M3 4v5h5"/>
-  </svg>
-</button>
-<!-- A sparkle: two four-pointed stars with concave sides, drawn rather than
-     typed. The first attempt was a daisy of eight radial petals and read as a
-     gear — at 18px, anything with that many evenly spaced lobes does. Concave
-     sides are what separate a sparkle from a star or a cog.
-     Not the ✨ character: emoji carry colour presentation, so Android
-     substitutes its own glyph and ignores `color` — the trap that made the
-     transport buttons orange on Android. -->
-<button id="dazzle-btn" type="button" title="Dazzle" aria-label="Dazzle">
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M10 3 Q11 12 17 13 Q11 14 10 23 Q9 14 3 13 Q9 12 10 3 Z"/>
-    <path d="M18.5 2 Q19 5.5 22.5 6 Q19 6.5 18.5 10 Q18 6.5 14.5 6 Q18 5.5 18.5 2 Z"/>
-  </svg>
-</button>
+
 <div id="viewport"></div>
 
 <script type="importmap">
