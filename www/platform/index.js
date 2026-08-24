@@ -71,6 +71,32 @@ export function knownIds() {
 }
 
 // ============================================================
+// IN-APP PRODUCTS
+// ============================================================
+// Two non-consumables, and the same shape as STORE_IDS above: the app's own id
+// on the left, the store's on the right, and the store's is blank until the
+// console issues it. Play product ids are author-chosen (unlike PGS achievement
+// ids, which Play assigns), so these are filled in — but they become permanent
+// at first upload, exactly like the package name.
+//
+// DEV: `billing` was written for ONE product and took no id, because the plan
+// at the time was a single $0.99 unlock. There are two now and there will
+// plausibly be more, so every call takes a product id. The stub still answers
+// for all of them.
+const PRODUCT_IDS = {
+  'ads-addition':       { play: 'ads_addition',       appstore: 'com.schuckdata.pnm.ads_addition' },
+  'ads-multiplication': { play: 'ads_multiplication', appstore: 'com.schuckdata.pnm.ads_multiplication' },
+};
+
+export function productId(pnmId, store = 'play') {
+  return PRODUCT_IDS[pnmId]?.[store] || null;
+}
+
+export function knownProducts() {
+  return Object.keys(PRODUCT_IDS);
+}
+
+// ============================================================
 // NATIVE DETECTION
 // ============================================================
 // DEV: guarded rather than assumed. `Capacitor` is injected by the shell and is
@@ -145,9 +171,21 @@ const stub = {
     },
   },
   billing: {
+    // DEV: the stub is what a BROWSER gets, and a browser has no store. It says
+    // "unavailable" rather than pretending to succeed, and modules/ads.js shows
+    // that state honestly instead of quietly entitling anybody. There is no
+    // development bypass here on purpose: a backdoor that entitles a player is
+    // a backdoor that ships. Seed the local entitlement record instead when
+    // something needs to be looked at — docs/ADS.md says how.
     async getProduct() { return null; },
     async purchase() { return { ok: false, reason: 'unavailable' }; },
-    async restore() { return { entitled: false }; },
+    // `available` is the important field and it is NOT decoration. "There is no
+    // store here" and "the store says you own nothing" are different answers,
+    // and collapsing them into an empty list costs a player their purchase:
+    // modules/ads.js overwrites its cached entitlement whenever a store
+    // answers, so a stub that answers `{entitled: []}` wipes it on every
+    // launch. Found on a Pixel 7, where it silently un-bought the product.
+    async restore() { return { available: false, entitled: [] }; },
   },
 };
 
@@ -242,20 +280,28 @@ const native = {
     },
   },
   billing: {
-    async getProduct() {
+    // Each takes the app's own product id and maps it at the boundary, so
+    // nothing above this file ever handles a store string.
+    async getProduct(pnmId) {
       const p = getBillingPlugin();
-      if (!p) { warnOnce(); return stub.billing.getProduct(); }
+      if (!p) { warnOnce(); return stub.billing.getProduct(pnmId); }
       return null;
     },
-    async purchase() {
+    async purchase(pnmId) {
       const p = getBillingPlugin();
-      if (!p) { warnOnce(); return stub.billing.purchase(); }
+      if (!p) { warnOnce(); return stub.billing.purchase(pnmId); }
       return { ok: false, reason: 'unimplemented' };
     },
+    // Returns the list of owned app-ids. An array rather than a boolean because
+    // there is more than one product now, and because "restore" on a fresh
+    // install has to be able to say "these two, not that one".
     async restore() {
       const p = getBillingPlugin();
       if (!p) { warnOnce(); return stub.billing.restore(); }
-      return { entitled: false };
+      // Until a plugin is wired this is still not a real answer, so it must not
+      // claim to be one. `available: false` is what stops it being treated as
+      // proof that the player owns nothing. See the note on the stub above.
+      return { available: false, entitled: [] };
     },
   },
 };

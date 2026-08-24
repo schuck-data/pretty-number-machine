@@ -205,8 +205,9 @@ In parallel, and needing only Dakota:
 | Decision | Value | Notes |
 |---|---|---|
 | Package name | `com.schuckdata.pnm` | Becomes permanent at first upload to Play. Chosen; not yet locked |
-| Distribution model | **Free**, one **$0.99 non-consumable** in-app product | An app ever offered free can never become paid. Free is the deliberate choice, so the one-way door is irrelevant — but it is a door |
-| The product | Turns the bundled fake ads **on**. Off by default. Grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever |
+| Distribution model | **Free**, with **two non-consumable** in-app products | Revised 2026-08-23 from a single $0.99 unlock. An app ever offered free can never become paid. Free is the deliberate choice, so the one-way door is irrelevant — but it is a door |
+| The products | **$0.99 addition ads, $4.99 multiplication ads.** Advertising AS the product: you pay to be shown commercials for mathematical operators. Neither grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever. `docs/ADS.md` |
+| Purchases and achievements | **Purchases grant nothing.** All 101 stay earnable by playing | Arithmetic, not principle: UNITY! needs all-but-one, and that slack is UNITY! itself, so any paid achievement paywalls the capstone |
 | Achievements | Local ledger is the source of truth; PGS is the public record and cross-device copy | Works offline and signed out. See `ANDROID-BUILD.md` §3 |
 | Achievement visibility | **Tutorial (16) publishes Revealed; the other 85 publish Hidden** | Decided 2026-08-23. Hidden criteria are what let hunters collaborate on the clues rather than read the answers. Near-permanent once the console is told. `ACHIEVEMENTS.md` §12 |
 | Identity | Never build accounts. No server, no database | Play holds purchases, PGS holds achievements and saves. Referral/invite features were cut for exactly this reason |
@@ -474,6 +475,7 @@ by driving a real browser by hand, and two real bugs were found that way.
 |---|---|---|
 | `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Steps 1–2 executed 2026-08-15; §9 is the trap list and is worth reading first |
 | `ACHIEVEMENTS.md` | **The achievement layer.** Both designs: v1 as built, v2 as specified. The gilding rule, clue craft, the accordion, the traps, and the implementation brief | Current, 2026-08-23 |
+| `ADS.md` | **The ads layer.** The register the copy has to hold, the two products, the entitlement rule and the trap in it, and how to look at the slideshow before billing exists | Current, 2026-08-23 |
 | `CODE-NOTES.md` | The two comment layers in `www/` — `DEV:` for implementation, `EDU:` for the mathematics — and where the mathematics actually lives | Current, 2026-08-15 |
 | `achievements-v6.xlsx` | **The v2 list.** Every achievement's cluster, number, id, name, clue, criteria, gild set and blurb | **Authoritative** for v2. For v1 as built, use `tools/achievements-table.mjs` |
 | `PLAN.md` | The charter, the project's history and reasoning, the gotchas learned building the web app | History. Predates v1; its Burst 6 (TWA via Bubblewrap) is superseded |

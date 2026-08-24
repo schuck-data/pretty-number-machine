@@ -130,6 +130,12 @@ export const DEFAULT_CONFIG = {
   // default — it is a lens over the figure, not the figure.
   _gildView: false,
 
+  // Whether the purchased ads are allowed to interrupt. Off by default and it
+  // must stay that way: the ads are a thing you go and look at, and a toy that
+  // interrupts you without being asked is a worse toy. modules/ads.js owns it,
+  // and it is only reachable from inside a slideshow you have paid for.
+  adsIntrude: false,
+
   autoRotate: true,
   driftSpeed: 0.3,
   sceneBackground: 0x0c0c0f,
@@ -203,6 +209,11 @@ export const HOT_KEYS = new Set([
   // Pixel 7, which is a visible stutter on a toggle you are meant to flick
   // back and forth.
   '_gildView',
+  // modules/ads.js's intrusion setting. Same company and the same reasoning as
+  // the two above: no geometry depends on it, the module reacts to the change
+  // itself, and routing it through buildScene() would dispose and recreate a
+  // thousand meshes to start a timer.
+  'adsIntrude',
   // The transport's play/pause. The render loop reads it every frame; nothing
   // about the geometry changes, so rebuilding the scene on it would be an
   // expensive no-op.

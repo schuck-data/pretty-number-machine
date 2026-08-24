@@ -44,6 +44,14 @@ jobs:
       - name: Achievement design checks
         run: node tools/check-achievements.mjs
 
+      # The ads layer. Almost entirely COPY, and copy is what a rendering test
+      # cannot judge — a slide with no headline still draws, it just draws
+      # wrong. Also guards the two things that would cost real money or real
+      # trust: a development bypass that entitles without a purchase, and the
+      # empty-entitlement-list confusion that silently un-buys a product.
+      - name: Ads checks
+        run: node tools/check-ads.mjs
+
       # The export tool is the source of the Play Console paste, and it is not
       # covered by the design checks above because it only reads the data — so
       # it rotted unnoticed when v2 renamed the fields underneath it and stayed

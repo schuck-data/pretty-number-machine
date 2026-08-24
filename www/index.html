@@ -792,6 +792,186 @@
   .ach-toast-sub { font-size: 0.8125rem; color: var(--text-dim); font-style: italic; margin-top: 2px; }
 
   /* ==========================================================
+     THE ADS — paywall and slideshow. modules/ads.js builds the
+     markup; the look lives here so it follows the same rules as
+     the rest of the app's chrome and can be re-graded in one
+     place.
+
+     This is the ONLY loud surface in PNM, and that is deliberate.
+     Everything else is near-black with a few saturated nodes. An
+     advert that respected that restraint would not read as an
+     advert — the joke needs the gloss. It is full-bleed and modal
+     so it never has to sit next to the figure and lose the
+     argument.
+
+     The register, for anyone adding to it: Cyberpunk 2077 by way
+     of Sesame Street. Megacorp confidence, primary-colour
+     delivery, no winking. Per-slide colours arrive as the custom
+     properties --from/--to/--ink/--accent from PALETTES in
+     modules/ads-data.js, so nothing below hardcodes a hue.
+     ========================================================== */
+  #ads-overlay {
+    position: fixed; inset: 0; z-index: 60;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(4, 4, 6, 0.86);
+    padding: calc(16px + env(safe-area-inset-top)) 16px
+             calc(16px + env(safe-area-inset-bottom));
+  }
+  #ads-overlay.open { display: flex; }
+
+  .ads-x {
+    position: absolute; top: 8px; right: 8px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff; font-size: 24px; line-height: 1;
+    cursor: pointer; z-index: 2;
+  }
+
+  /* ---- the paywall ---- */
+  .ads-sheet {
+    position: relative;
+    width: min(460px, 100%); max-height: 100%; overflow-y: auto;
+    background: var(--panel-bg, #14141a);
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px 22px 22px;
+  }
+  .ads-eyebrow {
+    font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--text-dim); margin: 0 0 6px;
+  }
+  .ads-title { font-size: 1.5rem; margin: 0 0 10px; color: var(--text); }
+  .ads-pitch { color: var(--text-dim); line-height: 1.5; margin: 0 0 20px; }
+  .ads-buy {
+    display: block; width: 100%; min-height: 48px;
+    border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.5);
+    background: rgba(212, 175, 55, 0.12); color: #f0d98a;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  .ads-buy:disabled { opacity: 0.55; cursor: default; }
+  .ads-fine {
+    font-size: 0.75rem; color: var(--text-faint, var(--text-dim));
+    line-height: 1.5; margin: 12px 0 0;
+  }
+  .ads-status { min-height: 1.2em; margin-top: 10px; font-size: 0.8125rem; color: var(--text-dim); }
+
+  /* ---- the slideshow ---- */
+  .ads-show {
+    position: relative;
+    width: min(460px, 100%);
+    /* height, not max-height. The stage below is flex:1, which needs a parent
+       with a definite height to divide up — with only a max-height the slide
+       sizes to its own text and sits as a card in the middle of the screen
+       instead of reading as a poster. */
+    height: 100%;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .ads-stage { flex: 1; min-height: 0; }
+
+  .ads-slide {
+    height: 100%; border-radius: 14px; overflow: hidden;
+    background: linear-gradient(150deg, var(--from), var(--to));
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    padding: 22px; text-align: center;
+    position: relative;
+  }
+  .ads-slide-inner { position: relative; z-index: 1; width: 100%; }
+
+  .ads-wordmark {
+    font-size: 0.72rem; letter-spacing: 0.34em; text-transform: uppercase;
+    opacity: 0.85; margin: 0 0 10px;
+  }
+  /* The product itself. Real text, never a drawn path — these are the actual
+     mathematical characters and the joke depends on that. */
+  .ads-glyph {
+    font-size: clamp(88px, 30vw, 150px); line-height: 0.9;
+    margin: 0; font-weight: 700;
+    text-shadow: 0 0 32px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  .ads-glyphnote {
+    font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase;
+    opacity: 0.75; margin: 10px 0 0;
+  }
+  .ads-headline {
+    font-size: 1.12rem; letter-spacing: 0.04em; line-height: 1.3;
+    margin: 16px 0 0; text-transform: uppercase;
+  }
+  .ads-headline sup { font-size: 0.5em; vertical-align: super; opacity: 0.8; }
+  .ads-quote { margin: 16px 0 0; }
+  .ads-quote p { font-size: 0.9rem; font-style: italic; line-height: 1.45; margin: 0; }
+  .ads-quote cite {
+    display: block; font-size: 0.72rem; font-style: normal;
+    opacity: 0.8; margin-top: 6px;
+  }
+  .ads-legal {
+    font-size: 0.6rem; line-height: 1.4; opacity: 0.7;
+    margin: 18px 0 0; border-top: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+    padding-top: 8px;
+  }
+
+  /* Three finishes, so ten slides do not look like one slide ten times. */
+  .ads-t-chrome .ads-glyph {
+    background: linear-gradient(180deg, #fff 0%, var(--accent) 48%, #6a6a7a 52%, #fff 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .ads-t-scan::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 4px);
+  }
+  .ads-t-flat .ads-headline { font-weight: 800; }
+
+  .ads-controls {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    flex: none;
+  }
+  .ads-controls button {
+    min-width: 48px; min-height: 44px; padding: 0 14px;
+    border-radius: 10px; border: 1px solid var(--border-corner);
+    background: rgba(255, 255, 255, 0.05); color: var(--text);
+    font-size: 1rem; cursor: pointer;
+  }
+  .ads-count { font-size: 0.8125rem; color: var(--text-dim); min-width: 56px; text-align: center; }
+
+  /* The intrusion setting. It lives here rather than in the panel because it
+     can only be found by somebody who has bought something to be intruded
+     upon — see the note in modules/ads.js. */
+  .ads-intrude {
+    display: block; flex: none;
+    font-size: 0.8125rem; color: var(--text-dim); line-height: 1.4;
+    padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .ads-intrude input { margin-right: 8px; }
+  .ads-intrude span { display: block; font-size: 0.72rem; opacity: 0.75; margin: 4px 0 0 24px; }
+
+  /* ---- the banner, when intrusion is on ---- */
+  #ads-banner {
+    position: fixed; z-index: 55;
+    left: 12px; right: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 12px;
+    background: linear-gradient(100deg, var(--from), var(--to));
+    color: var(--ink);
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+  }
+  .ads-banner-glyph { font-size: 1.6rem; font-weight: 700; line-height: 1; flex: none; }
+  .ads-banner-copy {
+    flex: 1; font-size: 0.78rem; letter-spacing: 0.03em; text-transform: uppercase;
+    line-height: 1.3;
+  }
+  .ads-banner-x {
+    flex: none; width: 44px; height: 44px; border-radius: 50%;
+    background: transparent; border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent);
+    color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer;
+  }
+  /* Clear view means the figure alone, and an advert is an interface. */
+  body.clear-view #ads-banner, body.clear-view #ads-overlay { display: none !important; }
+
+  /* ==========================================================
      LENS — the classroom layer, dragged across the figure.
 
      The board sits ON TOP of the canvas and blends with `lighten`:
@@ -1486,6 +1666,7 @@
     './modules/physics.js',
     './modules/info.js',
     './modules/lens.js',   // after info.js — it calls into that module's API
+    './modules/ads.js',
     './modules/achievements.js',   // last: it listens to the others, never the reverse
   ];
 
