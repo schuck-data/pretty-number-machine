@@ -1,7 +1,8 @@
 # Achievements — design and implementation
 
 **Written:** 2026-08-21. **Revised 2026-08-23**, when the list was redesigned
-from forty achievements to a hundred and one.
+from forty achievements to a hundred and one, and again later that day when the
+two open Play Console decisions were settled — see §12.
 
 > **Read this first.**
 >
@@ -9,7 +10,10 @@ from forty achievements to a hundred and one.
 > one achievements in a tree, no conjunction, declarative triggers, the
 > accordion. Landed 2026-08-23 and shaken out on the device the same day:
 > unlocks, the ledger, the banner, the highlight, the labels, the accordion, the
-> accessibility pass. `npm run check` covers it with 54 assertions.
+> accessibility pass. `npm run check` covers it with 60 assertions.
+>
+> **Published visibility is decided: Tutorial Revealed, everything else Hidden.**
+> §12 has the reasoning, and it is the kind that is hard to reconstruct.
 >
 > **What is NOT built: the decomposition view** — the silver prime factors and
 > the silver line-runs from each factor up to the gilded node (§2). That needs
@@ -40,6 +44,7 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | Trigger | ad hoc per achievement | **factor selection, dialling, or a stated relationship** |
 | Hints | a sentence each | **crossword clues** |
 | Locked rows | show the hint, not tappable | **show the clue and nothing else** |
+| Play Console | n/a | **Tutorial Revealed, the other 85 Hidden** (§12) |
 | Node reuse | one achievement per node | **many achievements may gild the same node** |
 
 | File | Owns |
@@ -47,8 +52,8 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | `www/modules/achievements-data.js` | The number sets, the definitions, and the gilding rule. **No Three.js, no renderer** — so it can be checked headlessly |
 | `www/modules/achievements.js` | The ledger, the predicates, the UI, the toast, the sound, the gilding paint |
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
-| `tools/check-achievements.mjs` | 54 assertions, in `npm run check` and CI |
-| `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data |
+| `tools/check-achievements.mjs` | 60 assertions, in `npm run check` and CI |
+| `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data, including the Play Console `initial_state` column. **Proofread the console paste here.** Rewritten 2026-08-23 for the v2 field names, having quietly thrown since the rebuild; now runs in CI so it cannot rot again |
 | `docs/achievements-v6.xlsx` | **The v2 list.** Authoritative |
 
 Achievements are **opt-in**: nothing is recorded until the player turns them on,
@@ -557,24 +562,75 @@ good moment to lift the ledger and enabled-set into a third Three-free file.
 
 ---
 
-## 12. Open
+## 12. Decided 2026-08-23
+
+Both of these were open until Dakota settled them. They are recorded here rather
+than only in the code because the *reasoning* is the part that does not survive
+in a diff.
+
+### Published visibility — Tutorial revealed, everything else hidden
+
+Every PGS achievement publishes either **Revealed** (name and `criteria` visible
+in the Play Games app before anyone earns it) or **Hidden** (both concealed
+until unlocked). `criteria` is written as plain instructions, because that is
+what the console wants — "Select exactly 2, 3 and 5." Publishing all 101
+revealed would put a complete walkthrough on the player's own profile, outside
+the app, undoing §4 entirely.
+
+**The Tutorial cluster ships Revealed; Math, Culture and Capstone ship Hidden.**
+Tutorial is the ordered tour — its clues are nudges, not riddles, and giving away
+"Press Dazzle" costs nothing — so a hunter browsing the list finds a real on-ramp
+rather than 101 mystery entries. That is 16 revealed and 85 hidden.
+
+**Dakota's reason, which is the part worth keeping:** hidden criteria are what
+let achievement hunters *collaborate*. A solved list is read alone; a concealed
+one gets worked out together. The concealment is not withholding, it is the
+thing that makes a community around the game possible.
+
+Lives in code as `REVEALED_CLUSTERS` in `achievements-data.js`, which gives every
+definition a `hidden` field; `tools/achievements-table.mjs` prints it as the
+`initial_state` column, which is the Play Console's own field name. The checker
+pins the split at 16/85, because it is near-permanent once the console is told.
+
+Not foreclosed: PGS has a **reveal** call, so a hidden achievement can be opened
+up programmatically once a player is close, filling the list in as they play.
+A later refinement; nothing here blocks it.
+
+### SPARTA! is earned, not free
+
+300 is 2²·3·5², so its radical is `{2, 3, 5}` — which is `DEFAULT_CONFIG.primes`
+and what Reset restores, so it awarded itself the moment tracking was switched
+on. **The number stays; the trigger is armed instead.** A trusted click on an
+individual prime button arms it, and Reset and Dazzle disarm it, so it fires only
+when a player has actually chosen those three.
+
+PHI! had the identical problem — the golden angle is the default angle — and was
+fixed by binding to the button that sets it. There is no "select 2, 3 and 5"
+button, hence the flag. The All and None buttons are `.grid-btn` rather than
+`.prime-btn` so they do not arm it either, but None-then-2-3-5 does, which is
+exactly the gesture the clue describes.
+
+It keeps its `sel(2, 3, 5)` declaration in the data file so the "no two
+achievements share a selection" check still covers it; `achievements.js`
+overrides the generated test. The checker greps for the override and both
+listeners — a poor test and a good tripwire, since all three are small
+innocuous-looking lines whose deletion silently restores a bug that took a phone
+and a real ledger to find.
+
+---
+
+## 13. Open
 
 - **Play Console XP limits are unverified.** v2 gives UNITY! 500 XP, so a
   per-achievement maximum below that would break the budget. Check before
   creating anything in the console
-- **Standard or hidden?** Play Games shows a *standard* achievement's description
-  to players before they earn it. The in-app list shows a clue and nothing else,
-  so standard achievements would undo the concealment on the player's profile.
-  Hidden fixes it but hunters dislike a mostly-hidden list. **Decide before
-  creating them**
-- **`criteria` is the public string.** It is the Play Console description and is
-  visible in the Play Games app; the in-app clue is separate and stays cryptic.
-  A typo there ships
-- **SPARTA! is free.** 300 is 2²·3·5², so its factor trigger is `{2, 3, 5}` —
-  which is `DEFAULT_CONFIG.primes`, the selection every player starts with and
-  the one Reset restores. It awards itself the moment tracking is switched on.
-  No other radical is available for 300, so either the number changes or it is
-  a deliberate freebie. `tools/check-achievements.mjs` pins it either way
+
+- **`criteria` is the public string.** It is the Play Console description. For
+  the 16 Revealed Tutorial achievements it is visible in the Play Games app
+  before anyone earns it; for the 85 Hidden ones it appears on unlock. The
+  in-app clue is separate and stays cryptic either way. A typo there ships, and
+  `tools/achievements-table.mjs` is where to proofread all 101 at once
+
 - **Re-read the Math clues now that nothing backs them up.** See §4: the locked
   preview is gone, so a clue that was fair beside a highlight may not be fair on
   its own

@@ -22,6 +22,7 @@
 // this file should move with it, or something broke.
 
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 const dataUrl = new URL('../www/modules/achievements-data.js', import.meta.url);
 
@@ -171,11 +172,44 @@ const defaultSel = [...DEFAULT_CONFIG.primes].sort((a, b) => a - b).join(',');
 const freeAtRest = A.filter(a => a.sel && a.sel.join(',') === defaultSel)
                     .map(a => `${a.name} declares the default selection {${defaultSel}}`);
 eq('selections that equal the default selection', freeAtRest, [
-  // ACCEPTED: 300 is 2^2 x 3 x 5^2, so its factor trigger is the default and no
-  // other radical is available. Either the number changes or this is a freebie.
-  // Dakota's call — docs/ACHIEVEMENTS.md §12.
+  // RESOLVED 2026-08-23: SPARTA! keeps the number and keeps the declaration —
+  // the declaration is what the "no two share a selection" check above reads —
+  // but achievements.js overrides the generated test with an ARMED one, so the
+  // selection only counts when the player reached it by tapping prime buttons.
+  // The assertion below is the half of that which can be checked headlessly.
   'SPARTA! declares the default selection {2,3,5}',
 ]);
+
+// The gate itself. A declared selection normally becomes its own test; SPARTA!
+// must NOT, or the freebie comes straight back the next time somebody tidies up
+// the custom predicates.
+//
+// This is a SOURCE check, not a behavioural one, and that is a limitation worth
+// naming: achievements.js imports three.js, so it cannot be loaded here — which
+// is the whole reason achievements-data.js exists as a separate file. What is
+// actually being defended is a deletion. The override and the two listeners are
+// three small, innocuous-looking lines in a 900-line file, and removing any of
+// them silently restores a bug that took a phone and a real ledger to find. A
+// grep is a poor test and a good tripwire.
+const SRC = readFileSync(new URL('../www/modules/achievements.js', import.meta.url), 'utf8');
+ok('SPARTA! overrides its generated test with an armed predicate',
+   /sparta:\s*\(\)\s*=>\s*primesArmed\s*&&\s*isExactly\(\[2,\s*3,\s*5\]\)/.test(SRC));
+ok("a trusted click on a prime button arms it",
+   /onTrusted\('\.prime-btn',\s*'click'.*primesArmed = true/.test(SRC));
+ok('Reset and Dazzle disarm it',
+   /onTrusted\('#corner-reset, #dazzle-btn',\s*'click'.*primesArmed = false/.test(SRC));
+
+// ============================================================
+console.log('\n[console] published visibility');
+// Decided 2026-08-23: Tutorial ships Revealed so hunters browsing the Play Games
+// list see a real on-ramp; everything else ships Hidden so the clues stay worth
+// solving and hunters have something to collaborate ON. Near-permanent once the
+// console is told, so it is pinned here.
+const revealed = A.filter(a => !a.hidden).map(a => a.name);
+const clustersRevealed = [...new Set(A.filter(a => !a.hidden).map(a => a.cluster))];
+eq('clusters published Revealed', clustersRevealed, ['Tutorial']);
+eq('Revealed count', revealed.length, A.filter(a => a.cluster === 'Tutorial').length);
+ok(`  ${revealed.length} revealed, ${A.length - revealed.length} hidden`);
 
 // ============================================================
 console.log('\n[sets] the computed families');

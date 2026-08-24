@@ -183,6 +183,37 @@ export const SQUARE_UP_NODES = (() => {
 export const XP = 15;
 export const XP_UNITY = 500;
 
+// PLAY CONSOLE VISIBILITY — decided 2026-08-23, and it is near-permanent.
+//
+// Every PGS achievement is published either REVEALED (its name and `criteria`
+// are visible in the Play Games app before anyone earns it) or HIDDEN (both are
+// concealed until the player unlocks it).
+//
+// `criteria` is written as plain instructions — "Select exactly 2, 3 and 5." —
+// because that is what the Play Console wants. But the in-app panel deliberately
+// shows only the clue, never the criteria: the concealment is the design, and
+// §4 of docs/ACHIEVEMENTS.md is a whole section on making the clues fair without
+// giving them away. Publishing everything revealed would put a complete
+// walkthrough on the player's own profile, outside the app, where nothing can be
+// done about it.
+//
+// So: the Tutorial cluster ships REVEALED and everything else ships HIDDEN.
+// Tutorial is the ordered tour — its clues are nudges rather than riddles, and
+// "Press Dazzle" costs nothing to give away — so hunters browsing the list see a
+// real on-ramp instead of 101 mystery entries. The Math, Culture and Capstone
+// clusters are the puzzle, and stay shut.
+//
+// Dakota's reason for the split, recorded because it is the thing a future
+// reader will want and cannot infer: hidden criteria are what let achievement
+// hunters COLLABORATE. A solved list is read alone; a concealed one gets worked
+// out together.
+//
+// PGS also has a reveal call, so a hidden achievement can be opened up
+// programmatically once a player is close. That is a later refinement and
+// nothing here forecloses it — but the published type is the part that is hard
+// to take back, so it is decided now.
+const REVEALED_CLUSTERS = new Set(['Tutorial']);
+
 const defs = [];
 const d = (no, cluster, id, name, clue, criteria, gildNodes, trigger, opts = {}) => {
   defs.push({
@@ -191,6 +222,7 @@ const d = (no, cluster, id, name, clue, criteria, gildNodes, trigger, opts = {})
     gildNodes, gildLines: opts.gildLines || [],
     xp: id === 'unity' ? XP_UNITY : XP,
     blurb: opts.blurb || '',
+    hidden: opts.hidden !== undefined ? opts.hidden : !REVEALED_CLUSTERS.has(cluster),
     ...trigger,
   });
 };

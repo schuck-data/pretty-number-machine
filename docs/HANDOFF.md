@@ -6,7 +6,7 @@ documents are history, and Appendix B says which parts of each are still true.
 
 **Written:** 2026-08-15. **Last revised: 2026-08-23**, when the achievement
 layer was rebuilt from forty achievements to a hundred and one, verified on a
-Pixel 7, and given a WCAG AA pass. Two small things are outstanding — see §1.
+Pixel 7, and given a WCAG AA pass. One thing is outstanding — see §1.
 
 **The web app is feature-complete; it builds and runs as an Android app; and the
 achievement layer is built, working and verified on a Pixel 7 and a Pixel 9. The
@@ -131,19 +131,19 @@ in-memory fallback keeps a browser working.
 clusters: the conjunction rule is gone, nothing derives until UNITY!, triggers
 are declared as data rather than hand-written, and the panel is an accordion.
 The whole panel also had a WCAG AA pass — a locked row measured 1.23:1 against
-its background before it. `npm run check` covers it with 54 assertions.
+its background before it. `npm run check` covers it with 60 assertions.
 
-**Two things are outstanding, and both are small:**
+**One thing is outstanding:**
 
 - **The decomposition view is not built.** Silver prime factors, and silver
   line-runs from each factor up to the gilded node. It needs partial parastichy
   segments in `renderer.js` and is the one genuinely new piece of rendering in
   the design. `ACHIEVEMENTS.md` §2 says what it should look like and why it is
   worth doing; §10 has the state of every file.
-- **SPARTA! is free.** 300 is 2²·3·5², so its factor trigger is `{2, 3, 5}` —
-  which is the default prime selection and what Reset restores, so it awards
-  itself the moment tracking is switched on. Either the number changes or it is
-  a deliberate freebie. Dakota's call; the checker pins it either way.
+- ~~**SPARTA! is free.**~~ **Fixed 2026-08-23.** The number stays and the
+  trigger is armed instead: a trusted click on an individual prime button arms
+  it, Reset and Dazzle disarm it, so it fires only when a player has actually
+  chosen those three. `ACHIEVEMENTS.md` §12.
 
 **Judge anything visual on a phone.** The render loop does not run in a desktop
 preview pane, and six separate bugs in this layer were invisible until the app
@@ -154,10 +154,16 @@ it, and `STORE_IDS` simply grows. But **do not create achievements in the Play
 Console until the list is final**, because they can be added afterwards and
 effectively never removed.
 
-Two decisions still stand before the console is told anything: **standard or
-hidden** (standard achievements show their description before they are earned,
-which would undo the in-app concealment — `ACHIEVEMENTS.md` §12), and whether
-Play Console caps per-achievement XP, since v2 gives UNITY! 500 of the 2,000.
+**Standard-or-hidden is decided (2026-08-23): the 16 Tutorial achievements
+publish Revealed, the other 85 publish Hidden.** Revealing all of them would put
+a complete walkthrough on the player's Play Games profile, outside the app.
+Hiding them is what lets hunters collaborate on the clues instead of reading the
+answers. It lives in code as `REVEALED_CLUSTERS` in `achievements-data.js` and
+prints as the `initial_state` column of `tools/achievements-table.mjs`, which is
+the console paste. `ACHIEVEMENTS.md` §12 has the reasoning.
+
+**One decision still stands before the console is told anything:** whether Play
+Console caps per-achievement XP, since v2 gives UNITY! 500 of the 2,000.
 
 **Work done after step 2, all on `capacitor-spike` and all in `www/` only.**
 The branch has moved on since the strip, and none of it is part of the numbered
@@ -200,6 +206,7 @@ In parallel, and needing only Dakota:
 | Distribution model | **Free**, one **$0.99 non-consumable** in-app product | An app ever offered free can never become paid. Free is the deliberate choice, so the one-way door is irrelevant — but it is a door |
 | The product | Turns the bundled fake ads **on**. Off by default. Grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever |
 | Achievements | Local ledger is the source of truth; PGS is the public record and cross-device copy | Works offline and signed out. See `ANDROID-BUILD.md` §3 |
+| Achievement visibility | **Tutorial (16) publishes Revealed; the other 85 publish Hidden** | Decided 2026-08-23. Hidden criteria are what let hunters collaborate on the clues rather than read the answers. Near-permanent once the console is told. `ACHIEVEMENTS.md` §12 |
 | Identity | Never build accounts. No server, no database | Play holds purchases, PGS holds achievements and saves. Referral/invite features were cut for exactly this reason |
 | Listing category | Games → Educational | PGS requires a game; hunters find games |
 | Shell | **Capacitor 8** | Targets API 36. Not TWA, not PWABuilder |

@@ -46,6 +46,24 @@ const PRIME_SET = new Set(SELECTABLE_PRIMES);
 // ============================================================
 const sel = () => [...(state.primes || [])].sort((a, b) => a - b);
 
+// DEV: SPARTA! is the one selection achievement whose target IS the default.
+// 300 is 2^2 x 3 x 5^2, so its radical is {2, 3, 5}, which is
+// DEFAULT_CONFIG.primes and what Reset restores — a bare state test awarded it
+// the moment tracking was switched on. PHI! had the identical problem (the
+// golden angle is the default angle) and was fixed by binding to the button
+// that sets it; there is no "select 2, 3 and 5" button, so SPARTA! is armed
+// instead. A trusted click on an individual prime button arms it; Reset and
+// Dazzle disarm it, because both restore or assign a selection wholesale and
+// neither is somebody choosing three primes.
+//
+// The All and None buttons are `.grid-btn`, not `.prime-btn`, so they do not
+// arm it either — but tapping None and then 2, 3 and 5 does, which is exactly
+// the gesture the clue describes.
+//
+// Decided 2026-08-23: SPARTA! is earned, not free. docs/ACHIEVEMENTS.md §12.
+let primesArmed = false;
+export const spartaArmed = () => primesArmed;
+
 function isExactly(...want) {
   const w = [...new Set(want.flat())].sort((a, b) => a - b);
   const s = sel();
@@ -171,6 +189,12 @@ const CUSTOM = {
   phi: () => true,                       // the button press IS the achievement
   pi:  () => nearAngle(state.divergenceAngle, Math.PI),
   tau: () => nearAngle(state.divergenceAngle, Math.PI * 2),
+
+  // ---- Meme ----
+  // Declares sel(2, 3, 5) in the data file so the "no two achievements share a
+  // selection" check still covers it, but the generated test is overridden here
+  // to add the arming gate. See the note beside `primesArmed`.
+  sparta: () => primesArmed && isExactly([2, 3, 5]),
 
   // ---- Lore ----
   rest: () => true,
@@ -1412,6 +1436,14 @@ export function register() {
       h?.classList.add('open');
       h?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
+
+    // ---- SPARTA!'s arming gate ----
+    // Bound here rather than as a DOM_BINDING because it does not award
+    // anything: it flips a flag that a `state` predicate then reads on the next
+    // sweep. The prime buttons rebuild when the grid re-tiers, so this is bound
+    // on document with capture like every other trusted listener.
+    onTrusted('.prime-btn', 'click', () => { primesArmed = true; });
+    onTrusted('#corner-reset, #dazzle-btn', 'click', () => { primesArmed = false; });
 
     for (const a of ACHIEVEMENTS) {
       if (a.kind !== 'dom' || !a.dom) continue;

@@ -44,6 +44,14 @@ jobs:
       - name: Achievement design checks
         run: node tools/check-achievements.mjs
 
+      # The export tool is the source of the Play Console paste, and it is not
+      # covered by the design checks above because it only reads the data — so
+      # it rotted unnoticed when v2 renamed the fields underneath it and stayed
+      # broken until somebody next reached for it. Running it here is not a test
+      # of its output; it is a guarantee that it still RUNS.
+      - name: Achievement table exports
+        run: node tools/achievements-table.mjs > /dev/null
+
       # Every module must at least parse. Cheap, and it catches the class of
       # typo that only shows up as a blank screen in a browser.
       - name: Parse every module
