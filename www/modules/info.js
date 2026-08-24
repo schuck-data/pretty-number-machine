@@ -2,7 +2,7 @@
 // Right-click tooltip showing node math info and curve details.
 // Tooltip appears on right-press, disappears on release. All motion pauses while open.
 import * as THREE from 'three';
-import { registerModule, state } from '../core/state.js';
+import { registerModule, state, emit } from '../core/state.js';
 import { getCamera, getRenderer, getNodes, resolveN } from '../core/renderer.js';
 import { isPrimeNumber, isPrimePower, getPrimeRGB, FIRST_PRIMES } from '../core/math.js';
 
@@ -320,6 +320,11 @@ export function showInfoAt(clientX, clientY) {
   if (nd) {
     stickyTooltip = true;
     showTooltip(nodeTooltipHTML(nd), clientX, clientY);
+    // Published rather than returned, because the caller is lens.js and what it
+    // wants is not "did something get hit" but "which number". The lens draws a
+    // decomposition around it; this module keeps owning the tooltip and knows
+    // nothing about that.
+    emit('info:node', { n: nd.n });
     return true;
   }
 
@@ -335,6 +340,7 @@ export function showInfoAt(clientX, clientY) {
 export function hideInfo() {
   stickyTooltip = false;
   hideTooltip();
+  emit('info:cleared', {});
 }
 
 // === MODULE DEFINITION ===

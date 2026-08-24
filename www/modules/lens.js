@@ -38,8 +38,9 @@
 //     bound to right-click.
 
 import * as THREE from 'three';
-import { registerModule, state } from '../core/state.js';
+import { registerModule, state, on } from '../core/state.js';
 import { showInfoAt, hideInfo } from './info.js';
+import { primeFactorsOf } from '../core/math.js';
 
 // Labels used to be all-or-nothing: above 150 nodes every one of them vanished
 // and the lens degraded to bare chalkboard. That cliff is gone. Labels now show
@@ -298,11 +299,15 @@ const mod = {
 
   build(ctx) {
     nodesRef = ctx.nodes;
+    sceneRef = ctx.scene;
+    // Whatever this held was disposed with the old scene.
+    clearDecomposition();
     hideInfo();
   },
 
   animate() {
     updateLabels();
+    paintDecomposition();
   },
 
   // NOT a teardown hook. cleanup() calls destroy() on every module before
@@ -311,7 +316,9 @@ const mod = {
   // entire feature on the first rebuild after boot.
   destroy() {
     hideInfo();
+    clearDecomposition();
     nodesRef = [];
+    sceneRef = null;
     for (const el of labelPool) el.style.display = 'none';
   },
 
@@ -322,6 +329,110 @@ const mod = {
     for (const el of labelPool) el.style.display = 'none';
   },
 };
+
+// ============================================================
+// DECOMPOSITION — what a number is made of
+// ============================================================
+// Tap a node with the lens open and the figure answers the question the lens
+// exists to ask: **what is this number built from?** The node swells and every
+// prime in its factorisation swells with it, all of them in silver, so the
+// factorisation is legible on the figure itself rather than only in the
+// tooltip.
+//
+// THE LINES ARE NOT BUILT YET, and the reason is worth writing down because
+// the obvious implementation is wrong.
+//
+// The intended picture is a line from each prime up to the tapped node along
+// that prime's parastichy family — the stretch from p to n, which is the
+// repeated addition that builds n out of p. The first attempt drew it as a
+// polyline through the multiples: p, 2p, 3p, … n, straight segments between
+// consecutive node positions.
+//
+// It looked wrong on the phone and core/math.js already says why, in the note
+// above buildParastichy: those curves are interpolated in POLAR space, because
+// "interpolating a spiral in Cartesian x/y cuts corners across the curve, while
+// interpolating in (r, θ) follows the winding". A straight segment between two
+// multiples is exactly that corner-cut. At N=60 the run for prime 2 threw
+// chords clean across the figure while the renderer's own curve for 2 wound
+// smoothly beside it.
+//
+// Doing it properly means a PARTIAL parastichy curve — the same Catmull-Rom
+// through polar knots that buildParastichy does, clipped to [p, n], and lerped
+// across the morph like every other curve. That belongs in core/renderer.js
+// beside the machinery it shares, and it is the piece docs/ACHIEVEMENTS.md §2
+// has been calling "the one genuinely new piece of rendering in the design".
+// It is the same work the gilded decomposition view needs, so it should be
+// built once and used by both.
+const DECOMP_GLOW = 0.9;
+
+let sceneRef = null;
+let decompN = null;
+let decompNodes = [];        // { nd, scale, emissive, intensity } — what to put back
+
+function clearDecomposition() {
+  // Give back what was borrowed. The renderer owns these meshes; this module
+  // only ever borrows their appearance and must hand it back exactly.
+  for (const st of decompNodes) {
+    const m = st.nd?.mesh;
+    if (!m) continue;
+    m.scale.setScalar(st.scale);
+    if (m.material?.emissive) {
+      m.material.emissive.copy(st.emissive);
+      m.material.emissiveIntensity = st.intensity;
+    }
+  }
+  decompNodes = [];
+  decompN = null;
+}
+
+function buildDecomposition(n) {
+  clearDecomposition();
+  if (!nodesRef.length || !n || n < 2) return;
+
+  const byN = new Map(nodesRef.map(nd => [nd.n, nd]));
+  if (!byN.get(n)) return;
+
+  // Node 0 has no factorisation and node 1 has no primes. Both fall out here
+  // without a special case, because primeFactorsOf returns nothing for them.
+  const factors = primeFactorsOf(n);
+  if (!factors.length) return;
+  decompN = n;
+
+  for (const k of new Set([n, ...factors])) {
+    const nd = byN.get(k);
+    if (!nd || !nd.mesh) continue;
+    decompNodes.push({
+      nd,
+      scale: nd.mesh.scale.x,
+      emissive: nd.mesh.material?.emissive?.clone() || new THREE.Color(0, 0, 0),
+      intensity: nd.mesh.material?.emissiveIntensity ?? 0,
+    });
+  }
+}
+
+// Re-asserted every frame, and it has to be: the renderer's pulse, colour-drift
+// and gilding passes all write these same properties and would win otherwise.
+// Same reasoning as the achievement highlight — see modules/achievements.js.
+// The set is tiny by construction (a number below 10000 has at most five
+// distinct prime factors), so this is a handful of writes per frame.
+function paintDecomposition() {
+  if (!decompNodes.length) return;
+  if (!isOpen()) { clearDecomposition(); return; }
+
+  for (const st of decompNodes) {
+    const m = st.nd.mesh;
+    if (!m) continue;
+    const isTarget = st.nd.n === decompN;
+    m.scale.setScalar(st.scale * (isTarget ? 1.75 : 1.4));
+    if (m.material?.emissive) {
+      m.material.emissive.setRGB(0.62, 0.68, 0.78);
+      m.material.emissiveIntensity = isTarget ? DECOMP_GLOW : DECOMP_GLOW * 0.6;
+    }
+  }
+}
+
+on('info:node', ({ n }) => { if (isOpen()) buildDecomposition(n); });
+on('info:cleared', () => clearDecomposition());
 
 export function register() {
   registerModule('lens', mod);

@@ -135,11 +135,21 @@ its background before it. `npm run check` covers it with 60 assertions.
 
 **One thing is outstanding:**
 
-- **The decomposition view is not built.** Silver prime factors, and silver
-  line-runs from each factor up to the gilded node. It needs partial parastichy
-  segments in `renderer.js` and is the one genuinely new piece of rendering in
-  the design. `ACHIEVEMENTS.md` §2 says what it should look like and why it is
-  worth doing; §10 has the state of every file.
+- **The decomposition view is half built.** The silver prime factors exist:
+  tap a node with the lens open and it swells along with every prime in its
+  factorisation (`modules/lens.js`, 2026-08-24). **The line-runs do not**, and
+  the reason is recorded beside the code because the obvious implementation is
+  wrong. A polyline through the multiples — p, 2p, 3p, … n — cuts straight
+  chords across the figure, which is exactly what `core/math.js` warns about
+  above `buildParastichy`: those curves interpolate in POLAR space because
+  Cartesian interpolation "cuts corners across the curve". It was built that
+  way, looked wrong on a Pixel 7 at N=60, and was taken back out.
+
+  Doing it properly means a **partial parastichy curve** — the same Catmull-Rom
+  through polar knots, clipped to [p, n] and lerped across the morph — and that
+  belongs in `renderer.js` beside the machinery it shares. It is the same piece
+  the gilded decomposition needs, so build it once and use it twice.
+  `ACHIEVEMENTS.md` §2 has the gilded half.
 - ~~**SPARTA! is free.**~~ **Fixed 2026-08-23**, verified on a Pixel 7. The
   number stays and the RANGE is a second gate: SPARTA! needs exactly
   `{2, 3, 5}` and the range at 300. 300 is the number the achievement is about,
