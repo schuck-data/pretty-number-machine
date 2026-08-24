@@ -193,7 +193,10 @@ export const SLIDES = [
     headline: 'THE SAME PLUS. IN A CIRCLE.',
     tm: true,
     quote: 'I did not know I needed the circle. I need the circle.',
-    who: 'a vector space, verified owner',
+    // "a vector space" was trying to be a status-conscious buyer and read as a
+    // maths lecture instead. A direct sum is what the circle actually MAKES —
+    // it is the thing the product produces, and it scans as somebody's title.
+    who: 'a direct sum',
     palette: 'vhs',
     treatment: 'scan',
   }),

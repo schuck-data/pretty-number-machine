@@ -1085,11 +1085,11 @@
     height: 100%; font-size: clamp(52px, 17vw, 84px); font-weight: 500;
     font-style: italic; line-height: 1;
   }
-  /* SHIPS OUT OF FOG. They start far outside the frame, unfocused and almost
-     invisible, and resolve as they close — the blur clearing alongside the
-     opacity is what makes it read as EMERGENCE rather than as a cross-fade.
-     A thing that simply fades up has always been there; a thing that sharpens
-     as it approaches has come from somewhere.
+  /* They come in from far outside the frame and DARKEN as they arrive — white
+     on a near-white wall to begin with, resolving to ink by the time they
+     stop. No blur: a blurred letter reads as out of focus, which is a camera
+     problem, and this is not a photograph. A letter that darkens has simply
+     come close enough to see.
 
      Slow on purpose, and the easing does most of that work: nearly all the
      distance is covered early, so the last stretch is a long, barely-moving
@@ -1102,16 +1102,12 @@
   .ads-ij span:first-child { animation: ads-ij-left 8300ms cubic-bezier(0.22, 0.62, 0.16, 1) 300ms both; }
   .ads-ij span:last-child  { animation: ads-ij-right 8300ms cubic-bezier(0.22, 0.62, 0.16, 1) 300ms both; }
   @keyframes ads-ij-left {
-    0%   { transform: translateX(-420%); opacity: 0;    filter: blur(18px); }
-    20%  {                               opacity: 0.22; filter: blur(13px); }
-    62%  {                               opacity: 0.8;  filter: blur(4px); }
-    100% { transform: translateX(-0.06em); opacity: 1;  filter: blur(0); }
+    0%   { transform: translateX(-420%);   color: #ffffff; }
+    100% { transform: translateX(-0.06em); color: var(--ink); }
   }
   @keyframes ads-ij-right {
-    0%   { transform: translateX(420%);  opacity: 0;    filter: blur(18px); }
-    20%  {                               opacity: 0.22; filter: blur(13px); }
-    62%  {                               opacity: 0.8;  filter: blur(4px); }
-    100% { transform: translateX(0.06em); opacity: 1;   filter: blur(0); }
+    0%   { transform: translateX(420%);   color: #ffffff; }
+    100% { transform: translateX(0.06em); color: var(--ink); }
   }
 
   /* Reduced motion: the products still show, they simply stop performing.
@@ -1742,7 +1738,7 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.7 &middot; &copy; 2026 Dakota Schuck</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.7 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll

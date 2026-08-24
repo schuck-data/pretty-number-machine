@@ -81,6 +81,29 @@ const projected = new THREE.Vector3();
 const occupied = new Set();
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
+
+// THE HANDLE MUST NOT REACH THE RIGHT EDGE.
+//
+// It used to travel the full width, which put it flush against the edge at
+// full open — its own width the only thing left to grab, and nothing outside
+// it at all. On a phone that edge is also where the system's back gesture
+// lives, so the swipe that should have dragged the lens closed went to Android
+// instead and the lens could not be shut.
+//
+// So the curtain stops short. The reserve is a full touch target, which means
+// there is always a thumb's worth of handle over the scene with room on both
+// sides of it. A lens covering all but 48px of the screen is fully open for
+// every purpose except getting back out of it.
+const EDGE_RESERVE_PX = 48;
+
+function maxOpenFraction() {
+  const w = viewportRect().width;
+  if (!w) return 1;
+  const hw = handleEl?.offsetWidth || 26;
+  return Math.max(0, (w - hw - EDGE_RESERVE_PX) / w);
+}
+
+const clampOpen = v => Math.min(maxOpenFraction(), Math.max(0, v));
 const isOpen = () => openFraction > 0.001;
 
 // The lens lives inside the viewport box, not the window. On desktop the
@@ -161,7 +184,7 @@ function onHandleDown(e) {
   handleEl.classList.add('dragging');
 
   const onMove = (ev) => {
-    openFraction = clamp01(startFraction + (ev.clientX - startX) / viewportRect().width);
+    openFraction = clampOpen(startFraction + (ev.clientX - startX) / viewportRect().width);
     applyOpen();
   };
   const onEnd = () => {
