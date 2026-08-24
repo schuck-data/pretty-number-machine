@@ -10,12 +10,14 @@
 // leaks means the whole board is given away. Neither shows up as an error in a
 // browser, and neither is something you would notice by looking at the figure.
 //
-// THE ONE THAT MATTERS MOST is trigger uniqueness. Two achievements declaring
-// the same exact prime selection both fire on one tap, which makes both their
-// clues meaningless and breaks the locked-row preview — two rows would show
-// different nodes reachable by an identical action. v1 could not have caught
-// this because every trigger was a hand-written predicate; v2 declares them,
-// so it can be checked.
+// THE ONE THAT MATTERS MOST is trigger uniqueness between DECLARED selections.
+// Two achievements declaring the same exact prime selection both fire on one
+// tap with nothing to tell them apart, which makes both their clues
+// meaningless. v1 could not have caught this because every trigger was a
+// hand-written predicate; v2 declares them, so it can be checked.
+//
+// A literal selection that also satisfies a RELATIONAL predicate is a
+// different matter and is ACCEPTED — see the collisions section below.
 //
 // Expected values are the DESIGN, written down. achievements-data.js is the
 // source of truth for the list itself (docs/ACHIEVEMENTS.md §10 settled that;
@@ -146,6 +148,56 @@ eq('only the recorded exceptions break the factor convention', exceptions, [
   // every palindrome instead, so it no longer reaches this check at all — the
   // check only looks at achievements that gild exactly one node.
 ]);
+
+// ============================================================
+console.log('\n[triggers] literals that also satisfy a relation');
+// ACCEPTED as a guideline 2026-08-24, having been written as an absolute rule
+// that the code never kept.
+//
+// The strict half stays strict, and is the check above: two LITERAL selections
+// that are identical are forbidden, because a player performing one action
+// would earn two things with nothing to tell them apart.
+//
+// This is the other case. Several relational predicates in achievements.js take
+// ANY exactly-two-prime selection — pairWhere() — so a literal pair can satisfy
+// one as well. Tapping {7, 13} earns QUARTER! for the ninety-one days and SEXY!
+// for the six-apart, and that is fine: they are different ideas and the player
+// demonstrated both. Since v7 the toast also shows the CRITERIA, so two unlocks
+// arriving together each say plainly what they were for, which was the real
+// objection.
+//
+// Pinned rather than merely allowed. A NEW collision should still be a decision
+// somebody made rather than one nobody noticed, so the exact list is asserted.
+const revp = n => +String(n).split('').reverse().join('');
+const RELATIONS = {
+  'TWINNING!':  (a, b) => b - a === 2,
+  'COUSINS!':   (a, b) => b - a === 4,
+  'SEXY!':      (a, b) => b - a === 6,
+  'GERMAIN!':   (a, b) => b === 2 * a + 1,
+  'EMIRP!':     (a, b) => revp(a) === b,
+  'SQUARE UP!': (a, b) => Number.isInteger(Math.sqrt(a + b)),
+};
+const collisions = A
+  .filter(a => a.sel && a.sel.length === 2)
+  .map(a => {
+    const also = Object.entries(RELATIONS)
+      .filter(([, f]) => f(a.sel[0], a.sel[1])).map(([n]) => n);
+    return also.length ? `${a.name} {${a.sel}} also fires ${also.join(', ')}` : null;
+  })
+  .filter(Boolean);
+eq('literal pairs that also satisfy a relation', collisions, [
+  'CARDS! {3,7} also fires COUSINS!, GERMAIN!',
+  'BEST! {37,73} also fires EMIRP!',
+  'LIGHTSPEED! {13,23} also fires SQUARE UP!',
+  'MEMORY! {2,5} also fires GERMAIN!',
+  'INHERITED! {2,23} also fires SQUARE UP!',
+  'QUARTER! {7,13} also fires SEXY!',
+  'SHORTEST! {2,7} also fires SQUARE UP!',
+]);
+// GOLDBACH! and NEAT! widen this further and are deliberately NOT pinned: both
+// are two-prime predicates gated on the RANGE, so which pairs they join depends
+// on where the slider is rather than on the list.
+ok('...GOLDBACH! and NEAT! also join in, depending on the range');
 
 // ============================================================
 console.log('\n[triggers] which dials the auto-range can reach');

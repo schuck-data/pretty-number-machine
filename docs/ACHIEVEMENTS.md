@@ -274,10 +274,18 @@ WHOLE!, EIGHTFOLD! became SIT!, MOON! became LUNA!, and all three kept their ids
 The 1–101 numbering is display order and shifts freely; **nothing may key off
 it.**
 
-**No two achievements may share an exact selection trigger.** Two achievements
-firing on one tap makes both clues meaningless and breaks the preview, since two
-locked rows would show different nodes reachable by an identical action. This
-replaces the conjunction assertions in the headless checker.
+**No two achievements may DECLARE the same exact selection.** Two rows firing on
+one identical tap with nothing to tell them apart makes both clues meaningless.
+That half is absolute and the checker enforces it.
+
+**A declared selection that also satisfies a relational predicate is fine**, and
+this was written as an absolute rule the code never kept — see §14. Several
+relations take any exactly-two-prime selection, so tapping `{7, 13}` earns
+QUARTER! for the ninety-one days *and* SEXY! for the six-apart. They are
+different ideas and the player demonstrated both. Since v7 the toast shows the
+criteria as well, so two unlocks arriving together each say what they were for,
+which was the real objection. The exact list of seven is pinned in the checker,
+so a new one is still a decision rather than a surprise.
 
 **Watch the gild-set ceiling.** Dropping the conjunction fixed *derivation*
 flooding, not *direct-gild* flooding. The largest sets in v2 are REST! at 142
@@ -1001,18 +1009,20 @@ trophy room.
 
 ---
 
-## 14. Still open
+## 14. Still open, and one thing settled
 
 **Dial.** Ten achievements, no integer content, a flat payoff every time, six of
 them US-only. Cutting to five is argued in `achievements-v7-proposal.xlsx`, and
 it needs replacements designed first — Puzzles and Greeks are the underweight
 clusters and the obvious home for them.
 
-**The trigger collisions.** `check-achievements.mjs` enforces "no two
-achievements share an exact selection" over literal `sel` arrays only. The
-relational predicates in `achievements.js` are never compared against them, and
-`pairWhere()` accepts *any* two-prime selection — so seven literals double-fire,
-and CARDS! triple-fires:
+**The trigger collisions — SETTLED 2026-08-24, as a guideline.**
+
+The rule in §3 read *"no two achievements may share an exact selection
+trigger"*, and the code never kept it. The checker compared literal `sel` arrays
+against each other only; the relational predicates were never compared against
+them, and `pairWhere()` accepts *any* two-prime selection. Seven literals
+double-fire and CARDS! triple-fires:
 
 | Achievement | Selection | Also fires |
 |---|---|---|
@@ -1027,12 +1037,21 @@ and CARDS! triple-fires:
 GOLDBACH! and NEAT! widen it further, both being two-prime predicates gated on
 the range.
 
-**This may well be a feature.** Two unlocks from one tap is a small *oh, that as
-well* — and showing the criteria (§13) removes the confusion that was the main
-argument against it. But the doc and the code presently disagree about whether
-the rule holds, and the checker reports green either way. Decide it, then either
-record the expected list as an assertion — the treatment ENIGMA! already gets —
-or change seven selections.
+**Dakota's call: this is a feature, and the rule was overstated.** Tapping
+`{7, 13}` and earning QUARTER! for the ninety-one days *and* SEXY! for the
+six-apart is a small *oh, that as well* — they are different ideas and the
+player demonstrated both. The original objection was that two clues would stop
+meaning anything, and §13 removed it: the toast now shows the criteria, so two
+unlocks arriving together each say plainly what they were for.
+
+**The strict half stays strict.** Two achievements *declaring* the same exact
+selection are still forbidden, because there a single action earns two things
+with nothing at all to tell them apart. §3 now separates the two cases.
+
+The seven are pinned as an assertion, the same treatment ENIGMA! gets as a
+recorded exception, so an eighth is a decision somebody made rather than one
+nobody noticed. GOLDBACH! and NEAT! are deliberately left unpinned — which
+pairs they join depends on where the range slider is, not on the list.
 
 ### SPARTA! is earned, not free
 
