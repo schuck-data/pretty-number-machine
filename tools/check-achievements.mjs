@@ -392,6 +392,105 @@ const oddSquares = D.SQUARE_UP_NODES.filter(n => n % 2 === 1);
 eq('the odd squares all need 2', oddSquares.every(s => isPrimeNumber(s - 2)), true);
 
 // ============================================================
+console.log('\n[ledger] the merge rule, and what it must never do');
+// NEW IN THIS PASS. The ledger's logic moved out of achievements.js into
+// achievements-ledger.js precisely so it could be run here — that file has no
+// three.js in it. These are BEHAVIOURAL tests, not source greps: they call the
+// real functions with real ledgers.
+//
+// Everything below was already claimed in a comment and never checked. The
+// merge runs on every start against both the PGS list and the saved-game
+// snapshot, in whatever order those resolve, so commutativity and idempotency
+// are correctness requirements rather than nice properties.
+const L = await import(new URL('../www/modules/achievements-ledger.js', import.meta.url));
+
+const led = (unlocked, counters = {}, on = true) => ({ unlocked, counters, on });
+const A1 = led({ first: 100, rest: 300 }, { oops: 2 }, true);
+const B1 = led({ first: 50, sexy: 400 }, { oops: 5, ouch: 1 }, false);
+
+// Compared by VALUE, not by serialisation. eq() stringifies, and JSON.stringify
+// preserves key INSERTION order — merge(a,b) and merge(b,a) build the same
+// ledger with the keys in different orders, so a naive comparison reports a
+// failure that is not one. Canonicalise first. (This bit me writing the test.)
+const canon = (l) => ({
+  unlocked: Object.fromEntries(Object.entries(l.unlocked).sort(([x], [y]) => x < y ? -1 : 1)),
+  counters: Object.fromEntries(Object.entries(l.counters).sort(([x], [y]) => x < y ? -1 : 1)),
+  on: l.on,
+});
+eq('merge is commutative',
+   canon(L.mergeLedgers(A1, B1)), canon(L.mergeLedgers(B1, A1)));
+eq('merge is idempotent', L.mergeLedgers(A1, A1), A1);
+eq('merging with an empty ledger changes nothing',
+   L.mergeLedgers(A1, L.emptyLedger()), A1);
+
+// THE ONE THAT MATTERS. Losing an achievement because a device was offline is
+// the worst failure this system could have.
+const everyId = new Set([...Object.keys(A1.unlocked), ...Object.keys(B1.unlocked)]);
+const merged = L.mergeLedgers(A1, B1);
+eq('a merge never withdraws an unlock',
+   [...everyId].filter(id => !(id in merged.unlocked)), []);
+// The EARLIER timestamp wins, so the record says when the player FIRST earned
+// it rather than when some device last noticed. That is also what makes the
+// merge commutative.
+eq('the earlier timestamp survives', merged.unlocked.first, 50);
+eq('counters take the maximum', [merged.counters.oops, merged.counters.ouch], [5, 1]);
+// Tracking is sticky: a device that had it on carries the intent.
+eq('tracking is sticky across a merge', merged.on, true);
+
+console.log('\n[ledger] a corrupt ledger degrades, it does not throw');
+// This runs during boot, so anything unusable has to become "no progress yet"
+// rather than a white screen.
+eq('null storage', L.parseLedger(null), null);
+eq('empty string', L.parseLedger(''), null);
+eq('not JSON at all', L.parseLedger('{ this is not json'), null);
+eq('JSON that is not an object', L.parseLedger('42'), null);
+eq('an array', L.parseLedger('[1,2,3]'), null);
+eq('an object missing every field', L.parseLedger('{}'), L.emptyLedger());
+eq('unlocked of the wrong type is discarded, not trusted',
+   L.parseLedger('{"unlocked":"nope"}').unlocked, {});
+eq('a round trip survives',
+   L.parseLedger(L.serialiseLedger(A1)), A1);
+// Unknown keys are dropped rather than carried forward, so a ledger written by
+// a future version cannot smuggle state into an older one.
+eq('unknown top-level keys are dropped',
+   Object.keys(L.parseLedger('{"unlocked":{},"counters":{},"on":true,"evil":1}')).sort(),
+   ['counters', 'on', 'unlocked']);
+
+console.log('\n[ledger] orphans, and the capstone');
+// The bug this was written for: three ids dropped in v7 stayed in the ledger,
+// and counting them awarded UNITY! three achievements early.
+const known = new Set(A.map(a => a.id));
+const withOrphans = led(Object.fromEntries(
+  [...[...known].slice(0, 97), 'ceiling', 'mersenne', 'thelema'].map(id => [id, 1])));
+eq('raw key count is inflated by the orphans',
+   Object.keys(withOrphans.unlocked).length, 100);
+eq('countKnown ignores them', L.countKnown(withOrphans, id => known.has(id)), 97);
+const unityAt = A.length - 1;
+yes(L.countKnown(withOrphans, id => known.has(id)) < unityAt,
+    `the capstone stays shut at ${unityAt} with three orphans in the ledger`,
+    'orphans can still buy the capstone');
+// And it still fires when the achievements are real.
+const genuine = led(Object.fromEntries(
+  [...known].filter(id => id !== 'unity').map(id => [id, 1])));
+yes(L.countKnown(genuine, id => known.has(id)) >= unityAt,
+    'the capstone still fires on the hundredth real unlock',
+    'the capstone can no longer be earned at all');
+
+console.log('\n[ledger] the display set');
+// getEnabled() returned `override ?? all unlocked`, and the moment anything
+// touched the selection the override froze and never grew — so everything
+// earned afterwards was invisible. It presented as "I just unlocked TWINNING!
+// and still no lines."
+eq('with no override, everything unlocked is shown',
+   [...L.enabledIds(A1, null)].sort(), ['first', 'rest']);
+eq('an override replaces it wholesale',
+   [...L.enabledIds(A1, new Set(['rest']))], ['rest']);
+// The override is a SNAPSHOT the caller adds to, which is why unlock() has to
+// push new ids into it. Asserting the shape is a Set is what makes that legal.
+yes(L.enabledIds(A1, new Set(['rest'])) instanceof Set,
+    'the override comes back as a Set, so unlock() can add to it');
+
+// ============================================================
 console.log('\n[links] the reference links');
 // Added in v7. A link only ever appears on an EARNED row, so it cannot give an
 // answer away — but a broken or non-https one ships to players either way.

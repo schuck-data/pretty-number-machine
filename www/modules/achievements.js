@@ -27,7 +27,14 @@
 
 import * as THREE from 'three';
 import { registerModule, state, on, emit, MAX_N, prefersReducedMotion } from '../core/state.js';
-import { resolveN, update, buildScene } from '../core/renderer.js';
+import { resolveN, update, buildScene, frameToFit } from '../core/renderer.js';
+// The ledger's logic lives in a three.js-free file so it can be tested
+// headlessly — see the note at the top of it. What stays here is the I/O and
+// everything that touches the figure.
+import {
+  LEDGER_KEY, emptyLedger, parseLedger, serialiseLedger,
+  mergeLedgers, countKnown, enabledIds,
+} from './achievements-ledger.js';
 import { interpolatedPos } from '../core/positions.js';
 import { platform } from '../platform/index.js';
 // The number sets and the gilding rule. Kept in a separate, Three-free file so
@@ -260,71 +267,30 @@ const BY_ID = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
 // ============================================================
 // THE LEDGER
 // ============================================================
-const LEDGER_KEY = 'pnm-achievements-v1';
-
-// `on` is the master switch. Achievements are OPT-IN: nothing is recorded until
-// the player turns them on, and turning them on is itself the first achievement.
-// That is a deliberate design choice, not a privacy hedge — FIRST! has to be
-// earnable, and it cannot be if tracking was already running.
-let ledger = { unlocked: {}, counters: {}, on: false };
+// THE STATE. The logic that operates on it — parse, merge, count, the enabled
+// set — moved to achievements-ledger.js, which has no three.js in it and can
+// therefore be tested. What is left here is the mutable holder and the two
+// functions that touch localStorage.
+let ledger = emptyLedger();
 let ready = false;
 
-// COUNT ONLY IDS THAT STILL EXIST. The ledger is a union that never withdraws
-// an unlock (see mergeLedgers), so an achievement DROPPED from the design leaves
-// its entry behind forever — v7 dropped three, and anyone who had earned them
-// still carries `ceiling`, `mersenne` or `thelema`.
-//
-// Counting those was a real bug and the worst kind: UNITY! fires on
-// `countUnlocked() >= ACHIEVEMENT_DEFS.length - 1`, so three orphans meant the
-// capstone — the flood, the finale, the whole board catching fire — could be
-// awarded three achievements early, to the players who had played the LONGEST.
-// It would also have shown "101 of 101 earned" in the panel with things still
-// locked underneath.
-//
-// Nothing prunes the local ledger, deliberately: a dropped achievement might
-// come back, and discarding an unlock is the one thing this system must never
-// do. So the entry stays and the COUNT ignores it. Note the remote path already
-// did this — reconcile() filters the PGS list through BY_ID.has — and only the
-// local count was missing it.
-function countUnlocked() {
-  let n = 0;
-  for (const id in ledger.unlocked) if (BY_ID.has(id)) n++;
-  return n;
-}
+// Orphan-safe: an id dropped from the design still sits in the ledger and must
+// not be counted. See countKnown() for what that bug cost.
+function countUnlocked() { return countKnown(ledger, (id) => BY_ID.has(id)); }
 
 export function isUnlocked(id) { return !!ledger.unlocked[id]; }
 export function isTracking() { return !!ledger.on; }
 export function getLedger() { return { unlocked: { ...ledger.unlocked }, counters: { ...ledger.counters } }; }
 
+// The only two places in this layer that know storage exists. Both swallow
+// their exceptions: private-mode Safari throws on setItem, and a ledger that
+// cannot be saved is still a ledger that works for this session.
 function readLocal() {
-  try {
-    const raw = localStorage.getItem(LEDGER_KEY);
-    if (!raw) return null;
-    const v = JSON.parse(raw);
-    return (v && typeof v === 'object') ? { unlocked: v.unlocked || {}, counters: v.counters || {}, on: !!v.on } : null;
-  } catch { return null; }
+  try { return parseLedger(localStorage.getItem(LEDGER_KEY)); } catch { return null; }
 }
 
 function writeLocal() {
-  try { localStorage.setItem(LEDGER_KEY, JSON.stringify(ledger)); } catch {}
-}
-
-// DEV: union of unlocks, max of counters. The rule has to be commutative and
-// idempotent, because it runs on every start against both the PGS list and the
-// saved-game snapshot, in whatever order they resolve. An unlock is never
-// withdrawn by a merge — losing an achievement because a device was offline is
-// the single worst failure this system could have.
-function mergeLedgers(a, b) {
-  // `on` is sticky across a merge: a device that had tracking switched on is
-  // the one carrying the intent, and a fresh install should inherit it.
-  const out = { unlocked: { ...a.unlocked }, counters: { ...a.counters }, on: !!(a.on || b.on) };
-  for (const [id, at] of Object.entries(b.unlocked || {})) {
-    if (!out.unlocked[id] || at < out.unlocked[id]) out.unlocked[id] = at;
-  }
-  for (const [id, n] of Object.entries(b.counters || {})) {
-    out.counters[id] = Math.max(out.counters[id] || 0, n);
-  }
-  return out;
+  try { localStorage.setItem(LEDGER_KEY, serialiseLedger(ledger)); } catch {}
 }
 
 async function unlock(id) {
@@ -397,7 +363,7 @@ export function setEnabled(ids) {
 }
 
 export function getEnabled() {
-  return enabledOverride ?? new Set(Object.keys(ledger.unlocked));
+  return enabledIds(ledger, enabledOverride);
 }
 
 export function getGild() { return (gildCache ??= gildFor(getEnabled())); }
@@ -1029,6 +995,25 @@ function applyTrophyRoom() {
   // trophy room therefore cannot award anything on its way in.
   $('reset-btn')?.click();
 
+  // PHYSICS OFF. The room is a display case: the figure turns on its own, and a
+  // stray touch flinging nodes out of the arrangement is not what anybody came
+  // to see. Reset has just switched both back on, so this has to follow it.
+  //
+  // These are MODULE controls, built from mod.controls rather than written into
+  // index.html, so they are reached by an id derived from the state key and set
+  // by dispatching a change — dispatching is what runs the module's onChange
+  // and updates state, and it is exactly what Reset itself does in panel.js.
+  //
+  // Safe with respect to the ledger: a dispatched event has isTrusted false,
+  // and OUCH! listens for the physics:dragStart BUS event rather than for these
+  // toggles, so neither can be awarded on the way in.
+  const setToggle = (id, val) => {
+    const el = $(id);
+    if (el && el.checked !== val) { el.checked = val; el.dispatchEvent(new Event('change')); }
+  };
+  setToggle('ctrl-_physicsTouch', false);
+  setToggle('ctrl-_physicsCollision', false);
+
   setEl('auto-n', false, 'checked');
   const nIn = $('n-input');
   if (nIn) { nIn.disabled = false; nIn.value = TROPHY_N; }
@@ -1064,6 +1049,19 @@ function applyTrophyRoom() {
     angleDrift: false, autoRotate: true, driftSpeed: 0.15,
     dimension: 1.6, shapeDrift: false, _gildView: true,
   });
+
+  // FRAME IT. Reset put the camera at HOME_CAM_POS, a fixed vector that knows
+  // nothing about the aspect — so on a portrait phone the room arrived 1.6x too
+  // close, and closing the sheet afterwards made it worse rather than better.
+  // Measured on a Pixel 7: distance 15.6 where the fit for a 411x914 viewport
+  // is 25.3.
+  //
+  // frameToFit() keeps HOME's three-quarter viewing angle and sets only the
+  // distance, then arms the resize refit — so opening and closing the sheet
+  // re-derives it instead of leaving a framing computed for a viewport that is
+  // no longer there. §9's "everyone's trophy room is the same size" was the
+  // intent all along; a fixed vector could never deliver it across screens.
+  frameToFit();
 
   const g = $('gilding-toggle'); if (g) g.checked = true;
 

@@ -363,6 +363,11 @@ function buildModuleSections() {
           ${ctrl.label}
         `;
         const cb = tgl.querySelector('input');
+        // An id so PRESETS can reach it. Module toggles are built from
+        // mod.controls and had none, which meant the trophy room could set the
+        // forty hand-written knobs and not these. Derived from the state key,
+        // so it cannot drift from the control it belongs to.
+        if (ctrl.key) cb.id = `ctrl-${ctrl.key}`;
         cb.addEventListener('change', () => {
           if (ctrl.onChange) ctrl.onChange(cb.checked);
           if (ctrl.hot) {

@@ -1416,7 +1416,7 @@ export function init(el) {
   // resize must not take it back. 'start' fires only on real interaction —
   // controls.update() from auto-rotate or from refitTopDown() emits 'change',
   // never this — so damping and the auto-rotate sweep cannot disarm it.
-  controls.addEventListener('start', () => { topDownFramed = false; });
+  controls.addEventListener('start', () => { autoFramed = false; });
 
   // Resize observer
   resizeObserver = new ResizeObserver(() => {
@@ -1437,7 +1437,7 @@ export function init(el) {
     // the correct distance is 25.3. The camera stayed at 11.4, so the figure
     // was more than twice as close as it should have been. No-ops unless the
     // camera is still where Dazzle put it.
-    refitTopDown();
+    refitFramedDistance();
   });
   resizeObserver.observe(el);
 
@@ -1660,19 +1660,22 @@ export function rebuild(full) {
 // camera declares, so on a portrait phone the horizontal is the tighter
 // constraint and a distance that frames the disk on a desktop crops it badly.
 // THE FRAMING IS A FUNCTION OF THE ASPECT, so it goes stale whenever the
-// viewport changes shape. This flag says the camera is currently sitting where
-// setCameraTopDown() put it and has not been touched since, which is the only
-// case where moving it on a resize is a correction rather than a theft.
+// viewport changes shape. This flag says the camera is at a distance THIS FILE
+// derived rather than one the player chose, which is the only case where moving
+// it on a resize is a correction rather than a theft.
 //
-// Cleared by any user interaction (the 'start' listener on OrbitControls) and
-// by resetCamera(), which puts the camera at a FIXED home position that is not
-// aspect-derived and must not be pulled around by this.
-let topDownFramed = false;
+// Set by setCameraTopDown() (Dazzle) and by frameToFit() (the trophy room).
+// Cleared by any user interaction — the 'start' listener on OrbitControls — and
+// by resetCamera(), which puts the camera at a FIXED home position with nothing
+// to re-derive.
+let autoFramed = false;
 
 // Distance at which the figure fills the frame, from the aspect. The vertical
 // FOV is what the camera declares, so on a portrait phone the HORIZONTAL is
-// the tighter constraint — which is the whole reason this cannot be a constant.
-function topDownDistance() {
+// the tighter constraint — which is the whole reason this cannot be a constant,
+// and why HOME_CAM_POS being one made the trophy room 1.6x too close in
+// portrait.
+function fitDistance() {
   // Was 1.15. Pulled in to 1.06 — Dazzle fills the disk edge to edge, so the
   // extra air read as the figure sitting small in the frame rather than as
   // breathing room.
@@ -1687,19 +1690,38 @@ function topDownDistance() {
 // direction the camera is looking from. Re-running setCameraTopDown() outright
 // would also snap the azimuth back to zero, which is visible as a jump when
 // auto-rotate is on — and Dazzle turns auto-rotate on.
-function refitTopDown() {
-  if (!topDownFramed || !threeCamera || !threeControls) return;
+function refitFramedDistance() {
+  if (!autoFramed) return;
+  applyFitDistance();
+}
+
+// Put the camera at the fit distance along the direction it is ALREADY looking
+// from. Direction is preserved on purpose: re-running a full framing call would
+// also snap the azimuth back to zero, which is visible as a jump whenever
+// auto-rotate is on — and both Dazzle and the trophy room turn it on.
+function applyFitDistance() {
+  if (!threeCamera || !threeControls) return;
   const offset = threeCamera.position.clone().sub(threeControls.target);
   if (offset.lengthSq() < 1e-9) return;
-  offset.setLength(topDownDistance());
+  offset.setLength(fitDistance());
   threeCamera.position.copy(threeControls.target).add(offset);
   threeControls.update();
 }
 
+// Frame the figure without choosing an angle — the caller's current viewpoint
+// is kept and only the distance is set. The trophy room uses this to keep
+// HOME_CAM_POS's three-quarter view while getting a distance that suits the
+// screen it is actually on.
+export function frameToFit() {
+  if (!threeCamera || !threeControls) return;
+  applyFitDistance();
+  autoFramed = true;
+}
+
 export function setCameraTopDown() {
   if (!threeCamera || !threeControls) return;
-  const d = topDownDistance();
-  topDownFramed = true;
+  const d = fitDistance();
+  autoFramed = true;
 
   threeControls.target.set(0, 0, 0);
   // Not exactly (0, d, 0). A view direction parallel to the up vector is
@@ -1744,9 +1766,13 @@ export function resetMorph() {
 export function resetCamera() {
   if (!threeCamera || !threeControls) return;
   // HOME_CAM_POS is a fixed vector, not aspect-derived, so a later resize has
-  // nothing to re-derive. Leaving the flag set would have refitTopDown() drag
-  // the camera off that position the next time the sheet moved.
-  topDownFramed = false;
+  // nothing to re-derive. Leaving the flag set would drag the camera off that
+  // position the next time the sheet moved.
+  //
+  // The trophy room clicks Reset and THEN calls frameToFit(), so it re-arms
+  // deliberately, one line later. Order matters and is the reason this clears
+  // rather than being left alone.
+  autoFramed = false;
   threeCamera.position.copy(HOME_CAM_POS);
   threeCamera.up.set(0, 1, 0);
   threeControls.target.copy(HOME_CAM_TARGET);

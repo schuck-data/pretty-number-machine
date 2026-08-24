@@ -82,6 +82,7 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | File | Owns |
 |---|---|
 | `www/modules/achievements-data.js` | The number sets, the definitions, and the gilding rule. **No Three.js, no renderer** — so it can be checked headlessly |
+| `www/modules/achievements-ledger.js` | The ledger as pure functions: parse, merge, the orphan-safe count, the enabled set. **Same rules** — no Three.js, no DOM, no storage — so it can be checked too (§11) |
 | `www/modules/achievements.js` | The ledger, the predicates, the UI, the toast, the sound, the gilding paint |
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
 | `tools/check-achievements.mjs` | **81 assertions**, in `npm run check` and CI |
@@ -766,25 +767,41 @@ node tools/achievements-table.mjs        # TSV
 node tools/achievements-table.mjs --json # JSON
 ```
 
-**The untestable half is still untestable, and it has now cost three bugs.**
-The gilding *rule* is checked headlessly because `achievements-data.js` is free
-of Three.js. The ledger, the display set and everything that renders a row live
-in `achievements.js`, which imports the renderer and cannot load in Node.
+**The untestable half got smaller — the LEDGER came out, 2026-08-24.**
 
-Two of the bugs in §8 were in that half. **v7 added a third**: the
-`achievement:unlocked` payload did not carry `criteria`, so the toast rendered
-the literal string "undefined" — with every check green, found only by opening
-the app.
+`achievements.js` imports three.js and cannot load in Node, so nothing in it
+could ever be checked headlessly. Three real bugs came out of that file, and
+every one was found by opening the app rather than by a check: the
+`achievement:unlocked` payload shipping without `criteria` so the toast printed
+"undefined", the capstone counting orphaned ids, and the display set going stale
+the first time anything touched a checkbox.
 
-What v7 did about it was **not** the refactor this note used to recommend. It
-added a source grep asserting the payload carries every field the toast prints,
-which is the same instrument as the SPARTA! tripwire: a poor test and a good
-tripwire, defending against a deletion rather than proving behaviour.
+**`achievements-ledger.js` now holds the part with a contract and no rendering
+in it** — parse, serialise, merge, the orphan-safe count, the enabled set. Same
+reasoning that made `achievements-data.js` a separate file for the number sets,
+and the rules are the same: no three.js, no DOM, no localStorage, no bus, every
+function pure. The I/O stays in `achievements.js` as a two-line wrapper, because
+dragging `localStorage` across would put the file straight back on the wrong
+side of the line.
 
-**The refactor is still the right answer** — lift the ledger and the enabled set
-into a third Three-free file — and it is still not done. Every tripwire added
-instead is a small argument that it should be, and §8 records the day two of
-them turned out to have been no-ops the whole time.
+That bought **23 behavioural assertions** on code that had none. The merge rule
+had claimed in a comment for months that it was commutative and idempotent and
+never withdrew an unlock; all three are now tested, along with corrupt-input
+handling, the orphan count in both directions, and the display set. The checker
+went from 85 to 108.
+
+**Two things worth keeping from writing those tests.** The commutativity
+assertion failed first time and the code was fine — `JSON.stringify` preserves
+key insertion order, so `merge(a,b)` and `merge(b,a)` serialise differently
+while being the same ledger. Compare by value, not by serialisation. And the
+capstone is asserted in BOTH directions: orphans must not buy it, and the
+hundredth real unlock must still fire it. A test for only the first would pass
+happily on an achievement nobody could ever earn.
+
+**What is still untestable** is everything that paints: the predicates, the row
+and toast rendering, the gilding, the trophy-room preset. §8 records the day two
+of the source greps guarding that half turned out to have been no-ops the whole
+time.
 
 ---
 
