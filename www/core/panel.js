@@ -749,6 +749,17 @@ export function initPanel() {
   // geometric mapping below. A linear slider across that range would put every
   // value from the floor to 0.01x inside the first three pixels of travel.
   const SWEEP_MIN = 0.0001, SWEEP_MAX = 3;
+
+  // What Dazzle sets the sweep to. A CHOSEN number, not the floor — it used to
+  // be SWEEP_MIN on the argument that "the lowest setting" was the
+  // specification, and it is not: what Dazzle wants is a particular speed, and
+  // that speed happens to sit six notches above the bottom of the range.
+  //
+  // ANGLE_SWEEP_RATE in renderer.js is 6 degrees per second at speed 1.0, so
+  // this is 0.0036 deg/s — a full turn in about 28 hours. The floor was nearer
+  // a week, which turned out to be slow enough that nothing appeared to happen
+  // at all within one sitting.
+  const DAZZLE_SWEEP = 0.0006;
   const sweepPosToSpeed = pos => SWEEP_MIN * Math.pow(SWEEP_MAX / SWEEP_MIN, pos / 100);
   const sweepSpeedToPos = spd =>
     Math.round(100 * Math.log(spd / SWEEP_MIN) / Math.log(SWEEP_MAX / SWEEP_MIN));
@@ -1001,13 +1012,9 @@ export function initPanel() {
     $('drift-speed-display').textContent = '0.3';
     $('shape-drift').checked = false;
 
-    // The divergence sweep, at the floor. This is the one Dazzle setting that
-    // is not about being showy — it is the slowest motion in the app by four
-    // orders of magnitude, a full turn in something like a week.
-    //
-    // Deliberately SWEEP_MIN rather than a pinned number: "the lowest setting"
-    // is the specification, so if the floor moves this follows it down. It has
-    // already followed it once.
+    // The divergence sweep, very nearly at the floor. This is the one Dazzle
+    // setting that is not about being showy — it is the slowest motion in the
+    // app by three orders of magnitude, a full turn in about 28 hours.
     //
     // It pairs with `shapeDrift: false` above rather than fighting it. Dazzle
     // holds the SHAPE still and moves everything else, so the field is a stable
@@ -1017,7 +1024,7 @@ export function initPanel() {
     // count. Anything faster and it stops being the background process it is
     // meant to be and starts competing with the colour drift.
     $('angle-drift').checked = true;
-    showSweepSpeed(SWEEP_MIN);
+    showSweepSpeed(DAZZLE_SWEEP);
 
     // Physics off. Dazzle is a picture, not a toy: the value of it is a
     // thousand nodes holding a precise arrangement, and the whole point of the
@@ -1061,12 +1068,12 @@ export function initPanel() {
       autoRotate: DEFAULT_CONFIG.autoRotate,
       driftSpeed: 0.3,
       // The sweep, matching the two controls set above. Note this is NOT gated
-      // on reduced motion the way autoRotate is: at the floor the angle moves
-      // about six thousandths of a degree per second, which is below the
-      // threshold of anything a vestibular preference is protecting against.
-      // The camera spin is the thing that had to stand down, and it does.
+      // on reduced motion the way autoRotate is: the angle moves about three
+      // thousandths of a degree per second, which is below the threshold of
+      // anything a vestibular preference is protecting against. The camera spin
+      // is the thing that had to stand down, and it does.
       angleDrift: true,
-      angleDriftSpeed: SWEEP_MIN,
+      angleDriftSpeed: DAZZLE_SWEEP,
     });
 
     // Last, so it frames the shape the settings above just chose. With the
