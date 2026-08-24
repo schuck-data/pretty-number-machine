@@ -85,7 +85,7 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | `www/modules/achievements-ledger.js` | The ledger as pure functions: parse, merge, the orphan-safe count, the enabled set. **Same rules** — no Three.js, no DOM, no storage — so it can be checked too (§11) |
 | `www/modules/achievements.js` | The ledger, the predicates, the UI, the toast, the sound, the gilding paint |
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
-| `tools/check-achievements.mjs` | **81 assertions**, in `npm run check` and CI |
+| `tools/check-achievements.mjs` | The checks, in `npm run check` and CI. §11 has the count — it is written in exactly one place because it has gone stale three times |
 | `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data, including the Play Console `initial_state` column. **Proofread the console paste here.** Rewritten 2026-08-23 for the v2 field names, having quietly thrown since the rebuild; now runs in CI so it cannot rot again |
 | `docs/achievements-v6.xlsx` | The v2 list. **History** — superseded by the code |
 | `docs/achievements-v7-proposal.xlsx` | The v7 design record: every row assessed, drops, additions, rejections |
@@ -746,7 +746,7 @@ Nothing imports it and nothing should.
 | `index.html` | styles for `.ach-criteria`, `.ach-link`, `.ach-trophy-btn`, `.ach-toast-criteria` |
 | `platform/index.js` | store ids regenerated from the data file |
 | `achievements-table.mjs` | a `link` column, deliberately outside the Play Console set |
-| `check-achievements.mjs` | 60 → 81 assertions |
+| `check-achievements.mjs` | grew substantially; see §11 |
 
 ---
 
@@ -756,11 +756,15 @@ Nothing imports it and nothing should.
 npm run check
 ```
 
-Runs `tools/check.mjs` and `tools/check-achievements.mjs` — **81 assertions**
+Runs `tools/check.mjs` and `tools/check-achievements.mjs` — **108 assertions**
 over the list shape, the XP budget, trigger uniqueness, the dial guard, the
-computed families, the gilding rule, the gild-set ceiling, and from v7 the
-payoff rule, the reference links and the content-rating denylist.
-Dependency-free, in CI.
+computed families, the gilding rule, the gild-set ceiling, the ledger's merge
+contract, and from v7 the payoff rule, the reference links and the
+content-rating denylist. Dependency-free, in CI.
+
+**This is the only place the count is written**, and that is deliberate: it had
+been repeated in four documents and went stale three times in two days. Anywhere
+else that wants it should point here, or better, just run the command.
 
 ```bash
 node tools/achievements-table.mjs        # TSV
