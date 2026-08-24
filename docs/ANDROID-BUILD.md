@@ -27,6 +27,12 @@ out of scope here except where a choice now would foreclose it.
 
 ## 1. Goals, and the constraints that follow
 
+> **No dates on goals.** Anything below describes a state to reach, not a day to
+> reach it on. External deadlines are real but they are Play's to set and Play
+> moves them, so they are described here and *read from the console* — a stale
+> date copied into a repo is worse than no date, because it is believed. Records
+> of what already happened keep their dates; that is the whole value of a record.
+
 | Goal | Constraint it imposes |
 |---|---|
 | Achievements visible on the Play Store / Play Games profile | Play Games Services v2, which only exists as an Android SDK → a native shell with a bridge to JS |
@@ -35,7 +41,7 @@ out of scope here except where a choice now would foreclose it.
 | No server, no database, no accounts | Play holds purchases; PGS holds achievements and the saved-game copy of the ledger. Nothing else holds anything |
 | No external requests at runtime | Still true. Plugins talk to Google Play services on-device; the app makes no HTTP calls |
 | iOS possible later | Every native call goes through one adapter with a per-platform ID map; nothing in `core/` or `modules/` mentions PGS or Play |
-| Publishable after 2026-08-31 | Target API 36 (Capacitor 8 does this) and Play Billing Library **8+** (the billing plugin must bundle it) |
+| Publishable under Play's current submission rules | Target API 36 (Capacitor 8 does this) and Play Billing Library **8+** (the billing plugin must bundle it). Both carry cut-off dates that Play moves — see §6 |
 
 ## 2. Repository changes
 
@@ -321,7 +327,7 @@ Steps marked ⚠ can only be done by Dakota.
 
 | # | Step | Depends on |
 |---|---|---|
-| 1 | ⚠ Finish org account: identity verification, phone, **second Admin user** (only recovery path) | in progress as of 2026-08-10 |
+| 1 | ⚠ Finish org account: identity verification, phone, **second Admin user** (only recovery path) | started; check the console for its current state |
 | 2 | Create the app: **Game → Educational**, package `com.schuckdata.pnm`, free | 1 |
 | 3 | **Play Games Services**: create the game project; Cloud project + OAuth consent screen; Android credential with the **app-signing** SHA-1 (from Play Console, not the upload key); define achievements (names, descriptions, icons, XP); enable Saved Games; add tester accounts; publish the PGS configuration | 2, §5 step 6 for the SHA-1 |
 | 4 | ⚠ Merchant/payments profile, tax interview, payout account | 1 |
@@ -337,9 +343,18 @@ Steps marked ⚠ can only be done by Dakota.
 `assetlinks.json` in the `schuck-data.github.io` repo is no longer used by
 anything. Harmless; remove it if tidying that repo.
 
-**Deadlines:** new submissions need target API 36 and Play Billing Library 8+
-from **2026-08-31**; an extension to **2026-11-01** can be requested in the
-console. Capacitor 8 covers the first; the billing plugin must cover the second.
+**Deadlines.** Play requires new submissions to target **API 36** and to bundle
+**Play Billing Library 8+**. Both have cut-off dates, and an extension to the
+billing one can be requested through a form in the console.
+
+**The dates are deliberately not written here.** Play has moved them before and
+will again, and a number in this file will be believed long after it stops being
+true. Read the current ones in Play Console, under the policy and app-bundle
+notices, before planning around them.
+
+Capacitor 8 already covers the API level — `variables.gradle` has `compileSdk`
+and `targetSdk` at 36. The billing plugin must cover the library version, which
+is the live reason the plugin choice in §7 is the first decision to make.
 
 ## 7. Decisions still open
 

@@ -170,7 +170,7 @@ and once a native shell exists Capacitor is the standard way to have one.
 - **Organisation account created** under `dakota@schuckdata.com` (Workspace
   identity, administered from `ds89holdco@gmail.com`).
 - **D-U-N-S issued** 2026-08-10.
-- **Identity verification was in progress** as of 2026-08-10, documents uploaded.
+- **Identity verification was started**, documents uploaded.
   **Check the console for its current state before assuming anything.** Phone
   verification is gated behind identity and organisation verification.
 - Nothing has been uploaded. No app record exists yet.
@@ -616,12 +616,12 @@ by driving a real browser by hand, and two real bugs were found that way.
 
 | Document | Read it for | Status |
 |---|---|---|
-| `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Steps 1–2 executed 2026-08-15; §9 is the trap list and is worth reading first |
+| `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. §5 steps 1–3 done; **4 (PGS) and 5 (billing) not started**. §9 is the trap list and is worth reading first |
 | `ADS.md` | **The ads layer.** The register the copy must hold, the two products, the reveal the paywall withholds, the entitlement rule, and the corner-controls collision history | Current, 2026-08-24 |
-| `ACHIEVEMENTS.md` | **The achievement layer.** Both designs: v1 as built, v2 as specified. The gilding rule, clue craft, the accordion, the traps, and the implementation brief | Current, 2026-08-23 |
-| `ADS.md` | **The ads layer.** The register the copy has to hold, the two products, the entitlement rule and the trap in it, and how to look at the slideshow before billing exists | Current, 2026-08-23 |
+| `ACHIEVEMENTS.md` | **The achievement layer.** The gilding rule, the payoff rule (§2a), clue craft, the accordion, what an earned row shows (§13), the traps (§8), and what is still open (§14) | Current, 2026-08-24. Describes **v7 as built** |
 | `CODE-NOTES.md` | The two comment layers in `www/` — `DEV:` for implementation, `EDU:` for the mathematics — and where the mathematics actually lives | Current, 2026-08-15 |
-| `achievements-v6.xlsx` | **The v2 list.** Every achievement's cluster, number, id, name, clue, criteria, gild set and blurb | **Authoritative** for v2. For v1 as built, use `tools/achievements-table.mjs` |
+| `achievements-v6.xlsx` | The v2 list, as it stood before v7 | **History.** `achievements-data.js` is authoritative now — see `ACHIEVEMENTS.md` §10. For the current list, run `tools/achievements-table.mjs` |
+| `achievements-v7-proposal.xlsx` | The v7 design record: all 101 assessed against the rubric, the drops, the additions, the rejections, and the cluster-balance argument | A record, not a source. Generated from the code; nothing reads it back |
 | `PLAN.md` | The charter, the project's history and reasoning, the gotchas learned building the web app | History. Predates v1; its Burst 6 (TWA via Bubblewrap) is superseded |
 | `V1-PLAN.md` | Why each v1 change was made; which performance claims were measured versus judged | History. All items closed. Its references to a paid TWA are superseded |
 | `archive/PLAY-STORE-HANDOFF.md` | The TWA / paid-app plan, in full | **Superseded 2026-08-15.** Kept for the asset-links and Play-deadline reasoning only |
