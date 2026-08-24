@@ -166,7 +166,9 @@ export const SLIDES = [
     glyphNote: 'SUMMATION SINCE ANTIQUITY',
     wordmark: 'SIGMA',
     quote: 'It added all of us. At the same time. I have never felt so seen.',
-    who: 'Natural Numbers',
+    // The set signs its own name. It is a slide about notation; spelling out
+    // what the symbol means would be the one un-branded thing on it.
+    who: 'ℕ',
     legal: 'Bounds sold separately. Sigma is not liable for divergent series.',
     palette: 'chromeCyan',
     treatment: 'chrome',
@@ -228,7 +230,10 @@ export const SLIDES = [
     wordmark: 'THE DOT',
     headline: 'MULTIPLICATION FOR PEOPLE WHO KNOW.',
     tm: true,
-    quote: 'If you have to ask what it does, it is not for you.',
+    // An array is a set of LINES. This one breaks at the comma because the
+    // pause is the whole delivery — run it together and it is a sentence,
+    // break it and it is a door closing.
+    quote: ['If you have to ask what it does,', 'it is not for you.'],
     who: 'a physicist, declining to elaborate',
     legal: 'Left as an exercise for the reader.',
     palette: 'chromeCyan',
@@ -240,7 +245,7 @@ export const SLIDES = [
     glyphNote: 'GROW THE PIE',
     wordmark: 'BIG PI',
     headline: "DON'T SETTLE FOR SIGMA.",
-    legal: 'An empty product is 1. An empty sum is 0. We think that says it all.',
+    legal: "An empty product is 1. An empty sum is 0. 'Nuff said.",
     palette: 'playroom',
     treatment: 'flat',
   }),

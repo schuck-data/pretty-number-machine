@@ -286,9 +286,14 @@ function slideHTML(s) {
           : ''
       }</p>`;
   const note = s.glyphNote ? `<p class="ads-glyphnote">${esc(s.glyphNote)}</p>` : '';
-  const quote = s.quote ? `
+  // A quote may be a string or an ARRAY OF LINES. The array form is how a slide
+  // says where it breaks — `cdot` breaks at its comma, because the pause is the
+  // delivery. Everything is still escaped; the only markup that reaches the
+  // page is the <br> this builds.
+  const quoteLines = Array.isArray(s.quote) ? s.quote : (s.quote ? [s.quote] : []);
+  const quote = quoteLines.length ? `
         <blockquote class="ads-quote">
-          <p>&ldquo;${esc(s.quote)}&rdquo;</p>
+          <p>&ldquo;${quoteLines.map(esc).join('<br>')}&rdquo;</p>
           ${s.who ? `<cite>&mdash; ${esc(s.who)}</cite>` : ''}
         </blockquote>` : '';
   const cta = s.cta ? `<p class="ads-cta">${esc(s.cta)}</p>` : '';
@@ -428,8 +433,21 @@ function openFor(productId) {
 // DEV: only ever shows slides from OWNED products, so it cannot advertise
 // something the player has not bought — which would be a genuine advert, and
 // the one thing this feature must never accidentally become.
-const INTRUDE_MS = 90000;
+// A CLOCK, NOT A COUNTER, and that was a real choice. Tying the interruption to
+// activity — every hundredth adjustment, say — punishes the people using the app
+// most, and worse, it makes the banner feel CAUSAL: it arrives right after you
+// did something, so it reads as though you broke it. A bug, not a joke.
+//
+// Ninety seconds to the first one, then every four minutes. The first is early
+// enough that somebody who just ticked the box sees what they agreed to while
+// they still remember agreeing. Four minutes after that is roughly two or three
+// in a normal sitting — enough to be the bit, not enough to end the session.
+// Ten minutes was the alternative and it is too rare to register as something
+// you opted into.
+const INTRUDE_FIRST_MS = 90000;
+const INTRUDE_EVERY_MS = 240000;
 let intrudeTimer = null;
+let intrudeFirst = null;
 let banner = null;
 
 function eligibleSlides() {
@@ -465,8 +483,14 @@ function showBanner() {
 
 function scheduleIntrusion() {
   if (intrudeTimer) { clearInterval(intrudeTimer); intrudeTimer = null; }
+  if (intrudeFirst) { clearTimeout(intrudeFirst); intrudeFirst = null; }
   if (!state.adsIntrude) { hideBanner(); return; }
-  intrudeTimer = setInterval(showBanner, INTRUDE_MS);
+  // The clock restarts whenever the setting is switched on, so the first banner
+  // is ninety seconds from THAT moment rather than from launch.
+  intrudeFirst = setTimeout(() => {
+    showBanner();
+    intrudeTimer = setInterval(showBanner, INTRUDE_EVERY_MS);
+  }, INTRUDE_FIRST_MS);
 }
 
 // ============================================================
@@ -505,6 +529,7 @@ const mod = {
     stopShow();
     hideBanner();
     if (intrudeTimer) clearInterval(intrudeTimer);
+    if (intrudeFirst) clearTimeout(intrudeFirst);
     closeOverlay();
   },
 };

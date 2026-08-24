@@ -177,6 +177,13 @@ for (const p of D.PRODUCTS) {
      TELLS.filter(t => t.test(p.pitch)).map(String), []);
 }
 
+// The intrusion is on a CLOCK, not an action counter. An action counter
+// punishes heavy users and makes the banner feel causal — as though the last
+// thing you touched broke something. Pinned because "every Nth adjustment" is
+// an obvious-looking idea that somebody will have again.
+ok('intrusion is scheduled on a timer, not counted off user actions',
+   /INTRUDE_FIRST_MS/.test(ADS) && /INTRUDE_EVERY_MS/.test(ADS));
+
 // The intrusion default. Off, and in HOT_KEYS so toggling it does not dispose
 // and rebuild a thousand meshes to start a timer.
 const STATE = readFileSync(new URL('../www/core/state.js', import.meta.url), 'utf8');

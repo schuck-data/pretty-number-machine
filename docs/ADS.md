@@ -155,6 +155,16 @@ than in the panel. Two reasons, and the second is the real one:
    joke they have not bought. Putting it inside the thing you paid for means it
    can only be found by someone it applies to.
 
+**Cadence: a clock, not a counter.** Ninety seconds to the first banner, then
+every four minutes. Tying it to activity — every hundredth adjustment, say —
+punishes the people using the app most, and worse, it makes the banner feel
+CAUSAL: it arrives right after you did something, so it reads as though you
+broke it. A bug, not a joke. Ninety seconds is early enough that somebody who
+just ticked the box sees what they agreed to while they still remember agreeing;
+four minutes after that is two or three in a normal sitting. Ten minutes was the
+alternative and it is too rare to register as something you opted into. The
+clock restarts when the setting is switched on, not at launch.
+
 The banner only ever draws slides from **owned** products, so it cannot
 advertise something the player has not bought — which would be a genuine
 advert, and the one thing this feature must never accidentally become.
@@ -215,10 +225,15 @@ decorating it — which is the only thing that earns the frames.
   const inkCentre = baseline - (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
   console.log(100 * inkCentre / box.height);   // -> 34.2
   ```
-- **MERE PROXIMITY** drifts an `i` and a `j` toward each other inside the empty
-  frame and stops them side by side: `ij`, the product written with no operator
-  at all. They stop a hair apart, because touching would read as one word and
-  what is being sold is the proximity
+- **MERE PROXIMITY** brings an `i` and a `j` in from far outside the frame,
+  unfocused and almost invisible, and resolves them as they close: `ij`, the
+  product written with no operator at all. **Ships out of fog** — the blur
+  clearing alongside the opacity is what makes it read as emergence rather than
+  as a cross-fade, because a thing that simply fades up has always been there
+  and a thing that sharpens as it approaches has come from somewhere. Eight and
+  a half seconds against a ten-second dwell, so they are at rest, sharp and
+  adjacent, for the last second and a half. They stop a hair apart: touching
+  would read as one word, and what is being sold is the proximity
 
 Reduced motion drops all three. Each was arriving at a legible resting state, so
 nothing is lost but the arrival.

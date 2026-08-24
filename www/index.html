@@ -110,14 +110,31 @@
     padding: calc(20px + env(safe-area-inset-top)) 16px
              calc(20px + env(safe-area-inset-bottom))
              calc(16px + env(safe-area-inset-left));
-    overflow-y: auto; z-index: 10;
+    overflow-y: auto;
+    /* ABOVE the corner controls, which sit at 20. The sheet can be dragged
+       tall enough to reach them, and at z-index 10 a column of round buttons
+       floated over the panel's own content — reading as chrome stuck to the
+       glass rather than as a layer the sheet had covered.
+
+       The sheet's own furniture has to clear the sheet in turn: the grip and
+       the menu button both ride its top edge and would be buried by it. Hence
+       the run 25 / 26 / 27 below, which is the only place in this file where
+       the stacking order is worth reading as a group:
+         19  lens handle
+         20  corner controls, transport
+         25  the sheet
+         26  the grip that drags it
+         27  the menu button that opens it
+         55  an intruding advert
+         60  the ad overlay */
+    z-index: 25;
     transition: transform 0.3s ease;
   }
   /* Must travel its own full width, inset included, or a sliver of panel is
      left stuck to the edge of the screen when it is meant to be away. */
   #panel.collapsed { transform: translateX(calc(-280px - env(safe-area-inset-left))); }
   #panel-toggle {
-    position: absolute; z-index: 20;
+    position: absolute; z-index: 27;
     top: calc(12px + env(safe-area-inset-top));
     left: calc(12px + env(safe-area-inset-left));
     width: 32px; height: 32px;
@@ -1068,22 +1085,33 @@
     height: 100%; font-size: clamp(52px, 17vw, 84px); font-weight: 500;
     font-style: italic; line-height: 1;
   }
-  /* They fade in from much further out, and slowly. The first version started
-     them close and moved fast, which read as a transition rather than as an
-     approach — and the approach is the entire product. Nearly nine seconds
-     against a ten-second dwell, so the pair is at rest just long enough to be
-     read as `ij` before the deck moves on. */
-  .ads-ij span:first-child { animation: ads-ij-left 8600ms cubic-bezier(0.33, 0, 0.15, 1) 400ms both; }
-  .ads-ij span:last-child  { animation: ads-ij-right 8600ms cubic-bezier(0.33, 0, 0.15, 1) 400ms both; }
+  /* SHIPS OUT OF FOG. They start far outside the frame, unfocused and almost
+     invisible, and resolve as they close — the blur clearing alongside the
+     opacity is what makes it read as EMERGENCE rather than as a cross-fade.
+     A thing that simply fades up has always been there; a thing that sharpens
+     as it approaches has come from somewhere.
+
+     Slow on purpose, and the easing does most of that work: nearly all the
+     distance is covered early, so the last stretch is a long, barely-moving
+     settle. Eight and a half seconds against a ten-second dwell leaves them at
+     rest, sharp and adjacent, for the last second and a half — which is the
+     shot the slide exists for.
+
+     They stop a hair apart. Touching would read as one word; what is being
+     sold is the proximity. */
+  .ads-ij span:first-child { animation: ads-ij-left 8300ms cubic-bezier(0.22, 0.62, 0.16, 1) 300ms both; }
+  .ads-ij span:last-child  { animation: ads-ij-right 8300ms cubic-bezier(0.22, 0.62, 0.16, 1) 300ms both; }
   @keyframes ads-ij-left {
-    0%   { transform: translateX(-340%); opacity: 0; }
-    22%  { opacity: 1; }
-    100% { transform: translateX(-0.06em); opacity: 1; }
+    0%   { transform: translateX(-420%); opacity: 0;    filter: blur(18px); }
+    20%  {                               opacity: 0.22; filter: blur(13px); }
+    62%  {                               opacity: 0.8;  filter: blur(4px); }
+    100% { transform: translateX(-0.06em); opacity: 1;  filter: blur(0); }
   }
   @keyframes ads-ij-right {
-    0%   { transform: translateX(340%); opacity: 0; }
-    22%  { opacity: 1; }
-    100% { transform: translateX(0.06em); opacity: 1; }
+    0%   { transform: translateX(420%);  opacity: 0;    filter: blur(18px); }
+    20%  {                               opacity: 0.22; filter: blur(13px); }
+    62%  {                               opacity: 0.8;  filter: blur(4px); }
+    100% { transform: translateX(0.06em); opacity: 1;   filter: blur(0); }
   }
 
   /* Reduced motion: the products still show, they simply stop performing.
@@ -1439,7 +1467,7 @@
     /* Drag handle sitting exactly on the sheet's top edge. Hidden when the
        sheet is away — there is no edge to grab. */
     #sheet-grip {
-      position: absolute; left: 0; right: 0; z-index: 15;
+      position: absolute; left: 0; right: 0; z-index: 26;
       bottom: var(--sheet-h);
       height: 24px; margin-bottom: -12px;
       display: flex; align-items: center; justify-content: center;
