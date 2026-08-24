@@ -41,7 +41,7 @@ import * as THREE from 'three';
 import { registerModule, state, on } from '../core/state.js';
 import { showInfoAt, hideInfo } from './info.js';
 import { primeFactorsOf, getPrimeRGB } from '../core/math.js';
-import { buildRunShapes, lerpRunShapes } from '../core/renderer.js';
+import { buildRunShapes, lerpRunShapes, resolveN } from '../core/renderer.js';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -249,6 +249,14 @@ function updateLabels() {
   for (const nd of nodesRef) {
     if (!nd.mesh || !nd.mesh.visible) continue;
 
+    // A decomposition silences every other label. The whole point of that mode
+    // is to reduce the figure to one argument, and leaving sixty numbers
+    // labelled around it puts the noise straight back — the dimming says "not
+    // these" while the labels keep insisting "all of these". Only the terms of
+    // the argument keep their names: the number being explained and the primes
+    // that explain it, or the prime whose line is lit.
+    if (labelWhitelist && !labelWhitelist.has(nd.n)) continue;
+
     // mesh.position, not getWorldPosition(). Nodes are added straight to the
     // scene with no parent transform, so the two are identical — but the
     // getter forces a matrix update per node, and at high N that is thousands
@@ -381,6 +389,9 @@ let decompN = null;
 let decompRuns = [];           // { line, run, buf }
 let decompSet = null;          // every node ON the runs, endpoints included
 let decompFactors = null;      // just the primes, for the extra lift
+// Which numbers keep their labels while a decomposition is up. Null means "all
+// of them", which is the normal state of the lens.
+let labelWhitelist = null;
 let nodeStash = null;          // n -> { color, emissive, intensity, scale }
 
 function clearDecomposition() {
@@ -410,6 +421,7 @@ function clearDecomposition() {
   nodeStash = null;
   decompSet = null;
   decompFactors = null;
+  labelWhitelist = null;
   decompN = null;
 }
 
@@ -431,6 +443,10 @@ function buildDecomposition(n) {
 
   decompN = n;
   decompFactors = new Set(factors);
+  // The terms of the argument, and nothing else. The multiples between p and n
+  // are lit because they are what the run is made of, but they are not being
+  // named — naming them would put back the clutter the dimming just removed.
+  labelWhitelist = new Set([n, ...factors]);
   // Every node ON the runs, not merely the endpoints. The multiples between p
   // and n are what the run is made of, so dimming them would leave a bright
   // line threaded through dark beads it is supposed to be joining.
@@ -522,7 +538,7 @@ function paintDecomposition() {
       // The endpoints of the argument — n itself and the primes that make it —
       // are lifted and glow fully. The multiples between them are on the run
       // rather than being the point of it, so they are lit but not raised.
-      const isTarget = nd.n === decompN;
+      const isTarget = nd.n === decompN;      // never true in prime-line mode: decompN is -p
       const isFactor = decompFactors.has(nd.n);
       if (m.material?.emissive) {
         m.material.emissive.setRGB(0.72, 0.78, 0.88);   // the silver, as GLOW
@@ -556,6 +572,72 @@ function paintDecomposition() {
   }
 }
 
+// ---- Selecting a LINE rather than a node ----------------------------------
+// Tap a parastichy curve and the question changes from "what is this number
+// made of" to "what does this prime touch". So the whole family lights — the
+// full curve from p to the end of the figure, and every multiple of p along it
+// — and everything else steps back exactly as it does for a node.
+//
+// The run is rebuilt from p all the way to N rather than reusing the curve that
+// was tapped, for the same reason buildDecomposition does: the renderer only
+// draws curves for SELECTED primes, and one code path that always works beats
+// two that mostly do.
+function buildPrimeHighlight(p) {
+  if (decompN === -p) { clearDecomposition(); return; }   // tap again to clear
+  clearDecomposition();
+  if (!sceneRef || !nodesRef.length || !p) return;
+
+  const N = resolveN();
+  // Negative marks "this is a prime LINE, not a number". It feeds only the
+  // toggle above and the lift test in paintDecomposition, and it keeps one
+  // field doing one job rather than adding a mode flag every branch must check.
+  decompN = -p;
+  decompFactors = new Set([p]);
+  decompSet = new Set();
+  for (let k = p; k <= N; k += p) decompSet.add(k);
+  // Only the prime itself is named. Its multiples are the answer, and labelling
+  // all of them would be labelling most of the figure.
+  labelWhitelist = new Set([p]);
+
+  const W = rendererEl ? rendererEl.width : 800;
+  const H = rendererEl ? rendererEl.height : 600;
+  const primeRGB = getPrimeRGB(state.primes || [], state.colorScheme);
+
+  const run = buildRunShapes(p, N);
+  if (run) {
+    const buf = new Float32Array(run.numPts * 3);
+    lerpRunShapes(run, state.dimension, buf);
+    const geo = new LineGeometry();
+    geo.setPositions(buf);
+    const rgb = primeRGB[p] || [0.85, 0.88, 0.93];
+    const col = new THREE.Color(rgb[0], rgb[1], rgb[2]).lerp(new THREE.Color(1, 1, 1), 0.45);
+    const mat = new LineMaterial({
+      color: col.getHex(), linewidth: DECOMP_LINE_WIDTH, worldUnits: false,
+      resolution: new THREE.Vector2(W, H), transparent: true, opacity: 0.98,
+      depthTest: false,
+    });
+    const line = new Line2(geo, mat);
+    line.computeLineDistances();
+    line.frustumCulled = false;
+    line.renderOrder = 3;
+    line.userData.decompRun = true;
+    sceneRef.add(line);
+    decompRuns.push({ line, run, buf });
+  }
+
+  nodeStash = new Map();
+  for (const nd of nodesRef) {
+    const m = nd.mesh;
+    if (!m) continue;
+    nodeStash.set(nd.n, {
+      color: m.material?.color?.clone() || new THREE.Color(1, 1, 1),
+      emissive: m.material?.emissive?.clone() || new THREE.Color(0, 0, 0),
+      intensity: m.material?.emissiveIntensity ?? 0,
+      scale: m.scale.x,
+    });
+  }
+}
+
 // The decomposition OUTLIVES THE TOOLTIP, and that separation is the point.
 // They answer different questions — the tooltip is a card of arithmetic, the
 // decomposition is a state the figure is in — so dismissing one must not take
@@ -567,6 +649,7 @@ function paintDecomposition() {
 // that is how an orbit drag begins and losing the decomposition every time you
 // went to move the figure would make it unusable.
 on('info:node', ({ n }) => { if (isOpen()) buildDecomposition(n); });
+on('info:curve', ({ prime }) => { if (isOpen()) buildPrimeHighlight(prime); });
 
 export function register() {
   registerModule('lens', mod);

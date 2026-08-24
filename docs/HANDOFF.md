@@ -156,6 +156,18 @@ its background before it. `npm run check` covers it with 60 assertions.
   assigns by position in the selection — so its run falls back to silver rather
   than borrowing a hue that already means something else.
 
+  **Tapping a LINE asks the other question.** A node asks "what is this made
+  of"; a parastichy curve asks "what does this prime touch", so the whole
+  family lights and every multiple with it. Same code path — the run is rebuilt
+  from p to N rather than reusing the curve on screen, because the renderer only
+  draws curves for selected primes.
+
+  **A decomposition silences every other label.** The mode exists to reduce the
+  figure to one argument, and sixty labels around it put the noise straight
+  back — the dimming says "not these" while the labels keep insisting "all of
+  these". Only the terms are named: the number and its primes, or the prime
+  whose line is lit.
+
   **The decomposition outlives the tooltip.** They answer different questions:
   the tooltip is a card of arithmetic, the decomposition is a state the figure
   is in. So you can dismiss the card and go on turning the figure to look at

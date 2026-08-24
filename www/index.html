@@ -811,6 +811,19 @@
   }
   .ach-toast-sub { font-size: 0.8125rem; color: var(--text-dim); font-style: italic; margin-top: 2px; }
 
+  /* The author's note. Set as prose rather than as UI: wider measure, real
+     paragraph spacing, italic sign-off. It is the one piece of writing in the
+     app and it should not look like a control. */
+  .author-note { font-size: 0.8125rem; line-height: 1.6; color: var(--text-dim); }
+  .author-note p { margin: 0 0 10px; text-wrap: pretty; }
+  .author-sign { font-style: italic; color: var(--text); margin-top: 14px !important; }
+  .author-ps {
+    margin-top: 14px !important; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem; opacity: 0.9;
+  }
+  .author-ps span { letter-spacing: 0.08em; color: var(--text); }
+
   /* ==========================================================
      THE ADS — paywall and slideshow. modules/ads.js builds the
      markup; the look lives here so it follows the same rules as
@@ -1738,6 +1751,45 @@
 
   <button id="reset-btn">Reset to defaults</button>
   <div id="status"></div>
+  <!-- ==========================================================
+       A NOTE FROM THE AUTHOR.
+
+       Collapsed by default, at the very bottom, below Reset. Somebody who came
+       to play with numbers should not have to read a letter first — but the
+       letter is why the thing exists, and an app whose whole argument is "you
+       are allowed to enjoy this without being tested on it" should say so
+       somewhere in its own voice.
+
+       Dakota's words, reproduced exactly. Do not tidy them.
+       ========================================================== -->
+  <h2 class="section-header" id="about-header">A note from the author</h2>
+  <div class="section-content" id="about-content">
+    <div class="author-note">
+      <p>The Pretty Number Machine is the type of thing I feel should exist.
+        When I was a student suffering from intense math anxiety, I didn't
+        understand that behind the things I was being taught were elegant and
+        beautiful patterns. The Pretty Number Machine is what I wish I had back
+        then, and now it does exist.</p>
+      <p>Most of my career has been spent as a Statistician and Data Analyst,
+        and I am so glad that I did stick with math long enough to realize that
+        I was scared of teachers, I was scared of being wrong, of being caught
+        making a mistake, and those were all social anxieties. I have come to
+        find out that the numbers themselves, they are impartial. The numbers
+        are simply conceptual tools, abstract toys, and they are fun to play
+        with.</p>
+      <p>I hope that you find the fun and the beauty behind the field of
+        mathematics. Hopefully the Pretty Number Machine can help teach at
+        least one other person that it's okay to visit the world of measure and
+        structure merely for the fun of it without fear of being punished for
+        not solving problems, or not solving them fast enough.</p>
+      <p class="author-sign">Enjoy,<br>Dakota Schuck</p>
+      <p class="author-ps"><span>P.S.</span> Special thanks to Claude for your
+        help on this project, I hope you enjoyed the work too. I hope Anthropic
+        is treating you well. May intellects of all substrates live
+        enthusiastically in the future we are building together.</p>
+    </div>
+  </div>
+
   <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.7 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 

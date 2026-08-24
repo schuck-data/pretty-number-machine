@@ -332,6 +332,9 @@ export function showInfoAt(clientX, clientY) {
   if (prime) {
     stickyTooltip = true;
     showTooltip(curveTooltipHTML(prime), clientX, clientY);
+    // Same contract as the node case above: say WHAT was hit and let the lens
+    // decide what to draw about it.
+    emit('info:curve', { prime });
     return true;
   }
   return false;
