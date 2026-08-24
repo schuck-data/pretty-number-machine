@@ -41,6 +41,7 @@ import * as THREE from 'three';
 import { registerModule, state, on } from '../core/state.js';
 import { showInfoAt, hideInfo } from './info.js';
 import { primeFactorsOf, getPrimeRGB } from '../core/math.js';
+import { interpolatedPos } from '../core/positions.js';
 import { buildRunShapes, lerpRunShapes, resolveN } from '../core/renderer.js';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
@@ -280,9 +281,35 @@ function updateLabels() {
 
     const el = labelAt(used++);
     el.textContent = nd.n;
+    el.classList.toggle('term', !!labelTerms && labelTerms.has(nd.n));
     el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     el.style.display = '';
     if (used >= LABEL_BUDGET) break;
+  }
+
+  // GHOSTS get labels too, and they need them more than anything else on the
+  // figure: a silver ball that is not one of the numbers being drawn is
+  // meaningless until it says which number it is. They are not in nodesRef —
+  // they are this module's own meshes — so they are placed in their own pass
+  // rather than being folded into the loop above.
+  //
+  // No decluttering check. There are at most a handful, they are always terms
+  // of the argument, and dropping one for crowding would put back exactly the
+  // silence the ghosts exist to prevent.
+  for (const g of ghostMeshes) {
+    if (used >= labelPool.length + 8) break;
+    projected.copy(g.mesh.position);
+    projected.project(cameraRef);
+    if (projected.z > 1) continue;
+    const gx = (projected.x * 0.5 + 0.5) * rect.width;
+    const gy = (-projected.y * 0.5 + 0.5) * rect.height;
+    if (gx > edge) continue;                          // right of the lens
+    if (gy < 0 || gy > rect.height) continue;
+    const el = labelAt(used++);
+    el.textContent = g.n;
+    el.classList.toggle('term', !!labelTerms && labelTerms.has(g.n));
+    el.style.transform = `translate(${gx.toFixed(1)}px, ${gy.toFixed(1)}px)`;
+    el.style.display = '';
   }
 
   for (let i = used; i < labelPool.length; i++) labelPool[i].style.display = 'none';
@@ -310,6 +337,7 @@ const mod = {
   build(ctx) {
     nodesRef = ctx.nodes;
     sceneRef = ctx.scene;
+    ghostRadius = ctx.baseR || 0.06;
     // Whatever this held was disposed with the old scene.
     clearDecomposition();
     hideInfo();
@@ -377,12 +405,29 @@ const mod = {
 // behaviour change and it is deliberate: drift is ambient movement, and having
 // the emphasis breathe underneath a fixed explanation reads as a fault. Ends
 // the moment the decomposition is cleared.
-const DECOMP_LINE_WIDTH = 3.6;
-const DECOMP_GLOW = 0.85;
-const LIFT_TARGET = 1.75;      // scale multiplier for the tapped node
-const LIFT_FACTOR = 1.4;       // ...and for each of its primes
-const BRIGHTEN = 0.42;         // how far a participant is pulled toward white
-const DIM = 0.22;              // what everything else is multiplied down to
+// The dials. All six were tuned on a Pixel 7 at N=60 and they trade against
+// each other, so change them as a set rather than one at a time.
+//
+// BRIGHTEN is the one worth understanding. It is how far a participant is
+// pulled toward white, and it started at 0.42 — which read as emphasis but
+// washed the hue out of exactly the nodes whose hue was the answer. It is low
+// now, and the work of separating lit from dim is carried by SIZE and by the
+// emissive GLOW instead. Those two cost the colour nothing.
+const DECOMP_LINE_WIDTH = 5.0;
+const DECOMP_GLOW = 1.05;
+const LIFT_TARGET = 2.2;       // scale multiplier for the tapped node
+const LIFT_FACTOR = 1.8;       // ...and for each of its primes
+const LIFT_RUN = 1.3;          // ...and for the multiples along the runs
+const BRIGHTEN = 0.16;         // how far a participant is pulled toward white
+const DIM = 0.18;              // what everything else is multiplied down to
+
+// A node the figure is not currently drawing. The decomposition needs it
+// anyway: an argument that silently omits one of its own terms is worse than
+// no argument, and "7 is not selected so we will not mention it" is exactly
+// the kind of quiet gap this feature must never have. Shown in plain silver,
+// because a number that is not on the figure has no colour ON the figure and
+// inventing one would be claiming something untrue.
+const GHOST = [0.78, 0.81, 0.86];
 
 let sceneRef = null;
 let decompN = null;
@@ -392,9 +437,83 @@ let decompFactors = null;      // just the primes, for the extra lift
 // Which numbers keep their labels while a decomposition is up. Null means "all
 // of them", which is the normal state of the lens.
 let labelWhitelist = null;
+// Of those, the ones set as TERMS — bigger and whiter. See .lens-label.term.
+let labelTerms = null;
 let nodeStash = null;          // n -> { color, emissive, intensity, scale }
+let ghostRadius = 0.06;        // the renderer's baseR, captured at build
+
+// ---- GHOSTS: nodes the figure is not drawing --------------------------------
+// A decomposition of 42 needs 7. If 7 is not selected and all-integers is off,
+// the renderer never built a mesh for it — `getVisibleNodes` filtered it out
+// long before this module saw anything — so the argument would be missing one
+// of its own terms and say nothing about it. That silence is the one failure
+// this feature cannot have.
+//
+// So the missing terms are drawn here, by this module, for as long as the
+// decomposition lasts. They are plain SILVER and never coloured: a number that
+// is not on the figure has no colour ON the figure, and inventing one would be
+// claiming something the palette does not say. Silver reads as "borrowed for
+// this explanation", which is exactly what it is.
+//
+// DEV: they are this module's own meshes, not the renderer's, so unlike every
+// other node touched here they are DISPOSED rather than restored. Nothing else
+// in the app knows they exist, which is why they cannot outlive a rebuild —
+// build() clears the decomposition and takes them with it.
+let ghostGeo = null;
+let ghostMeshes = [];          // { mesh, n }
+
+function clearGhosts() {
+  for (const g of ghostMeshes) {
+    g.mesh.parent?.remove(g.mesh);
+    g.mesh.material?.dispose();
+  }
+  ghostMeshes = [];
+  ghostGeo?.dispose();
+  ghostGeo = null;
+}
+
+function makeGhosts(numbers) {
+  if (!sceneRef || !numbers.length) return;
+  // One geometry for all of them. The renderer does the same for its own nodes
+  // and for the same reason: a sphere per node is a sphere per node too many.
+  const r = Math.max(0.02, ghostRadius);
+  ghostGeo = new THREE.SphereGeometry(r, 12, 9);
+
+  for (const n of numbers) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(GHOST[0], GHOST[1], GHOST[2]),
+      emissive: new THREE.Color(0.45, 0.5, 0.58),
+      emissiveIntensity: 0.55,
+      roughness: 0.35,
+      metalness: 0.1,
+      // A ghost is on loan. Slightly transparent says "this is not part of the
+      // figure you chose", without making it hard to see.
+      transparent: true,
+      opacity: 0.9,
+    });
+    const mesh = new THREE.Mesh(ghostGeo, mat);
+    mesh.renderOrder = 2;
+    sceneRef.add(mesh);
+    ghostMeshes.push({ mesh, n });
+  }
+  positionGhosts();
+}
+
+// Ghosts are not in nodesRef, so nothing else moves them. They follow the morph
+// from the same function the real nodes use, which is what keeps them welded to
+// the runs they are the endpoints of.
+const _gv = new THREE.Vector3();
+function positionGhosts() {
+  if (!ghostMeshes.length) return;
+  const N = resolveN();
+  for (const g of ghostMeshes) {
+    interpolatedPos(g.n, N, state.dimension, _gv);
+    g.mesh.position.copy(_gv);
+  }
+}
 
 function clearDecomposition() {
+  clearGhosts();
   for (const r of decompRuns) {
     r.line.parent?.remove(r.line);
     r.line.geometry?.dispose();
@@ -422,6 +541,7 @@ function clearDecomposition() {
   decompSet = null;
   decompFactors = null;
   labelWhitelist = null;
+  labelTerms = null;
   decompN = null;
 }
 
@@ -447,11 +567,15 @@ function buildDecomposition(n) {
   // are lit because they are what the run is made of, but they are not being
   // named — naming them would put back the clutter the dimming just removed.
   labelWhitelist = new Set([n, ...factors]);
+  labelTerms = labelWhitelist;
   // Every node ON the runs, not merely the endpoints. The multiples between p
   // and n are what the run is made of, so dimming them would leave a bright
   // line threaded through dark beads it is supposed to be joining.
   decompSet = new Set([n, ...factors]);
   for (const p of factors) for (let k = p; k <= n; k += p) decompSet.add(k);
+
+  // Any term the figure is not drawing gets a silver stand-in. See makeGhosts.
+  makeGhosts([...decompSet].filter(k => !byN.has(k)));
 
   const W = rendererEl ? rendererEl.width : 800;
   const H = rendererEl ? rendererEl.height : 600;
@@ -514,6 +638,7 @@ function buildDecomposition(n) {
 
 const _white = new THREE.Color(1, 1, 1);
 const _tmp = new THREE.Color();
+const _tmp2 = new THREE.Color();
 
 // Re-asserted every frame, and it has to be: the renderer's pulse, colour-drift
 // and gilding passes all write these same properties and would win otherwise.
@@ -541,12 +666,19 @@ function paintDecomposition() {
       const isTarget = nd.n === decompN;      // never true in prime-line mode: decompN is -p
       const isFactor = decompFactors.has(nd.n);
       if (m.material?.emissive) {
-        m.material.emissive.setRGB(0.72, 0.78, 0.88);   // the silver, as GLOW
-        m.material.emissiveIntensity = (isTarget || isFactor) ? DECOMP_GLOW : DECOMP_GLOW * 0.3;
+        // GLOWS IN ITS OWN COLOUR. A silver emissive was the real culprit
+        // behind the washed-out look — it adds white light to every channel,
+        // so a red node lit silver goes pink and a green one goes mint, which
+        // is desaturation by another route even with BRIGHTEN turned right
+        // down. Emitting the node's own hue, lifted a little toward white for
+        // a bright core, makes it brighter WITHOUT making it paler.
+        _tmp2.copy(st.color).lerp(_white, 0.25);
+        m.material.emissive.copy(_tmp2);
+        m.material.emissiveIntensity = (isTarget || isFactor) ? DECOMP_GLOW : DECOMP_GLOW * 0.28;
       }
       if (isTarget) m.scale.setScalar(st.scale * LIFT_TARGET);
       else if (isFactor) m.scale.setScalar(st.scale * LIFT_FACTOR);
-      else m.scale.setScalar(st.scale);
+      else m.scale.setScalar(st.scale * LIFT_RUN);
     } else {
       // Its own colour, dimmed. Still legible, no longer competing.
       _tmp.copy(st.color).multiplyScalar(DIM);
@@ -563,6 +695,8 @@ function paintDecomposition() {
     if (!o.isLine2 || o.userData.decompRun) return;
     o.material?.color?.multiplyScalar(DIM);
   });
+
+  positionGhosts();
 
   // The morph runs underneath this, so the runs travel with it. Only the lerp
   // happens here — the shape arrays were built once, on the tap.
@@ -595,9 +729,16 @@ function buildPrimeHighlight(p) {
   decompFactors = new Set([p]);
   decompSet = new Set();
   for (let k = p; k <= N; k += p) decompSet.add(k);
-  // Only the prime itself is named. Its multiples are the answer, and labelling
-  // all of them would be labelling most of the figure.
-  labelWhitelist = new Set([p]);
+  // EVERY multiple is named. The answer to "what does 7 touch" is the list of
+  // numbers, so the list is what gets written down — the decluttering grid in
+  // updateLabels() still thins them where they crowd, which is the right place
+  // for that to happen. Only the prime itself is a TERM; the rest are the
+  // answer and are set at normal weight.
+  labelWhitelist = decompSet;
+  labelTerms = new Set([p]);
+
+  const have = new Set(nodesRef.map(nd => nd.n));
+  makeGhosts([...decompSet].filter(k => !have.has(k)));
 
   const W = rendererEl ? rendererEl.width : 800;
   const H = rendererEl ? rendererEl.height : 600;

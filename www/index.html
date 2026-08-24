@@ -1245,13 +1245,62 @@
     position: absolute; inset: 0; z-index: 2;
     pointer-events: none; overflow: hidden;
   }
+  /* ==========================================================
+     LABELS ON THE FIGURE.
+
+     A drop shadow is not a halo, and that was the bug. The old rule was
+     `text-shadow: 0 1px 3px black` — light on the underside of each glyph
+     and NOTHING above it, which is fine over the dark board and illegible
+     the moment a label lands on a pale node. Decomposition made it worse,
+     because it deliberately brightens exactly the nodes worth labelling:
+     white text on a white ball.
+
+     The cartographic answer is a HALO — a contrasting ring on every side,
+     so the type reads over any ground without a plate behind it. Four
+     hard offsets carry the shape, two soft ones round it off. Six shadows
+     on at most a few hundred short strings is cheap, and it composites on
+     the GPU.
+
+     Everything else here is standard point-label practice and worth
+     keeping if this is ever reworked:
+       - OFFSET UP AND RIGHT of the mark, never centred on it. A label
+         sitting on its own node hides the thing it names.
+       - ONE SIZE, medium weight. Labels are an index, not a hierarchy.
+       - TABULAR NUMERALS, so a column of them does not jitter.
+       - DECLUTTER BY CELL, which updateLabels() already does — the fix
+         for crowding is dropping labels, never shrinking them.
+     ========================================================== */
   .lens-label {
     position: absolute; top: 0; left: 0;
     margin: -0.6em 0 0 0.55em;                    /* clear of the node itself */
     font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.02em;
-    color: rgba(238, 245, 238, 0.92);
-    text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+    font-variant-numeric: tabular-nums;
+    color: rgba(242, 247, 242, 0.95);
+    text-shadow:
+       1px  1px 0 rgba(4, 8, 6, 0.92),
+      -1px  1px 0 rgba(4, 8, 6, 0.92),
+       1px -1px 0 rgba(4, 8, 6, 0.92),
+      -1px -1px 0 rgba(4, 8, 6, 0.92),
+       0 0 4px rgba(4, 8, 6, 0.85),
+       0 0 9px rgba(4, 8, 6, 0.65);
     white-space: nowrap; will-change: transform;
+  }
+
+  /* A TERM OF THE ARGUMENT — the number being decomposed, or a prime that
+     makes it. While a decomposition is up these are the only labels that
+     survive at all, so they can afford to be the loudest thing on the
+     board: bigger, whiter, and haloed harder so they hold up over the
+     brightened nodes they sit on. */
+  .lens-label.term {
+    font-size: 1rem; font-weight: 700; letter-spacing: 0.03em;
+    color: #ffffff;
+    text-shadow:
+       1.5px  1.5px 0 rgba(4, 8, 6, 0.95),
+      -1.5px  1.5px 0 rgba(4, 8, 6, 0.95),
+       1.5px -1.5px 0 rgba(4, 8, 6, 0.95),
+      -1.5px -1.5px 0 rgba(4, 8, 6, 0.95),
+       0 0 6px rgba(4, 8, 6, 0.9),
+       0 0 14px rgba(4, 8, 6, 0.7);
   }
 
   /* The tab you grab. Sits on the lens edge, so it starts at the left
