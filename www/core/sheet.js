@@ -33,9 +33,34 @@ function currentSheetPx() {
   return panel ? panel.getBoundingClientRect().height : 0;
 }
 
+// Controls that live ABOVE the sheet and have to stay reachable. Measured at
+// the 0.85 ceiling on a Pixel 7: the sheet's top edge landed at 137px, which
+// clipped Dazzle by 23px and buried the lens handle completely — its whole
+// 168-220 band was underneath. A fraction alone cannot know that, because where
+// these sit depends on the safe-area inset and on how many corner buttons the
+// build has.
+const OVERHEAD = ['#achievements-btn', '#corner-reset', '#dazzle-btn', '#lens-handle'];
+const CLEARANCE = 10;          // breathing room, plus the grip's own height
+
+// How tall the sheet may grow before it starts eating the controls above it.
+// Falls back to MAX_FRACTION when none of them are on screen yet.
+function maxSheetPx() {
+  let lowest = 0;
+  for (const sel of OVERHEAD) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    if (r.height && r.bottom > lowest) lowest = r.bottom;
+  }
+  const byFraction = window.innerHeight * MAX_FRACTION;
+  if (!lowest) return byFraction;
+  const grip = document.getElementById('sheet-grip');
+  const gripH = grip ? grip.getBoundingClientRect().height : 24;
+  return Math.min(byFraction, window.innerHeight - lowest - gripH - CLEARANCE);
+}
+
 function setSheetPx(px) {
-  const bounded = clamp(px, window.innerHeight * MIN_FRACTION,
-                            window.innerHeight * MAX_FRACTION);
+  const bounded = clamp(px, window.innerHeight * MIN_FRACTION, maxSheetPx());
   document.documentElement.style.setProperty('--sheet-h', `${Math.round(bounded)}px`);
 }
 

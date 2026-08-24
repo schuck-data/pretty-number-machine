@@ -214,6 +214,34 @@ for (const build of BUILDS) {
   }
 }
 
+// --- contrast: every prime button must be readable ----------------------
+// Section 508 adopts WCAG AA, so text needs 4.5:1. The prime grid derives its
+// colours from the palette, and blue is the one that fails on its own — it
+// carries 7% of perceived luminance against green's 72%. This guards the
+// helper that fixes it, so a future edit that goes back to adding a flat
+// amount per channel fails here rather than on somebody's phone.
+{
+  const M = await import(new URL('../www/core/math.js', import.meta.url));
+  const BG = [12, 12, 15];
+  const cases = [
+    ['pure blue',  [0, 0, 230]],
+    ['pure red',   [255, 0, 0]],
+    ['pure green', [0, 230, 0]],
+    ['near-black', [10, 10, 10]],
+    ['white',      [255, 255, 255]],
+  ];
+  let bad = 0;
+  for (const [name, rgb] of cases) {
+    const out = M.ensureContrast(rgb, BG, 4.5);
+    const r = M.contrastRatio(out, BG);
+    if (r < 4.49) { fail('app', `ensureContrast left ${name} at ${r.toFixed(2)}:1`); bad++; }
+  }
+  // and it must not repaint something that already passes
+  const green = M.ensureContrast([0, 230, 0], BG, 4.5);
+  if (green.join() !== [0, 230, 0].join()) { fail('app', 'ensureContrast altered a colour that already passed'); bad++; }
+  if (!bad) pass('app', 'every prime colour reaches 4.5:1, and passing colours are left alone');
+}
+
 console.log('');
 if (failures) {
   console.error(`${failures} check(s) failed.`);

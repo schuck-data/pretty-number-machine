@@ -155,6 +155,59 @@ export function hueToRGB(h) {
   }
 }
 
+// ============================================================
+// CONTRAST
+// ============================================================
+// EDU: perceived brightness is not the average of the channels. Green carries
+// about 72% of it, red 21%, and blue only 7% — which is why pure blue text on a
+// dark background is the classic accessibility failure and pure green is never
+// a problem. Any rule that adds a flat amount to r, g and b, or that tests
+// r + g + b against a threshold, is treating those three as interchangeable
+// when they are nothing of the kind.
+//
+// Measured on the prime grid before this existed: the active button for 5 was
+// rgb(80, 80, 255) at 3.66:1, against 6.06 for red and 14.66 for green. WCAG AA
+// wants 4.5:1 for text, and Section 508 adopts WCAG AA.
+
+const srgbToLinear = (c) => {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+};
+
+// WCAG relative luminance. The coefficients are the perceptual weights above.
+export function relativeLuminance([r, g, b]) {
+  return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
+}
+
+export function contrastRatio(a, b) {
+  const la = relativeLuminance(a), lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+// Lift a colour toward white until it reads against `bg`, and no further.
+// Mixing toward white rather than scaling the channels keeps the hue: the
+// result is a paler version of the same colour, not a different one. A prime's
+// colour IS its identity in this app, so the goal is the least change that
+// makes it legible.
+export function ensureContrast(rgb, bg = [12, 12, 15], target = 4.5) {
+  if (contrastRatio(rgb, bg) >= target) return rgb;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    const test = rgb.map(c => c + (255 - c) * mid);
+    if (contrastRatio(test, bg) < target) lo = mid; else hi = mid;
+  }
+  // DEV: round, THEN check. The search runs on floats but a colour has to be
+  // integers, and rounding down can land a hair under — 4.4996 rather than 4.5.
+  // This function promises to meet the target, so it walks the last step rather
+  // than returning something that misses by a rounding error.
+  let out = rgb.map(c => Math.round(c + (255 - c) * hi));
+  for (let i = 0; i < 8 && contrastRatio(out, bg) < target; i++) {
+    out = out.map(c => Math.min(255, c + 1));
+  }
+  return out;
+}
+
 export function getPrimeRGB(selectedPrimes, colorScheme) {
   const colors = {};
   if (colorScheme === 'none') {

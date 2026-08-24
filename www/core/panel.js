@@ -3,7 +3,7 @@ import {
   state, emit, getModules, MAX_N, SLIDER_MAX_N, AUTO_N_MAX,
   HOT_KEYS, DEFAULT_CONFIG,
 } from './state.js';
-import { FIRST_PRIMES, SELECTABLE_PRIMES, getPrimeRGB, GOLDEN_ANGLE } from './math.js';
+import { FIRST_PRIMES, SELECTABLE_PRIMES, getPrimeRGB, GOLDEN_ANGLE, ensureContrast, relativeLuminance } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
 import {
   update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown, resetCamera,
@@ -175,15 +175,22 @@ function updatePrimeColors() {
     if (selectedPrimes.includes(p) && colors[p]) {
       const c = colors[p];
       const r = Math.round(c[0] * 255), g = Math.round(c[1] * 255), b = Math.round(c[2] * 255);
-      const tooFaint = r + g + b < 180;
+      // DEV: this used to test `r + g + b < 180` and then add a flat 80 to each
+      // channel, both of which treat the three as equally bright. They are not:
+      // blue carries 7% of perceived luminance and green 72%. Blue passed the
+      // sum test and still came out at 3.66:1, failing WCAG AA, while green sat
+      // at 14.66. ensureContrast() lifts by measured contrast instead, and only
+      // as far as it has to, so a prime's colour stays recognisably its own.
+      const tooFaint = relativeLuminance([r, g, b]) < 0.02;
       if (tooFaint) {
         btn.style.background = 'rgba(255,255,255,0.12)';
         btn.style.borderColor = 'rgba(255,255,255,0.4)';
         btn.style.color = 'rgba(224,221,213,0.8)';
       } else {
+        const [tr, tg, tb] = ensureContrast([r, g, b]);
         btn.style.background = `rgba(${r},${g},${b},0.3)`;
         btn.style.borderColor = `rgba(${r},${g},${b},0.7)`;
-        btn.style.color = `rgb(${Math.min(255, r + 80)},${Math.min(255, g + 80)},${Math.min(255, b + 80)})`;
+        btn.style.color = `rgb(${tr},${tg},${tb})`;
       }
     } else {
       btn.style.background = '';
