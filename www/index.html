@@ -629,17 +629,16 @@
   .ach-row.open .ach-blurb { display: block; }
   .ach-row.focused { background: rgba(212, 175, 55, 0.07); }
   .ach-row.focused .ach-name { color: rgba(233, 200, 100, 1); }
-  /* A LOCKED row is tappable too, and previews what it will gild in white.
-     It must not borrow the gold focus look — that would read as a reward
-     already collected. See docs/ACHIEVEMENTS.md §4 on the two channels. */
-  /* NOT opacity. A locked row used to be --text-faint knocked down by
+  /* A locked row is not tappable and highlights nothing. The clue is all it
+     offers, and that is the point — see docs/ACHIEVEMENTS.md §4.
+
+     NOT opacity, though. A locked row used to be --text-faint knocked down by
      opacity: 0.42, which measured 1.23:1 against the panel — invisible rather
-     than quiet. Locked is now carried by COLOUR (neutral rather than gold) and
-     by the checkbox state, so it survives at 5.6:1 and does not depend on
-     colour alone. */
+     than quiet. Locked is carried by COLOUR (neutral rather than gold) and by
+     the checkbox state, so it survives at 5.6:1 and does not depend on colour
+     alone. */
+  .ach-row.locked { cursor: default; }
   .ach-row.locked .ach-name { color: var(--text-dim); }
-  .ach-row.locked.focused { background: rgba(190, 214, 255, 0.10); }
-  .ach-row.locked.focused .ach-name { color: rgba(214, 230, 255, 0.95); }
   .ach-bulk {
     flex: 1; padding: 4px; background: transparent;
     border: 1px solid var(--border); color: var(--text-faint);

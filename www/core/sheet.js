@@ -10,8 +10,6 @@
 // renderer picks up the new viewport size through its own ResizeObserver — no
 // wiring needed between this file and the scene.
 
-import { on } from './state.js';
-
 const PHONE = '(max-width: 640px)';
 
 // Bounds as a fraction of viewport height. Below the minimum the sheet is
@@ -131,34 +129,3 @@ export function initSheet() {
     if (set) setSheetPx(parseFloat(set));
   });
 }
-
-// ============================================================
-// THE ACHIEVEMENT PEEK
-// ============================================================
-// Tapping an achievement row paints what it gilds onto the figure. On a phone
-// the sheet has usually been dragged tall enough by then to be sitting on top
-// of the very thing it is trying to show — the clue and the preview are meant
-// to be two independent ways into one answer, and having one of them behind the
-// furniture defeats that.
-//
-// So the sheet drops to its minimum, and tapping the row again restores it to
-// exactly the height it was.
-//
-// DEV: this module owns WHERE the sheet sits and never what is in it. The
-// achievements module does not reach in here — it emits, and this listens. Keep
-// that seam; it is why this was a dozen lines rather than a refactor.
-let peekRestore = null;
-
-on('achievements:peek', ({ id }) => {
-  if (!isPhone()) return;                    // desktop puts the panel beside the figure
-  const panel = document.getElementById('panel');
-  if (!panel || panel.classList.contains('collapsed')) return;
-
-  if (id) {
-    if (peekRestore == null) peekRestore = currentSheetPx();
-    setSheetPx(0);                           // clamps up to MIN_FRACTION
-  } else if (peekRestore != null) {
-    setSheetPx(peekRestore);
-    peekRestore = null;
-  }
-});

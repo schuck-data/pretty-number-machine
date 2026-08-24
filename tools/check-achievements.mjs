@@ -53,6 +53,15 @@ eq('numbers are 1..101 with no gaps', A.map(a => a.no).sort((x, y) => x - y),
 const missing = A.filter(a => !a.name || !a.clue || !a.criteria).map(a => a.id);
 eq('every definition has name, clue and criteria', missing, []);
 
+// Blurbs were silently dropped once, during the v1-to-v2 rewrite: the data file
+// was rebuilt from the spreadsheet and the blurb column was simply not carried
+// across. Nothing failed, nothing warned, and the reward for earning an
+// achievement was an empty box for as long as it took somebody to tap one.
+eq('achievements carrying a blurb', A.filter(a => a.blurb).length, 88);
+const mustExplain = ['perfect', 'fermat', 'mersenne', 'heinz', 'angel', 'metonic', 'freezing'];
+eq('the ones with real mathematics behind them all explain themselves',
+   mustExplain.filter(id => !A.find(a => a.id === id)?.blurb), []);
+
 // The clue is what a locked row shows. The criteria is the PUBLIC Play Console
 // description. They are different strings and neither may be blank.
 const badClue = A.filter(a => !/^-.*-$/.test(a.clue)).map(a => a.id);

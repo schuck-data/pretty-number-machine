@@ -37,7 +37,7 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | Gilding | direct + derivation, gated by a conjunction | **direct only. No derivation until UNITY!** |
 | Trigger | ad hoc per achievement | **factor selection, dialling, or a stated relationship** |
 | Hints | a sentence each | **crossword clues** |
-| Locked rows | show the hint, not tappable | **tappable; preview the gild set on the figure** |
+| Locked rows | show the hint, not tappable | **show the clue and nothing else** |
 | Node reuse | one achievement per node | **many achievements may gild the same node** |
 
 | File | Owns |
@@ -199,19 +199,27 @@ same as vague.** A clue that merely withholds is unfair; a clue that disguises i
 fair. `_not a baker's_` for 12 is the standard to aim at: it names the answer
 exactly while appearing to talk about bread.
 
-**The clue and the preview are crossing letters.** In a grid no answer has one
-way in — you have the clue *and* the intersecting letters. Here you have the clue
-*and* the highlighted gild set, and they must be **calibrated as a pair**. Where
-the preview is loud (one labelled node), the clue can be merciless. Where the
-preview is silent — VOID! and EMPTY SET! gild nothing, the only two — the clue
-carries everything alone.
+**There are no crossing letters. The clue is the only way in.**
 
-The preview also supplies the enumeration, a crossword's `(7)`: the *number of
-nodes* tells you the shape of the answer before you know what it is.
+This was briefly built the other way. A locked row could be tapped to light up
+the numbers it would gild, on the theory that the clue and the preview were two
+independent routes to one answer — a crossword's clue plus its intersecting
+letters — and that the clue could therefore be merciless because something else
+was holding it up.
 
-**Confirmation is free here, unlike on paper.** A wrong crossword answer poisons
-the crossings; a wrong guess here costs nothing. So these clues can be harder
-than a newspaper's.
+**Cut 2026-08-23, and rightly.** Showing a locked achievement's nodes hands over
+the shape of the answer, and this whole list is built on the answer being worth
+finding. The mystery is the product.
+
+**That removes a prop the clues were leaning on, and the clues have to be read
+again with it gone.** A clue that was fair when a preview backed it up may not
+be fair alone. The Culture side is least affected — its clues name a cultural
+handle and either you have it or you look it up — but anything on the Math side
+whose clue merely gestures now has to carry the whole load by itself.
+
+**Confirmation is still free.** A wrong crossword answer poisons the crossings;
+a wrong guess here costs nothing, so a player can try things. That argument for
+difficulty survives. The other one does not.
 
 **Vary the device.** Registers in use: catchphrase (`_nice_`, `_get your kicks_`),
 mechanism (`_upside down_`, `_double it, add one_`), false definition
@@ -246,22 +254,21 @@ headers, a progress line — which fits a phone sheet without scrolling. A flat
 - **Clues are always visible on locked rows.** Not hidden behind a tap.
 - **Cluster-level trophy toggles.** At 101 rows, "show me only what Lore lit up"
   beats 101 individual checkboxes. The per-row ones stay for fine control.
+- **Only an earned row is tappable.** It opens its blurb and lights what it
+  gilded. A locked row shows its clue and does nothing at all.
 
-### The phone problem
+### The panel must not move on its own
 
-Opening a sixteen-row cluster makes the sheet want to be tall. But tapping a
-locked row paints its gild set on the figure — and if the sheet has grown to
-cover the figure, the preview is behind it. The crossing-letters mechanic
-defeating itself.
+There was briefly a "peek": tapping a row dropped the sheet to its minimum so
+the figure behind it was visible. It existed to serve the locked-row preview,
+which is gone — and on its own it read as the panel jumping about for no
+reason, which is a worse bug than the one it solved. **Removed.**
 
-**Tapping a row collapses the sheet to a peek**: a single bar carrying that
-achievement's name and clue, the figure filling the screen with the white
-highlight, and a tap on the bar restoring the sheet where it was.
-
-This falls on a clean seam. `sheet.js` already owns *where the sheet sits* and
-never *what is in it*, so it is a position change driven by an event.
-
-Desktop does not have the problem; the panel sits beside the figure.
+The same instinct applies to the figure. Inspecting an earned achievement
+reaches the range far enough to see its nodes, and switches all-integers on —
+but **only when something in the set is genuinely not being drawn**. FIRST!
+gilds node 2, which is already on screen, so tapping it moves nothing. Anything
+that mutates shared state on a tap should first check whether it has to.
 
 **Build it in SVG and DOM, not Three.js.** The app sits exactly on the display
 refresh cap already (§9) — an overlay costs nothing, a second 3D scene costs real
@@ -376,6 +383,14 @@ focus highlight, labels, anything sampled — can be judged there. Verify on
 device. Also: opening the preview at the site root registers the *shipped*
 build's service worker at scope `/`, which then swallows `/www/`. Unregister it
 before concluding anything.
+
+**A column that is not carried across fails silently and forever.** The v2 data
+file was rebuilt from the spreadsheet by hand and the blurb column was simply
+not brought over. All eighty-eight went missing. Nothing threw, no check failed,
+the list rendered perfectly — and the reward for earning an achievement was an
+empty box, for as long as it took somebody to tap one and look. Found on the
+phone. `tools/check-achievements.mjs` now asserts the count, because "the data
+is all there" is not something to take on trust after a rewrite.
 
 **An achievement that holds at the defaults awards itself.** The moment
 tracking is switched on, every `state` predicate is swept — so anything true of
@@ -534,10 +549,9 @@ good moment to lift the ledger and enabled-set into a third Three-free file.
   the one Reset restores. It awards itself the moment tracking is switched on.
   No other radical is available for 300, so either the number changes or it is
   a deliberate freebie. `tools/check-achievements.mjs` pins it either way
-- **The preview shows nothing when the node is out of range.** Tapping locked
-  BEAST! at the default range paints no highlight, because 666 is not on the
-  figure. Around half the list gilds a node above 500. Either the preview should
-  raise the range, or a locked row should say the number is off the board
+- **Re-read the Math clues now that nothing backs them up.** See §4: the locked
+  preview is gone, so a clue that was fair beside a highlight may not be fair on
+  its own
 - **REST! at 142 nodes** is the largest gild set. Trim or accept
 - **SUPERPRIME! needs eleven taps**, SATOR! seven. The longest selections here
 - **Series is three members** and would fold into Primes without loss

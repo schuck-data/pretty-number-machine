@@ -713,21 +713,12 @@ function ensureLabelLayer() {
   return labelLayer;
 }
 
-// Tapping a locked row is supposed to show you what it will gild. That only
-// works if the node is ON the figure, and at the default range of 30 it usually
-// is not: 64 of the 101 have nothing to show there, including every dial and
-// almost the whole Culture branch. Half the clue design is a preview that mostly
-// previewed nothing.
+// Inspecting an EARNED achievement should show you what it lit, and that only
+// works if the nodes are on the figure — at the default range of 30, 64 of the
+// 101 have nothing to show. So focusing reaches far enough to see the set, and
+// clearing the focus puts everything back exactly as it was.
 //
-// So focusing raises the range far enough to reach the set, and clearing the
-// focus puts it back exactly as it was.
-//
-// DEV: NOT for range-triggered achievements. Their gilded node IS their trigger,
-// so raising the range to show you the answer would award the achievement you
-// were peeking at — you would tap HELP! to read its clue and be handed HELP!.
-// The eleven dials and SIT! therefore preview only when the figure already
-// reaches them, which is exactly the moment the player has done the thing
-// anyway. Everything else raises freely.
+// This runs for earned rows only; a locked row cannot be focused at all.
 // DEV: `undefined` means nothing saved; `null` is a SAVED value and a common
 // one, because state.N is null whenever the range is being auto-derived from
 // the selected primes. Conflating the two meant the range never went back.
@@ -748,7 +739,14 @@ function fitFigureTo(a) {
   // DEV: safe against awarding EXHAUSTIVE!, which is a dom trigger guarded by
   // event.isTrusted. update() changes state without dispatching anything, so
   // there is no event to be trusted. Verified on device.
-  if (!state.showAllIntegers) {
+  // Only reach for all-integers if something in the set is genuinely not being
+  // drawn. The figure shows multiples of the SELECTED primes, so a set like
+  // FIRST!'s single node 2 is already on screen — switching all-integers on for
+  // it would rebuild the scene and re-render the list for no visible gain,
+  // which reads as the panel jumping about for no reason.
+  const present = new Set(nodesRef.map(nd => nd.n));
+  const missing = a.gildNodes.some(n => n <= resolveN() && !present.has(n));
+  if (missing && !state.showAllIntegers) {
     if (allIntBeforeFocus === undefined) allIntBeforeFocus = state.showAllIntegers;
     update({ showAllIntegers: true });
   }
@@ -806,12 +804,11 @@ function paintFocusNow(ctx) {
   // than merely large.
   const beat = 1.35 + Math.sin((ctx.time || 0) * 3.2) * 0.12;
 
-  // WHITE while locked, warm gold once earned. The locked preview is the other
-  // half of the clue — the crossing letters — so it must not look like a reward
-  // already collected. See docs/ACHIEVEMENTS.md §4.
-  const earnedFocus = !!ledger.unlocked[focusId];
-  const C  = earnedFocus ? [1.0, 0.94, 0.72] : [0.93, 0.97, 1.0];
-  const EM = earnedFocus ? [1.0, 0.90, 0.50] : [0.72, 0.82, 1.0];
+  // Only an earned achievement can be focused, so this is always the warm gold
+  // of a reward already collected. There was a white variant for previewing
+  // locked rows; that idea is gone and so is the colour.
+  const C  = [1.0, 0.94, 0.72];
+  const EM = [1.0, 0.90, 0.50];
 
   const wanted = [];
   for (const nd of nodesRef) {
@@ -1216,27 +1213,29 @@ function buildRow(a, enabled) {
     `<div class="ach-hint">${a.clue}</div>` +
     (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '');
 
-  // BOTH states are tappable now. Tapping a LOCKED row previews what it will
-  // gild — the crossing-letter half of the clue design, and the reason the
-  // clues can be as hard as they are. See docs/ACHIEVEMENTS.md §4.
-  row.classList.add('expandable');
-  row.addEventListener('click', (e) => {
-    // The checkbox is a control in its own right and must not double as a
-    // disclosure toggle: ticking it decides whether this achievement's gold is
-    // SHOWN, tapping the row decides which one is being INSPECTED.
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-    const nowFocused = setFocus(a.id);
-    // Only one row is ever open, because only one can be highlighted.
-    for (const other of listEl.querySelectorAll('.ach-row')) {
-      if (other !== row) other.classList.remove('open', 'focused');
-    }
-    row.classList.toggle('open', nowFocused === a.id);
-    row.classList.toggle('focused', nowFocused === a.id);
-    // On a phone the sheet has to get out of the way, or the preview is behind
-    // it. sheet.js owns WHERE the sheet sits and never what is in it, so this
-    // asks rather than reaches.
-    emit('achievements:peek', { id: nowFocused });
-  });
+  // ONLY AN EARNED ROW IS TAPPABLE. A locked one shows its clue and nothing
+  // else — no highlight, no preview, no hint about which numbers are involved.
+  //
+  // DEV: this was briefly the other way round, and it was wrong. Lighting up a
+  // locked achievement's nodes hands over the shape of the answer, and the
+  // whole list is built on the answer being worth finding. The clue carries it
+  // alone. See docs/ACHIEVEMENTS.md §4.
+  if (got) {
+    row.classList.add('expandable');
+    row.addEventListener('click', (e) => {
+      // The checkbox is a control in its own right and must not double as a
+      // disclosure toggle: ticking it decides whether this achievement's gold
+      // is SHOWN, tapping the row decides which one is being INSPECTED.
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+      const nowFocused = setFocus(a.id);
+      // Only one row is ever open, because only one can be highlighted.
+      for (const other of listEl.querySelectorAll('.ach-row')) {
+        if (other !== row) other.classList.remove('open', 'focused');
+      }
+      row.classList.toggle('open', nowFocused === a.id);
+      row.classList.toggle('focused', nowFocused === a.id);
+    });
+  }
 
   row.appendChild(cb);
   row.appendChild(text);
