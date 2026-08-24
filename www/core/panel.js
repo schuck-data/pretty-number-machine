@@ -509,6 +509,35 @@ function updateModuleStates() {
 // WIRE EVERYTHING
 // ============================================================
 export function initPanel() {
+  // Back to the top. A hundred and one achievements is a long way down, and the
+  // prime grid a hunter wants next is at the very top.
+  //
+  // DEV: placed from the panel's measured rect rather than by CSS. Sticky was
+  // tried and resolved against the viewport instead of the scrollport, pinning
+  // the button off-screen above the sheet; and a plain fixed corner is wrong on
+  // desktop, where the panel is a 280px sidebar rather than the whole width.
+  // One measurement covers both layouts.
+  {
+    const panel = $('panel');
+    const top = $('panel-top');
+    if (panel && top) {
+      const place = () => {
+        const r = panel.getBoundingClientRect();
+        top.style.left = `${Math.round(r.right - top.offsetWidth - 16)}px`;
+        top.style.top = `${Math.round(r.bottom - top.offsetHeight - 16)}px`;
+      };
+      const sync = () => {
+        const show = panel.scrollTop > 260 && !panel.classList.contains('collapsed');
+        top.classList.toggle('show', show);
+        if (show) place();
+      };
+      panel.addEventListener('scroll', sync, { passive: true });
+      window.addEventListener('resize', sync);
+      top.addEventListener('click', () => panel.scrollTo({ top: 0, behavior: 'smooth' }));
+      sync();
+    }
+  }
+
   // Bring the two motion toggles into line with the actual defaults before
   // anything else runs.
   //

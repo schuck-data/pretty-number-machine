@@ -737,12 +737,21 @@ function refreshGilding() {
 // curve colour is — the renderer's pulse and colour-drift passes own those
 // properties and would win otherwise. The focused set is small by construction
 // (the largest is SQUARES! at thirty), so this is a short loop.
-// Above this many nodes the highlight shows shape and drops the numbers. Eight
-// was too tight: it silenced the series, which are the sets most worth reading —
-// FIBONACCI! is 14 nodes, LUCAS! 14, RUN! 14, SUPERPRIME! 11. Thirty labels the
-// series and still spares the figure from EMIRP! at 36, TWINNING! at 69 and
-// REST! at 142. See the note in paintFocusNow().
-const LABEL_MAX = 30;
+// No ceiling. A count-based cutoff is the wrong instrument — it silences a set
+// for being large even when its nodes are spread across the whole figure with
+// room to spare, and it still lets a small set pile up in one corner. What
+// makes labels readable is decluttering, and modules/lens.js already solved
+// this: each candidate claims a cell in a screen-space grid, and a label whose
+// cell is taken is skipped.
+//
+// Same constants as the lens, deliberately. The cell is wide and short because
+// that is the shape of a number, so crowding is thinned hard horizontally and
+// gently vertically, which is how numbers actually collide. Iterating in
+// ascending n means the smaller number survives a collision — the one a reader
+// is more likely to be hunting for.
+const CELL_W = 46;
+const CELL_H = 14;
+const occupiedCells = new Set();
 let labelLayer = null;
 const _proj = { x: 0, y: 0 };
 
@@ -867,18 +876,22 @@ function paintFocusNow(ctx) {
     wanted.push({ n: nd.n, x: (_v.x * 0.5 + 0.5) * W, y: (-_v.y * 0.5 + 0.5) * H });
   }
 
-  // LABEL THRESHOLD. v1 assumed the focused set was always small — its comment
-  // claimed thirty at most — and that stopped being true when families started
-  // gilding their whole run: REST! is 142 nodes and SEXY! is 120. A hundred and
-  // forty projected labels is a wall of digits over the figure, so past a small
-  // set the highlight shows the SHAPE and drops the numbers. That is also the
-  // better hint: seeing NEAT!'s near-straight spoke light up says a great deal
-  // without naming anything.
-  if (wanted.length > LABEL_MAX) { layerEl.innerHTML = ''; return; }
+  // DECLUTTER. First label into a cell wins; `wanted` is already in ascending n
+  // because nodesRef is. REST! gilds 142 nodes and every one of them gets a
+  // label if it has somewhere to sit — what it will not get is a hundred and
+  // forty labels stacked on top of each other.
+  occupiedCells.clear();
+  const shown = [];
+  for (const p of wanted) {
+    const cell = (Math.floor(p.x / CELL_W) << 16) ^ Math.floor(p.y / CELL_H);
+    if (occupiedCells.has(cell)) continue;
+    occupiedCells.add(cell);
+    shown.push(p);
+  }
 
-  // Rebuilt rather than diffed: small by construction after the threshold, and
-  // it turns over completely whenever the focus changes.
-  layerEl.innerHTML = wanted
+  // Rebuilt rather than diffed: it turns over completely whenever the focus
+  // changes, and the grid has already bounded the count by screen area.
+  layerEl.innerHTML = shown
     .map(p => `<span class="ach-label" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px">${p.n}</span>`)
     .join('');
 }
@@ -1344,7 +1357,23 @@ export function register() {
   // The gilding view is a HOT key, so it never reaches buildScene(). Repainting
   // is this module's job — see the note beside _gildView in core/state.js.
   on('stateChange', ({ key }) => { if (key === '_gildView') refreshGilding(); });
-  on('achievement:unlocked', (a) => { queueToast(a); refreshGilding(); renderList(); });
+  on('achievement:unlocked', (a) => {
+    // Whatever was being inspected is no longer what the figure is about. Clear
+    // it before the banner arrives, or two achievements are claiming the same
+    // nodes and the new one loses.
+    setFocus(null);
+    queueToast(a);
+    refreshGilding();
+    renderList();
+  });
+
+  // The corner controls all change what the figure IS, so a highlight that
+  // survives them is describing something that is no longer on screen. Reset
+  // and Dazzle rebuild it outright; the trophy room replaces it wholesale.
+  for (const sel of ['#achievements-btn', '#corner-reset', '#dazzle-btn']) {
+    const el = document.querySelector(sel);
+    if (el) el.addEventListener('click', () => setFocus(null), true);
+  }
 
   // ---- bus-event predicates ----
   for (const a of ACHIEVEMENTS) {

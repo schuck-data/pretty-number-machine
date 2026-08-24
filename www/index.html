@@ -560,7 +560,31 @@
   .ach-row.earned .ach-name { color: rgba(212, 175, 55, 0.9); }
   .ach-sub { font-size: 0.8125rem; color: var(--text-dim); font-style: italic; }
   .ach-crit { font-size: 0.75rem; color: var(--text-dim); }
-  #ach-list { max-height: 56vh; overflow-y: auto; margin-top: 6px; }
+  /* No inner scroller. A scrolling list inside a scrolling panel traps the
+     gesture — you swipe expecting the panel and get the list, or the reverse —
+     and the accordion already keeps this short when it is collapsed. The panel
+     scrolls, and #panel-top brings you back. */
+  #ach-list { margin-top: 6px; }
+
+  /* Back to the top. A hundred and one achievements is a long way down, and a
+     hunter who has just read a clue wants the prime grid, which is at the very
+     top. Sticky rather than fixed so it belongs to the panel and needs no
+     positioning maths for the sidebar and the bottom sheet separately. */
+  #panel-top {
+    position: fixed; z-index: 30;
+    display: none;
+    padding: 7px 14px; min-height: 34px;
+    background: rgba(12, 12, 15, 0.92); backdrop-filter: blur(12px);
+    border: 1px solid var(--border-ctrl); border-radius: 999px;
+    color: var(--text-dim); font: inherit; font-size: 0.8125rem;
+    letter-spacing: 0.04em; cursor: pointer;
+  }
+  #panel-top.show { display: block; }
+  /* The button floats over the content, so the content needs somewhere to end.
+     Without this the last row sits under it permanently. */
+  #panel { padding-bottom: 64px; }
+  #panel-top:hover { color: var(--text); }
+  #panel-top:focus-visible { outline: 2px solid rgba(233, 200, 100, 0.9); outline-offset: 2px; }
   #ach-progress { font-size: 0.8125rem; color: var(--text-dim); margin: 4px 0 2px; }
 
   /* The clue shows in BOTH states — it is short, it reads as a caption once
@@ -1293,6 +1317,14 @@
   <div id="status"></div>
   <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.7 &middot; &copy; 2026 Dakota Schuck</div>
 </div>
+
+<!-- A sibling of #panel, not a child. Inside the panel it would either scroll
+     away or, as position: sticky, resolve against the wrong box — which it did,
+     pinning itself off-screen above the sheet. panel.js places it against the
+     panel's measured rect instead, which is the same code for the desktop
+     sidebar and the phone sheet. -->
+<button id="panel-top" type="button" title="Back to the top"
+        aria-label="Scroll back to the top of the panel">&uarr; Top</button>
 
 <button id="panel-toggle" onclick="var p=document.getElementById('panel');p.classList.toggle('collapsed');this.textContent=p.classList.contains('collapsed')?'\u25B8':'\u25C2';setTimeout(()=>window.dispatchEvent(new Event('resize')),350)">&lsaquo;</button>
 <!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
