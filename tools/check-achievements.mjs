@@ -58,6 +58,9 @@ eq('every definition has name, clue and criteria', missing, []);
 // across. Nothing failed, nothing warned, and the reward for earning an
 // achievement was an empty box for as long as it took somebody to tap one.
 eq('achievements carrying a blurb', A.filter(a => a.blurb).length, 88);
+// Blurbs are prose that ships to players. A double hyphen is a typewriter
+// artefact, not punctuation.
+eq('blurbs using -- instead of an en dash', A.filter(a => a.blurb.includes('--')).map(a => a.name), []);
 const mustExplain = ['perfect', 'fermat', 'mersenne', 'heinz', 'angel', 'metonic', 'freezing'];
 eq('the ones with real mathematics behind them all explain themselves',
    mustExplain.filter(id => !A.find(a => a.id === id)?.blurb), []);

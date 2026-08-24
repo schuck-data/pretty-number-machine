@@ -695,6 +695,9 @@
      goes back to auto for exactly that case, so the banner never eats a tap
      meant for the scene when it has nothing to offer. */
   #ach-toast.tappable { pointer-events: auto; cursor: pointer; }
+  /* Belt and braces for the bug above: whatever classes are left on it, a toast
+     that is not visible cannot be in anybody's way. */
+  #ach-toast:not(.visible) { pointer-events: none; }
   .ach-toast-blurb {
     display: none;
     font-size: 0.8125rem; color: var(--text-dim); line-height: 1.5;

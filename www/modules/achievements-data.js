@@ -392,8 +392,8 @@ const BLURBS = {
     'The Fibonacci numbers are 1, 1, 2, 3, 5, 8, 13, 21 and so on. Add the last two to get the ' +
     'next. Can be found on the spirals of a pinecone.',
   'lucas':
-    'The Lucas numbers follow the same rule as the Fibonacci numbers -- add the last two to get the ' +
-    'next -- but start 2, 1 instead of 1, 1. You get a completely different sequence that still ' +
+    'The Lucas numbers follow the same rule as the Fibonacci numbers – add the last two to get the ' +
+    'next – but start 2, 1 instead of 1, 1. You get a completely different sequence that still ' +
     'grows at the golden ratio. The two are twins: change only where you begin.',
   'perfect':
     'A perfect number equals the sum of its proper divisors: 6 = 1+2+3, and 28 = 1+2+4+7+14. Euclid ' +
@@ -405,7 +405,7 @@ const BLURBS = {
     'Twin primes are only 2 apart, like 11 and 13. Nobody knows whether they ever stop; people have ' +
     'been trying to find out since 1849. Look at where they sit and you will notice something: ' +
     'every prime above 3 is one away from a multiple of six. Of the six numbers around any multiple ' +
-    'of six, four are divisible by 2 or by 3, so only the two neighbours are ever left standing -- ' +
+    'of six, four are divisible by 2 or by 3, so only the two neighbours are ever left standing – ' +
     'and a pair of twins is a multiple of six with a prime on each side.',
   'cousins': 'Primes 4 apart are called cousins. That is the real name.',
   'sexy':
@@ -415,7 +415,7 @@ const BLURBS = {
     'Pick a prime, double it, add 1. If that is prime too, the first one is a Sophie Germain prime. ' +
     'Sophie Germain had to sign her work with a man\'s name to get anyone to read it.',
   'emirp':
-    'Write a prime backwards. If you get a different prime, it is an emirp -- which is \'prime\' ' +
+    'Write a prime backwards. If you get a different prime, it is an emirp – which is \'prime\' ' +
     'spelled backwards. There are four pairs in the grid: 13 and 31, 17 and 71, 37 and 73, 79 and ' +
     '97.',
   'mersenne':
@@ -429,11 +429,11 @@ const BLURBS = {
   'neat':
     'Each node sits a little further round the circle than the one before. Turn that far 89 times ' +
     'and you land almost exactly back where you started. So the multiples of 89 stack up in a ' +
-    'nearly straight line -- the only spoke in the whole figure.',
+    'nearly straight line – the only spoke in the whole figure.',
   'smart': '101 reads the same forwards and backwards. It is the smallest three-digit prime.',
   'balanced':
     '5 sits exactly halfway between 3 and 7. 53 sits exactly halfway between 47 and 59. They are ' +
-    'the only two primes in this grid that are the average of the primes on either side of them -- ' +
+    'the only two primes in this grid that are the average of the primes on either side of them – ' +
     'everywhere else the gap in front and the gap behind are different sizes.',
   'stride':
     'After 113 the next prime is 127. Fourteen numbers in a row with nothing prime among them, the ' +
@@ -443,15 +443,15 @@ const BLURBS = {
   'all-prime':
     '2, 3, 5 and 7 are the prime digits. Eight primes in this grid are written with nothing else. ' +
     'Worth noticing that this is a fact about writing in base ten rather than about the numbers ' +
-    'themselves -- change base and the set dissolves.',
+    'themselves – change base and the set dissolves.',
   'super-prime':
     '2 is the 1st prime, 3 is the 2nd, 5 is the 3rd, 7 is the 4th. Now ask which primes sit at a ' +
-    'prime position -- the 2nd, the 3rd, the 5th, the 7th, and so on. You get 3, 5, 11, 17, 31, 41, ' +
+    'prime position – the 2nd, the 3rd, the 5th, the 7th, and so on. You get 3, 5, 11, 17, 31, 41, ' +
     '59, 67, 83, 109 and 127. Primes counted by primes, and you can do the whole thing by counting ' +
     'along the panel.',
   'goldbach':
     'Every even number bigger than 2 seems to be the sum of two primes. 100 = 3 + 97. 232 = 101 + ' +
-    '131. Nobody has ever found an exception, and nobody has ever proved there isn\'t one -- it has ' +
+    '131. Nobody has ever found an exception, and nobody has ever proved there isn\'t one – it has ' +
     'been open since 1742. Eighteen of the even numbers you can reach here have exactly one answer.',
   'collatz':
     'Take any number. If it is even, halve it. If it is odd, triple it and add one. Repeat. ' +
@@ -463,12 +463,12 @@ const BLURBS = {
     'grid if you use at least three in a row.',
   'stairs':
     '3, 5 and 7 climb in equal steps of two, and they are the only three primes in a row that ever ' +
-    'can be -- take any three odd numbers two apart and one of them is always a multiple of 3. ' +
+    'can be – take any three odd numbers two apart and one of them is always a multiple of 3. ' +
     'Evenly spaced runs of primes do exist at every length, though, and that they go on forever was ' +
     'only proved in 2004.',
   'square-up':
     '2 + 7 = 9. 5 + 11 = 16. 13 + 23 = 36. Ten squares can be reached by adding two primes from ' +
-    'this grid, and it is worth looking at which. The odd squares -- 9, 25, 49, 81 -- can only be ' +
+    'this grid, and it is worth looking at which. The odd squares – 9, 25, 49, 81 – can only be ' +
     'reached when one of your two primes is 2, because every other prime is odd and two odd numbers ' +
     'always add to an even one.',
   'nice': 'nice.',
@@ -484,10 +484,10 @@ const BLURBS = {
     'primes: 4 + 9 + 25 + 49 + 121 + 169 + 289 = 666.',
   'angel':
     'Repeated digits are read as messages in some numerology. Every one of them is a multiple of ' +
-    '111, and 111 is 3 x 37 -- so 37 is hiding inside all nine. The five primes you selected are ' +
+    '111, and 111 is 3 x 37 – so 37 is hiding inside all nine. The five primes you selected are ' +
     'exactly the ones needed to build the whole set: 5 appears only in 555, and 7 only in 777.',
   'unlucky':
-    'Fear of thirteen is common enough to have a name -- triskaidekaphobia -- and common enough ' +
+    'Fear of thirteen is common enough to have a name – triskaidekaphobia – and common enough ' +
     'that plenty of buildings label the floor above twelve as fourteen.',
   'other-beast':
     'The oldest surviving fragment of Revelation gives the number as 616, not 666. Both readings ' +
@@ -498,7 +498,7 @@ const BLURBS = {
     'divisions: wisdom, conduct and discipline. Eight is also the luckiest number in Chinese ' +
     'tradition, because the word for it sounds like the word for prosperity.',
   'sator':
-    'SATOR AREPO TENET OPERA ROTAS -- a five-by-five Latin word square that reads the same left to ' +
+    'SATOR AREPO TENET OPERA ROTAS – a five-by-five Latin word square that reads the same left to ' +
     'right, right to left, top to bottom and bottom to top. One was scratched into a wall at ' +
     'Pompeii before AD 79, and they kept turning up across Europe for the next thousand years, ' +
     'carved on churches and carried as charms. Twenty-five letters, which is also five times five, ' +
@@ -532,22 +532,22 @@ const BLURBS = {
     'The A above middle C, at 440 hertz, is what an orchestra tunes to. It was only fixed by ' +
     'international agreement in 1955.',
   'lightspeed':
-    'Light travels 299,792,458 metres every second, and that number is exact -- since 1983 the ' +
+    'Light travels 299,792,458 metres every second, and that number is exact – since 1983 the ' +
     'metre has been defined by it rather than the other way round.',
   'memory':
     '"640K ought to be enough for anybody" is the most famous thing Bill Gates never said. He has ' +
-    'denied it for forty years -- "I\'ve said some stupid things and some wrong things, but not ' +
-    'that" -- and nobody has ever produced a contemporaneous source. It survives because it is ' +
+    'denied it for forty years – "I\'ve said some stupid things and some wrong things, but not ' +
+    'that" – and nobody has ever produced a contemporaneous source. It survives because it is ' +
     'exactly what someone in 1981 might plausibly have said.',
   'skeleton':
-    'An adult has 206 bones. A newborn has closer to 270 -- more, not fewer -- and loses the ' +
+    'An adult has 206 bones. A newborn has closer to 270 – more, not fewer – and loses the ' +
     'difference as separate bones fuse together on the way up.',
   'inherited': 'Twenty-three pairs. One of each pair from each parent.',
   'elements':
     '118 elements have been named. Everything past uranium at 92 is made rather than found, and the ' +
     'last of them, oganesson, has been produced a few atoms at a time.',
   'freezing':
-    'Water freezes at 273 kelvin and boils at 373 -- exactly one hundred apart, which is the whole ' +
+    'Water freezes at 273 kelvin and boils at 373 – exactly one hundred apart, which is the whole ' +
     'definition of the Celsius degree. The same digits turn up as -273 on the Celsius scale, ' +
     'because that is where the kelvin scale starts and nothing can go below it.',
   'body-heat':
@@ -556,7 +556,7 @@ const BLURBS = {
     'simply 37.',
   'boiling': 'Water boils at 212 Fahrenheit. 212 is also Manhattan\'s area code. Almost certainly unrelated.',
   'year':
-    '365 days is one trip around the Sun -- near enough. The real figure is about a quarter of a ' +
+    '365 days is one trip around the Sun – near enough. The real figure is about a quarter of a ' +
     'day longer, and every calendar humans have built is an argument about what to do with that ' +
     'quarter.',
   'leap':
@@ -570,18 +570,18 @@ const BLURBS = {
     'New moon to new moon is 29 and a half days. The half is why lunar calendars alternate 29-day ' +
     'and 30-day months rather than picking one.',
   'metonic':
-    'Nineteen years is almost exactly 235 lunar months -- out by about two hours. Meton of Athens ' +
+    'Nineteen years is almost exactly 235 lunar months – out by about two hours. Meton of Athens ' +
     'noticed in 432 BC, and the cycle is still load-bearing: it is why Easter moves on a ' +
     'nineteen-year pattern and why the Hebrew calendar inserts a leap month seven times in nineteen ' +
     'years.',
   'quarter':
-    'Ninety-one days, which is thirteen weeks exactly. Four of them come to 364 -- one day short of ' +
+    'Ninety-one days, which is thirteen weeks exactly. Four of them come to 364 – one day short of ' +
     'a year, which is why no quarter ever starts on the same weekday twice running.',
   'shortest':
     'February is short because Roman calendars ran on twelve months of irregular length and ' +
     'February was the one left holding the shortfall.',
   'longest':
-    'Seven months have 31 days. The pattern looks arbitrary because it is -- it survives from Roman ' +
+    'Seven months have 31 days. The pattern looks arbitrary because it is – it survives from Roman ' +
     'reforms that were about politics more than astronomy.',
   'help':
     '911 has been the emergency number across North America since 1968. Before that every town had ' +
@@ -592,7 +592,7 @@ const BLURBS = {
   'ny': '212 is Manhattan below 96th Street, and the most sought-after area code in America.',
   'space-city': '713 is Houston, home of mission control.',
   'graceland': '901 is Memphis.',
-  'motor-city': '313 is Detroit -- Motown, techno, and the city that put the world on wheels.',
+  'motor-city': '313 is Detroit – Motown, techno, and the city that put the world on wheels.',
   'vice': '305 is Miami, and it covered the whole of south Florida until 1995.',
   'bay': '415 is San Francisco.',
   'aloha':
@@ -602,23 +602,29 @@ const BLURBS = {
   'phi':
     'The golden angle is what you get when you divide a full turn in the golden ratio: about 137.5 ' +
     'degrees. It is the angle a sunflower uses, because it is the angle least well approximated by ' +
-    'any simple fraction -- so consecutive seeds never fall into a small number of spokes, at any ' +
+    'any simple fraction – so consecutive seeds never fall into a small number of spokes, at any ' +
     'scale. This whole figure is built on it. 1.618 is the golden ratio itself.',
   'pi':
     'Set the divergence to half a turn and the figure collapses into two arms, because every second ' +
     'node lands in the same place. That is what a rational angle does, and it is exactly what the ' +
     'golden angle avoids.',
   'tau':
-    'Tau is two pi -- one whole turn. Set the divergence there and every node lands on top of the ' +
+    'Tau is two pi – one whole turn. Set the divergence there and every node lands on top of the ' +
     'last one, collapsing the figure to a single spoke. Some argue tau should have been the circle ' +
     'constant all along, since a turn is the thing you actually measure.',
   'unity':
-    '1 is not prime, and it is not built out of primes either. It is called the unit -- the thing ' +
+    '1 is not prime, and it is not built out of primes either. It is called the unit – the thing ' +
     'you count with. You get it last because you have to get everything else first, and when you ' +
     'do, every gilded prime finally gets its line and all of its multiples.',
 };
 
-for (const a of ACHIEVEMENT_DEFS) a.blurb = BLURBS[a.id] || '';
+// DEV: the en-dash pass happens HERE rather than in the strings above, because
+// a long blurb is wrapped across several literals and a " -- " that straddles
+// the join never appears contiguously in the source. BEST! was the one that got
+// away when this was done with a search and replace.
+for (const a of ACHIEVEMENT_DEFS) {
+  a.blurb = (BLURBS[a.id] || '').replace(/ -- /g, ' – ');
+}
 
 // ============================================================
 // THE GILDING RULE

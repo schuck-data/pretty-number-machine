@@ -299,7 +299,7 @@ async function unlock(id) {
   // gilded" and would have shown up on the figure as gilding that lagged one
   // unlock behind.
   invalidateGild();
-  emit('achievement:unlocked', { id, name: a.name, subtitle: a.clue, blurb: a.blurb, xp: a.xp });
+  emit('achievement:unlocked', { id, name: a.name, clue: a.clue, blurb: a.blurb, xp: a.xp });
 
   // Fire and forget. A failure to reach Play Games must not roll back the local
   // ledger — reconciliation on the next start will push it again, and unlocks
@@ -548,18 +548,54 @@ function showNext() {
   // dismisses. Rebound each time, because innerHTML replaced the contents.
   let dismissTimer = null;
   const finish = () => {
-    el.classList.remove('visible', 'open');
+    // `tappable` has to come off with the rest. It sets pointer-events: auto,
+    // and leaving it on a toast that has faded to opacity 0 parks an invisible
+    // tap target across the top of the screen for the rest of the session —
+    // which is exactly what it did, swallowing taps meant for the figure.
+    el.classList.remove('visible', 'open', 'tappable');
     setTimeout(() => { toastShowing = false; showNext(); }, 260);
   };
+  // Tapping the banner takes you to the achievement in the list, which is where
+  // the blurb lives and where you can see what it gilded. The banner is a
+  // pointer, not a destination.
   el.onclick = () => {
-    if (!a.blurb) { clearTimeout(dismissTimer); finish(); return; }
-    if (el.classList.contains('open')) { clearTimeout(dismissTimer); finish(); return; }
     clearTimeout(dismissTimer);
-    el.classList.add('open');
+    finish();
+    revealInList(a.id);
   };
 
   const dwell = toastQueue.length ? 1500 : 2600; // hurry up if more are waiting
   dismissTimer = setTimeout(finish, dwell);
+}
+
+// Open the panel onto an achievement and put it under the reader's nose. Used
+// by the unlock banner, which is a pointer rather than a destination.
+//
+// DEV: this drives the real controls rather than reaching into their state —
+// the section header is the thing that knows how to open a section, and the
+// cluster header is the thing that knows how to open a cluster. Setting classes
+// directly would work until either of them grew a side effect.
+export function revealInList(id) {
+  const a = BY_ID.get(id);
+  if (!a) return;
+
+  const panel = document.getElementById('panel');
+  if (panel) panel.classList.remove('collapsed');
+
+  const section = document.getElementById('section-achievements');
+  if (section && !section.classList.contains('open')) section.click();
+
+  openClusters.add(a.cluster);
+  renderList();
+
+  // After renderList, because it rebuilt every row.
+  const row = [...(listEl?.querySelectorAll('.ach-row') || [])]
+    .find(r => r.querySelector('.ach-name')?.textContent.endsWith(a.name));
+  if (!row) return;
+  setFocus(a.id);
+  for (const other of listEl.querySelectorAll('.ach-row')) other.classList.remove('open', 'focused');
+  row.classList.add('open', 'focused');
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 function queueToast(a) {
@@ -701,7 +737,12 @@ function refreshGilding() {
 // curve colour is — the renderer's pulse and colour-drift passes own those
 // properties and would win otherwise. The focused set is small by construction
 // (the largest is SQUARES! at thirty), so this is a short loop.
-const LABEL_MAX = 8;          // see the threshold note in paintFocusNow()
+// Above this many nodes the highlight shows shape and drops the numbers. Eight
+// was too tight: it silenced the series, which are the sets most worth reading —
+// FIBONACCI! is 14 nodes, LUCAS! 14, RUN! 14, SUPERPRIME! 11. Thirty labels the
+// series and still spares the figure from EMIRP! at 36, TWINNING! at 69 and
+// REST! at 142. See the note in paintFocusNow().
+const LABEL_MAX = 30;
 let labelLayer = null;
 const _proj = { x: 0, y: 0 };
 
