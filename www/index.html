@@ -1014,11 +1014,17 @@
      "addition, but ambitious" — performed rather than asserted. It runs once;
      an operator that kept spinning would be a logo, not a demonstration. */
   @keyframes ads-roll {
-    0%   { transform: translateX(-14%) rotate(-45deg); }
-    60%  { transform: translateX(2%) rotate(6deg); }
+    0%   { transform: translateX(-16%) rotate(-45deg); }
+    65%  { transform: translateX(2%) rotate(5deg); }
     100% { transform: translateX(0) rotate(0deg); }
   }
-  .ads-anim-roll { animation: ads-roll 1400ms cubic-bezier(0.3, 0.9, 0.25, 1) 260ms both; }
+  /* The easing matters more than the duration here. The first curve was
+     cubic-bezier(0.3, 0.9, …), which leaves at speed — the cross had already
+     half-turned before the eye found it, so the plus was never really seen and
+     the joke did not land. This one starts nearly still, so the slide reads as
+     a PLUS for a beat before anything moves. Longer delay for the same reason:
+     the slide has to arrive first. */
+  .ads-anim-roll { animation: ads-roll 2200ms cubic-bezier(0.62, 0.01, 0.2, 1) 600ms both; }
 
   /* ASTERISK. Turns forever and breathes. The claim is that it works
      everywhere, so it never settles into one orientation — there is no
@@ -1031,6 +1037,22 @@
   }
   .ads-anim-spin {
     animation: ads-spin 9s linear infinite, ads-breathe 3.2s ease-in-out infinite;
+    /* IT MUST TURN ON ITS OWN CENTRE, and 50% is not its own centre.
+       An asterisk is a high glyph: its ink sits near the cap line with nothing
+       below, so the middle of the line box is well beneath the middle of the
+       mark. Rotating about 50% swings the asterisk around a point below itself
+       and it visibly ORBITS rather than spins.
+
+       34.2% is measured, not guessed. On a Pixel 7, canvas TextMetrics for this
+       exact font and weight: font ascent 120, descent 37, ink ascent 87, ink
+       descent -31, line box 111. Baseline lands 97 from the top, the ink centre
+       sits 59 above the baseline, so the ink centre is 38 from the top —
+       34.2% of the box. Every one of those numbers scales with font-size, so
+       the percentage holds across the whole clamp range.
+
+       Re-measure if the font stack changes. The probe is four lines of canvas
+       and is written out in docs/ADS.md 3b. */
+    transform-origin: 50% 34.2%;
   }
 
   /* MERE PROXIMITY. Two letters drift toward each other inside the empty
@@ -1046,10 +1068,23 @@
     height: 100%; font-size: clamp(52px, 17vw, 84px); font-weight: 500;
     font-style: italic; line-height: 1;
   }
-  .ads-ij span:first-child { animation: ads-ij-left 5s cubic-bezier(0.4, 0, 0.2, 1) both; }
-  .ads-ij span:last-child  { animation: ads-ij-right 5s cubic-bezier(0.4, 0, 0.2, 1) both; }
-  @keyframes ads-ij-left  { from { transform: translateX(-190%); } to { transform: translateX(-0.06em); } }
-  @keyframes ads-ij-right { from { transform: translateX(190%); }  to { transform: translateX(0.06em); } }
+  /* They fade in from much further out, and slowly. The first version started
+     them close and moved fast, which read as a transition rather than as an
+     approach — and the approach is the entire product. Nearly nine seconds
+     against a ten-second dwell, so the pair is at rest just long enough to be
+     read as `ij` before the deck moves on. */
+  .ads-ij span:first-child { animation: ads-ij-left 8600ms cubic-bezier(0.33, 0, 0.15, 1) 400ms both; }
+  .ads-ij span:last-child  { animation: ads-ij-right 8600ms cubic-bezier(0.33, 0, 0.15, 1) 400ms both; }
+  @keyframes ads-ij-left {
+    0%   { transform: translateX(-340%); opacity: 0; }
+    22%  { opacity: 1; }
+    100% { transform: translateX(-0.06em); opacity: 1; }
+  }
+  @keyframes ads-ij-right {
+    0%   { transform: translateX(340%); opacity: 0; }
+    22%  { opacity: 1; }
+    100% { transform: translateX(0.06em); opacity: 1; }
+  }
 
   /* Reduced motion: the products still show, they simply stop performing.
      TIMES lands as a times, ASTERISK stops turning, and the two letters are

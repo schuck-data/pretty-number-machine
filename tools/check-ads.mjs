@@ -121,7 +121,7 @@ eq('glyphs too wide to set at display size',
 eq('slides whose small print is a stub',
    D.SLIDES.filter(s => s.legal !== undefined && s.legal.trim().length <= 12).map(s => s.id), []);
 eq('slides deliberately without small print',
-   D.SLIDES.filter(s => !s.legal).map(s => s.id), ['plus', 'proximity']);
+   D.SLIDES.filter(s => !s.legal).map(s => s.id), ['plus', 'oplus', 'proximity']);
 eq('slides deliberately without a headline',
    D.SLIDES.filter(s => !s.headline).map(s => s.id), ['sigma']);
 

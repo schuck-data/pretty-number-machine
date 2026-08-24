@@ -238,7 +238,12 @@ const custom = (kind = 'state') => ({ kind, custom: true });
 // ---- TUTORIAL — the ordered tour ----------------------------------------
 d(1,  'Tutorial', 'first',      'FIRST!',       '-switch it on-',                      'Switch achievements on from the achievements section.', [2],    custom('dom'));
 d(2,  'Tutorial', 'exhaustive', 'EXHAUSTIVE!',  '-show the ones in between-',          'Switch on all integers in range.',                      [1000], custom('dom'));
-d(3,  'Tutorial', 'parawhat',   'PARAWHAT?!',   '-pe-RAS-te-kee-',                     'Turn on or adjust parastichy line visibility.',         [137],  custom('dom'));
+// PARAWHAT?! gilds the two spiral COUNTS. Count the parastichy families on a
+// sunflower and you get 34 one way and 55 the other — consecutive Fibonacci
+// numbers, one per family. It is what you would have in front of you if you
+// actually did what this achievement asks, which fits better than the angle it
+// used to carry. 137 went to PHI!, where the golden angle belongs.
+d(3,  'Tutorial', 'parawhat',   'PARAWHAT?!',   '-pe-RAS-te-kee-',                     'Turn on or adjust parastichy line visibility.',         [34, 55], custom('dom'));
 d(4,  'Tutorial', 'art',        'ART!',         '-change how it looks, not what it is-','Change any appearance setting.',                       [433],  custom('dom'));
 d(5,  'Tutorial', 'bophades',   'ORBS!',        '-so big-',                            'Take node size to its maximum.',                        [8],    custom('dom'));
 d(6,  'Tutorial', 'maximalist', 'MAXIMALIST!',  '-push the slider all the way-',       'Take the range slider to its maximum, 2500.',           [999],  custom('dom'));
@@ -364,7 +369,11 @@ d(97, 'Dial', 'nola',       'NOLA!',       '-the big easy-',               'Set 
 // touched anything. It binds to the "Reset to φ" button instead, which is a
 // thing somebody has to do. π and τ are safe as state tests because neither is
 // a default.
-d(98,  'Greeks', 'phi', 'PHI!', '-the angle nature picks-', 'Set the divergence angle back to the golden angle.', [161], custom('dom'));
+// The one Greek that gilds an ANGLE rather than decimal digits, and it should:
+// its criteria is about the golden angle, so 137 is the number a player goes
+// looking for. PI! and TAU! keep their digits (314, 628) because their angles
+// are 180 and 360, which mean nothing on this figure.
+d(98,  'Greeks', 'phi', 'PHI!', '-the angle nature picks-', 'Set the divergence angle back to the golden angle.', [137], custom('dom'));
 d(99,  'Greeks', 'pi',  'PI!',  '-half a turn-',            'Set the divergence angle to 180 degrees.',      [314], custom());
 d(100, 'Greeks', 'tau', 'TAU!', '-the whole turn-',         'Set the divergence angle to a full turn.',      [628], custom());
 

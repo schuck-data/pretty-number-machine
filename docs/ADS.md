@@ -193,7 +193,28 @@ decorating it — which is the only thing that earns the frames.
   operator that kept spinning would be a logo, not a demonstration
 - **ASTERISK** turns forever and breathes. The claim is that it works
   everywhere, so it never settles into one orientation — there is no canonical
-  way up for an asterisk
+  way up for an asterisk.
+
+  **It must turn on its own centre, and 50% is not its own centre.** An
+  asterisk is a high glyph: its ink sits near the cap line with nothing below
+  it, so the middle of the line box is well beneath the middle of the mark, and
+  rotating about 50% makes it visibly ORBIT rather than spin. The origin is
+  `50% 34.2%`, measured rather than guessed — on a Pixel 7, canvas TextMetrics
+  for this font and weight gave font ascent 120, descent 37, ink ascent 87, ink
+  descent −31 in a 111px line box, putting the baseline 97 from the top and the
+  ink centre 38 from the top. Every one of those scales with font-size, so the
+  percentage holds across the clamp range. Re-measure if the font stack changes:
+
+  ```js
+  const cs = getComputedStyle(el), box = el.getBoundingClientRect();
+  const c = document.createElement('canvas').getContext('2d');
+  c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const m = c.measureText('*');
+  const baseline = (box.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2
+                   + m.fontBoundingBoxAscent;
+  const inkCentre = baseline - (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+  console.log(100 * inkCentre / box.height);   // -> 34.2
+  ```
 - **MERE PROXIMITY** drifts an `i` and a `j` toward each other inside the empty
   frame and stops them side by side: `ij`, the product written with no operator
   at all. They stop a hair apart, because touching would read as one word and

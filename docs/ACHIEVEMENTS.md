@@ -635,6 +635,28 @@ its dial.
 
 ---
 
+## 12a. The golden angle moved to PHI!
+
+Decided 2026-08-23. **PHI! gilds 137 and PARAWHAT?! gilds 34 and 55.**
+
+PHI! used to gild 161 — the digits of φ, matching PI! at 314 and TAU! at 628 —
+while 137, the golden ANGLE, belonged to PARAWHAT?!. But PHI!'s criteria is
+"set the divergence angle back to the golden angle", so 137 is the number a
+player goes looking for, and finding it lit under a different achievement is a
+small betrayal of the clue.
+
+PI! and TAU! keep their digits, because their angles are 180 and 360 and
+neither means anything on this figure. PHI! is the one Greek whose angle is
+worth more than its decimals, which is the whole reason the golden angle has a
+name.
+
+PARAWHAT?! took **34 and 55** in exchange: consecutive Fibonacci numbers, and
+the two spiral counts you get if you count the parastichy families on a
+sunflower — one number per family. It is what would be in front of you if you
+did what the achievement asks.
+
+---
+
 ## 13. Open
 
 - **Play Console XP limits are unverified.** v2 gives UNITY! 500 XP, so a
