@@ -558,6 +558,7 @@
      new overlay has to be added to it.
      ========================================================== */
   body.clear-view #corner-stack,
+  body.clear-view #clear-view-btn,
   body.clear-view #panel,
   body.clear-view #transport,
   body.clear-view #transport-readout,
@@ -567,21 +568,39 @@
     display: none !important;
   }
 
-  #restore-ui {
+  /* One box, two buttons, never both at once. #clear-view-btn is the one you
+     see normally; #restore-ui replaces it in clear view. Sharing the geometry
+     is what makes them read as a single toggle rather than two controls. */
+  #restore-ui, #clear-view-btn {
     position: absolute; z-index: 21;
     top: calc(12px + env(safe-area-inset-top));
-    left: calc(12px + env(safe-area-inset-left));
+    /* FLUSH, not inset 12 like the right-hand stack. This column's other
+       member is #lens-handle, which sits at the bare safe-area inset because
+       it is a tab to be dragged off the edge — so a button inset by 12 above
+       it reads as misaligned rather than as a column. Same left, same width,
+       centres agree. */
+    left: env(safe-area-inset-left);
     width: 34px; height: 34px; border-radius: 50%;
     display: none; align-items: center; justify-content: center;
-    background: rgba(12, 12, 15, 0.45);
     border: 1px solid var(--border-corner);
     color: var(--text-corner);
     cursor: pointer; padding: 0;
   }
+  /* Transparent like the rest of the corner controls — it sits over the scene
+     with the interface still up, so it should be as quiet as they are.
+     #restore-ui keeps its fill because in clear view it is alone on the
+     artwork and has nothing else to be found beside. */
+  #clear-view-btn { background: transparent; display: flex; }
+  #clear-view-btn svg { width: 16px; height: 16px; display: block; }
+  #restore-ui { background: rgba(12, 12, 15, 0.45); }
   #restore-ui svg { width: 16px; height: 16px; display: block; }
   /* Only ever visible in clear view, and then it is the only thing visible. */
   body.clear-view #restore-ui { display: flex; }
-  @media (pointer: coarse) { #restore-ui { width: 44px; height: 44px; } }
+  @media (pointer: coarse) {
+    /* 44px here keeps the 8px gap to the lens handle, whose coarse `top`
+       is 64px: 12 + 44 + 8. The fine-pointer pair is 12 + 34 + 8 = 54. */
+    #restore-ui, #clear-view-btn { width: 44px; height: 44px; }
+  }
 
   /* The achievements list. Built by modules/achievements.js, styled here so
      it follows the panel's theme rather than carrying its own colours. */
@@ -1949,7 +1968,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.10 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.11 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll
@@ -2038,23 +2057,33 @@
     </svg>
   </button>
 
-  <!-- CLEAR VIEW. Hides every interface so the figure has the screen to
-       itself. The way back is #restore-ui in the opposite corner, which is
-       deliberately the ONLY thing left on screen — a clear view you cannot
-       leave is a trap, and putting the exit where the controls were would
-       defeat the point of hiding them. -->
-  <button id="clear-view-btn" type="button" title="Clear view" aria-label="Hide all controls">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/>
-      <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9"/>
-      <path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/>
-      <path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>
-    </svg>
-  </button>
 </div>
 
-<!-- The way out of clear view. Top LEFT, opposite the stack it replaces. -->
+<!-- CLEAR VIEW, top LEFT, directly above the lens handle.
+     Moved off the right-hand stack 2026-08-24. Two things made the left column
+     the right home. The handle's own offset is already `12 top inset + 34 + an
+     8 gap` — it was leaving room for a control that lived in the OTHER column,
+     so a 34px button at the top inset drops into that space with the gap
+     landing exactly where the comment on #lens-handle says it should, at both
+     breakpoints. And it now shares a position with #restore-ui, which is only
+     ever visible while this one is hidden, so the pair reads as one control in
+     one place rather than a trip across the screen.
+
+     Safe with respect to the lens: #lens-gap is the SECOND child of
+     #corner-stack and this button was the LAST, so taking it out does not
+     shift the hole the handle has to land in. That alignment is load-bearing —
+     see the note on #lens-handle for what happens when it drifts. -->
+<button id="clear-view-btn" type="button" title="Clear view" aria-label="Hide all controls">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/>
+    <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9"/>
+    <path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/>
+    <path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>
+  </svg>
+</button>
+
+<!-- The way out of clear view. Same spot as the button that got you here. -->
 <button id="restore-ui" type="button" title="Show controls" aria-label="Show controls">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
