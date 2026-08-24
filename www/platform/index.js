@@ -179,12 +179,17 @@ const stub = {
     // something needs to be looked at — docs/ADS.md says how.
     async getProduct() { return null; },
     async purchase() { return { ok: false, reason: 'unavailable' }; },
-    // `available` is the important field and it is NOT decoration. "There is no
-    // store here" and "the store says you own nothing" are different answers,
-    // and collapsing them into an empty list costs a player their purchase:
-    // modules/ads.js overwrites its cached entitlement whenever a store
-    // answers, so a stub that answers `{entitled: []}` wipes it on every
-    // launch. Found on a Pixel 7, where it silently un-bought the product.
+    // `available` carries Play's own distinction up to the app. Play Billing
+    // reports whether it managed to answer through BillingResult.responseCode
+    // — OK versus SERVICE_DISCONNECTED, SERVICE_UNAVAILABLE, BILLING_UNAVAILABLE
+    // — and a plugin will map those here so nothing above this file handles a
+    // Play constant. (Entitlement itself does NOT need a network: Play's
+    // queryPurchasesAsync reads the Store app's local cache.)
+    //
+    // The stub is not a store at all, so it says so. Collapsing that into an
+    // empty entitlement list reads as "you own nothing" and costs a player
+    // their purchase — found on a Pixel 7, where it un-bought the product on
+    // every launch.
     async restore() { return { available: false, entitled: [] }; },
   },
 };

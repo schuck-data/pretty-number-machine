@@ -43,18 +43,15 @@ eq('addition requires nothing', D.PRODUCT_BY_ID.get('ads-addition').requires, nu
 // change, that slide stops making sense — so the ratio is pinned, not the
 // numbers, and this fails loudly if somebody edits one and not the other.
 const micros = Object.fromEntries(D.PRODUCTS.map(p => [p.id, p.priceMicros]));
-const ratio = micros['ads-multiplication'] / micros['ads-addition'];
-eq('multiplication is about five times addition (the WHY-FIVE slide says so)',
-   Math.round(ratio), 5);
 
-// It is not EXACTLY five, and that is load-bearing. $4.99 is 5.04 times $0.99,
-// and the WHY-FIVE slide's small print accounts for the four cents by name. If
-// the prices ever move, that line becomes wrong in a way nobody would notice by
-// looking at it — so the discrepancy itself is pinned.
-const gapCents = micros['ads-multiplication'] / 1e4 - 5 * (micros['ads-addition'] / 1e4);
-eq('the gap the WHY-FIVE small print names, in cents', gapCents, 4);
-ok('...and the slide still says "four cents"',
-   D.SLIDES.find(s => s.id === 'why-five').legal.includes('four cents'));
+// EXACTLY five, and one slide says so in its small print. $4.99 was five-point-
+// oh-four times $0.99, which this assertion caught; $4.95 is five on the nose.
+// If the prices ever move apart again, the WHY-FIVE slide becomes a lie that
+// nobody would spot by looking at it.
+eq('multiplication costs exactly five times addition (the WHY-FIVE slide says so)',
+   micros['ads-multiplication'] / micros['ads-addition'], 5);
+ok('...and that slide still claims it in its small print',
+   /exactly \$4\.95/.test(D.SLIDES.find(s => s.id === 'why-five').legal));
 
 // A price string that disagrees with the micros is the kind of thing that
 // reaches a store listing and becomes a refund.

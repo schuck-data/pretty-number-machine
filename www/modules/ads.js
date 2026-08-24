@@ -66,18 +66,25 @@ function saveLocal() {
 export function isOwned(id) { return owned.has(id); }
 
 // DEV: restore() is authoritative ONLY when a real store answered, and the
-// adapter says so with `available`. Everything else leaves the cache alone.
+// adapter says so with `available`.
 //
-// This is the whole subtlety of the function and it was got wrong first time.
-// "There is no store here" and "the store says you own nothing" arrive looking
-// identical — both are an empty entitlement list — but treating the first as
-// the second un-buys the product. It did exactly that on a Pixel 7: no billing
-// plugin is wired, restore() answered `{entitled: []}`, and a seeded
-// entitlement vanished on every launch. Offline is the same shape of failure
-// and would have shipped, because a player on a plane gets no store either.
+// This is NOT a workaround for something Play fails to do — Play solves it, and
+// `available` is how its solution reaches this file. Play Billing's
+// queryPurchasesAsync() reads the Play Store app's own local cache of
+// entitlements, so it answers correctly without a network round-trip, and it
+// reports whether it answered at all through BillingResult.responseCode: OK
+// versus SERVICE_DISCONNECTED, SERVICE_UNAVAILABLE, BILLING_UNAVAILABLE. The
+// adapter collapses that into one boolean so nothing above platform/index.js
+// has to know Play's constants.
+//
+// What goes wrong without it is a build where the service never answers at all
+// — today's, since no billing plugin is wired. restore() returned an empty
+// list, this function read it as "you own nothing", and a seeded entitlement
+// vanished on every launch. Found on a Pixel 7. The same thing would happen on
+// a real device whenever the billing service is disconnected.
 //
 // So: only `available: true` may take something away. Anything else — no
-// plugin, no network, a plugin that threw — keeps what is cached.
+// plugin, a disconnected service, a plugin that threw — keeps what is cached.
 async function reconcile() {
   owned = loadLocal();
   paintButtons();
@@ -234,11 +241,16 @@ function openPaywall(p) {
 // ============================================================
 // THE SLIDESHOW
 // ============================================================
-// Manual by default. An advert you paid for should not be able to end before
-// you have read it, and the copy is the product — the whole joke is in the
-// small print, so a slide that advances itself is a slide that eats the gag.
-// Play is offered, and it is slow.
-const DWELL_MS = 6500;
+// It plays itself. An advert deck that waits to be advanced is a gallery, and
+// this is meant to behave like the thing it is parodying — you open it and it
+// starts, the way a commercial break does.
+//
+// Ten seconds a slide, which is long. The copy IS the product and the punchline
+// is usually the small print at the bottom, so the dwell has to cover reading
+// the whole slide rather than glancing at it. Pause and the arrows are there
+// for anyone who wants longer, and touching either arrow stops the timer —
+// somebody steering by hand has stopped watching and started reading.
+const DWELL_MS = 10000;
 let showTimer = null;
 let showIndex = 0;
 let showSlides = [];
@@ -287,10 +299,16 @@ function showHTML() {
     </div>`;
 }
 
-function renderSlide() {
+// `dir` is which way the deck moved, so the incoming slide enters from the side
+// it came from. 0 means "no movement" — the first slide of a session, or a
+// re-render — and gets a plain fade instead, because a slide that flies in from
+// nowhere on open reads as a glitch.
+function renderSlide(dir = 0) {
   const stage = overlay?.querySelector('.ads-stage');
   if (!stage) return;
   stage.innerHTML = slideHTML(showSlides[showIndex]);
+  const el = stage.firstElementChild;
+  if (el) el.classList.add(dir > 0 ? 'ads-enter-next' : dir < 0 ? 'ads-enter-prev' : 'ads-enter');
   const count = overlay.querySelector('.ads-count');
   if (count) count.textContent = `${showIndex + 1} / ${showSlides.length}`;
   if (playing) {
@@ -304,14 +322,14 @@ function renderSlide() {
 // wondering whether it broke.
 function step(d) {
   showIndex = (showIndex + d + showSlides.length) % showSlides.length;
-  renderSlide();
+  renderSlide(d);
 }
 
 function openShow(productId) {
   showSlides = slidesFor(productId);
   if (!showSlides.length) return;                 // checked headlessly; belt and braces
   showIndex = 0;
-  playing = false;
+  playing = true;                 // it starts by itself; see DWELL_MS
   openOverlay(showHTML());
   overlay.querySelector('[data-prev]')?.addEventListener('click', () => { stopShow(); syncPlay(); step(-1); });
   overlay.querySelector('[data-next]')?.addEventListener('click', () => { stopShow(); syncPlay(); step(1); });
@@ -323,6 +341,7 @@ function openShow(productId) {
   overlay.querySelector('[data-intrude]')?.addEventListener('change', (e) => {
     update({ adsIntrude: e.target.checked });
   });
+  syncPlay();
   renderSlide();
   emit('ads:opened', { id: productId });
 }

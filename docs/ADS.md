@@ -104,6 +104,37 @@ advert, and the one thing this feature must never accidentally become.
 
 ---
 
+## 3a. KNOWN COLLISION — the corner column and the transport
+
+Unresolved as of 2026-08-23, and it needs a decision rather than a nudge.
+
+The controls moved from the right edge to the left because the right-hand
+column collided with the sheet's menu button. **The move did not end the
+collision, it moved it.** The panel is a bottom sheet, and when it opens the
+transport row rides up above it. Measured on a Pixel 7, sheet open, both
+products owned:
+
+| | top | bottom | left | right |
+|---|---|---|---|---|
+| transport | 324 | 368 | 4 | 311 |
+| clear-view (last in the column) | 332 | 376 | 12 | 56 |
+
+They overlap in both axes. With both products owned the column is six slots
+tall — lens gap, dazzle, trophy, plus, times, clear view — and reaches 376 in a
+914-tall viewport whose transport arrives at 324.
+
+Options, none of them free:
+
+- **Hide the column while the sheet is open.** Cheapest and it cannot collide.
+  Costs the ability to press Dazzle with the panel open, which works today
+- **Let the column stop above the transport** and scroll or wrap the overflow.
+  No lost function, but a scrolling strip of round buttons is a fussy control
+- **Shrink the buttons or the gaps.** Buys about 20px; the shortfall is 52. Not
+  enough on its own, and it fights the 44px touch target the accessibility pass
+  established
+- **Move something out of the column** — clear view is the obvious candidate,
+  since it is the one control whose whole job is to get rid of the others
+
 ## 4. The entitlement rule
 
 > **The store is the source of truth. The local record is a cache.**

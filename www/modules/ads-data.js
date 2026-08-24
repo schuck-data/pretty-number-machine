@@ -63,8 +63,8 @@ export const PRODUCTS = [
     id: 'ads-multiplication',
     order: 2,
     name: 'Multiplication Ads',
-    price: '$4.99',
-    priceMicros: 4990000,
+    price: '$4.95',
+    priceMicros: 4950000,
     pitch: 'The multiplication operators. Times. Asterisk. The Dot. ' +
            'A premium tier, priced accordingly.',
     // Created by ads.js and inserted into the corner stack once addition is
@@ -255,11 +255,7 @@ export const SLIDES = [
     tm: false,
     quote: 'Because it is multiplication. We felt addition would be the wrong tool.',
     who: 'the pricing department',
-    // The checker works out that $4.99 is 5.04 times $0.99, not 5. Rather
-    // than round the claim, the small print accounts for the difference —
-    // which is exactly the register: a confident headline and a legal line
-    // that is precise about the wrong thing.
-    legal: 'Five times $0.99 is $4.95. The remaining four cents are for the multiplication.',
+    legal: 'Five times $0.99 is exactly $4.95. We have checked. Twice.',
     palette: 'vhs',
     treatment: 'scan',
   }),

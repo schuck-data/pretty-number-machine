@@ -481,10 +481,27 @@
     --lens-gap-h: 46px;
     position: absolute; z-index: 20;
     top: calc(12px + env(safe-area-inset-top));
-    right: calc(12px + env(safe-area-inset-right));
-    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    /* LEFT, as of 2026-08-23, because the right-hand column collided with the
+       menu button. The panel is a bottom SHEET, and when it opens the transport
+       row rides up above it — so anything anchored down the right edge meets
+       the sheet's menu button on the way.
+       Reset is the one exception and keeps the top-right corner to itself: it
+       undoes everything, and it should sit nowhere near the controls you press
+       on purpose.
+       KNOWN, unresolved: this move did not end the collision, it moved it.
+       With the sheet open the transport occupies 324-368 and the last button
+       in this column reaches 376, so they still overlap — see docs/ADS.md. */
+    left: calc(12px + env(safe-area-inset-left));
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
   }
-  #corner-stack button {
+  /* Reset is no longer in the stack, so it carries its own box. Same circle,
+     same restraint — the shared look is below and applies to both. */
+  #corner-reset {
+    position: absolute; z-index: 20;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+  }
+  #corner-stack button, #corner-reset {
     width: var(--corner-size); height: var(--corner-size); border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     background: transparent; border: 1px solid var(--border-corner);
@@ -492,7 +509,7 @@
     cursor: pointer; padding: 0; flex: none;
     transition: color 0.2s, border-color 0.2s, background 0.2s;
   }
-  #corner-stack button svg { width: 16px; height: 16px; display: block; }
+  #corner-stack button svg, #corner-reset svg { width: 16px; height: 16px; display: block; }
   #achievements-btn svg { width: 17px; height: 17px; }
   #dazzle-btn svg { width: 18px; height: 18px; }
   #ads-btn svg { width: 19px; height: 19px; }
@@ -521,8 +538,10 @@
   }
 
   @media (pointer: coarse) {
-    /* One place. The gap grows with the handle it is holding space for. */
-    #corner-stack { --corner-size: 44px; --lens-gap-h: 52px; }
+    /* One place. The gap grows with the handle it is holding space for, and
+       #corner-reset reads the same properties off :root's cascade via the
+       shared rule above — so it is sized here too. */
+    #corner-stack, #corner-reset { --corner-size: 44px; --lens-gap-h: 52px; }
   }
 
   /* ==========================================================
@@ -535,6 +554,7 @@
      new overlay has to be added to it.
      ========================================================== */
   body.clear-view #corner-stack,
+  body.clear-view #corner-reset,
   body.clear-view #panel,
   body.clear-view #transport,
   body.clear-view #transport-readout,
@@ -909,6 +929,33 @@
     padding-top: 8px;
   }
 
+  /* The transition between slides. Direction-aware: the incoming slide enters
+     from the side the deck moved, so pressing "next" feels like advancing a
+     reel rather than the picture being swapped. Opening the deck uses the
+     plain fade, because a first slide that flies in from nowhere reads as a
+     glitch rather than a transition.
+
+     Animation rather than a CSS transition, because modules/ads.js replaces
+     the slide element outright on every step — there is no old value for a
+     transition to interpolate from. */
+  @keyframes ads-enter      { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes ads-enter-next { from { opacity: 0; transform: translateX(7%); }
+                              to   { opacity: 1; transform: none; } }
+  @keyframes ads-enter-prev { from { opacity: 0; transform: translateX(-7%); }
+                              to   { opacity: 1; transform: none; } }
+  .ads-enter      { animation: ads-enter 420ms ease-out both; }
+  .ads-enter-next { animation: ads-enter-next 420ms cubic-bezier(0.22, 0.7, 0.3, 1) both; }
+  .ads-enter-prev { animation: ads-enter-prev 420ms cubic-bezier(0.22, 0.7, 0.3, 1) both; }
+
+  /* The app honours reduced motion everywhere else (see core/state.js); an
+     advert is not the place to make an exception. The deck still advances, it
+     just stops sliding. */
+  @media (prefers-reduced-motion: reduce) {
+    .ads-enter, .ads-enter-next, .ads-enter-prev {
+      animation: ads-enter 200ms linear both;
+    }
+  }
+
   /* Three finishes, so ten slides do not look like one slide ten times. */
   .ads-t-chrome .ads-glyph {
     background: linear-gradient(180deg, #fff 0%, var(--accent) 48%, #6a6a7a 52%, #fff 100%);
@@ -1046,17 +1093,17 @@
      height the two controls would land on top of each other. */
   #lens-handle {
     position: absolute; z-index: 19;
-    /* This height is the SAME hole that #lens-gap holds open in the corner
-       stack, and the two must agree: the handle travels rightward as the
-       lens opens and finishes its drag against that column, so if it does
-       not line up with the gap it lands on a button instead. The button
-       wins the tap (z-index 20 against this one's 19) and the handle
-       becomes unusable exactly where you finish the drag — which is how
-       this was found the first time, when Dazzle sat here.
-       12 top inset + the Reset's 34 + an 8 gap. */
+    /* This is the SAME hole that #lens-gap holds open at the top of the
+       corner stack, and the two must agree. The stack moved to the LEFT
+       edge on 2026-08-23, which is where this handle RESTS — so the
+       collision is now at the start of the drag rather than the end of it,
+       and the hole moved to the top of the column to match.
+       The button wins the tap either way (z-index 20 against this one's
+       19), so a handle that does not line up with the gap is a handle you
+       cannot pick up at all. */
     /* The left inset matters in landscape, where a phone reports ~52px of
        cutout on that edge. At left:0 the handle sat underneath it. */
-    top: calc(54px + env(safe-area-inset-top));
+    top: calc(12px + env(safe-area-inset-top));
     left: env(safe-area-inset-left);
     width: 34px; height: 46px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; gap: 4px;
@@ -1098,8 +1145,8 @@
      12 + 44 + 8 + 44 + 8 = 116. Without moving `top` here the handle would
      still overlap Dazzle on exactly the devices where it matters most. */
   @media (pointer: coarse) {
-    /* Matches --corner-size 44 + the 12 inset. See #lens-gap. */
-    #lens-handle { width: 44px; height: 52px; top: calc(64px + env(safe-area-inset-top)); }
+    /* Top of the column. See #lens-gap. */
+    #lens-handle { width: 44px; height: 52px; top: calc(12px + env(safe-area-inset-top)); }
   }
 
   #panel::-webkit-scrollbar { width: 3px; }
@@ -1546,19 +1593,27 @@
      the buttons is what keeps the hole aligned with the handle when either
      one changes size.
      ========================================================== -->
-<div id="corner-stack">
-  <!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
-       across platforms and some render as colour emoji, which is exactly how
-       the transport button ended up orange on Android. -->
-  <button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M3 12a9 9 0 1 0 3-6.7"/>
-      <path d="M3 4v5h5"/>
-    </svg>
-  </button>
+<!-- Reset stays in the top RIGHT, alone. Everything else moved to the left
+     edge, because the right-hand column was colliding with the sheet's menu
+     button. Reset survives on the right because it is the one control you want
+     nowhere near the others — it undoes everything.
+     Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
+     across platforms and some render as colour emoji, which is exactly how
+     the transport button ended up orange on Android. -->
+<button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 1 0 3-6.7"/>
+    <path d="M3 4v5h5"/>
+  </svg>
+</button>
 
-  <!-- The parking space for the lens handle. Empty on purpose. -->
+<div id="corner-stack">
+  <!-- The parking space for the lens handle, and it is FIRST now. The handle
+       rests at the left edge when the lens is closed, which is where this
+       column lives, so the hole it needs is at the top rather than one slot
+       down. It still has to line up with #lens-handle exactly — see the note
+       there. -->
   <div id="lens-gap" aria-hidden="true"></div>
 
   <!-- A sparkle: two four-pointed stars with concave sides, drawn rather than
