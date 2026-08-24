@@ -730,6 +730,31 @@ const BLURBS = {
 // the twelve with no blurb at all, where the link is not a footnote but the
 // entire explanation.
 //
+// CONTENT RATING. A link is a MACHINE-READABLE ASSERTION in a way a number is
+// not. 420 on its own, under the clue "-what was I saying?-", is a number; a
+// link to "420 (cannabis culture)" is documentary evidence of a drug reference
+// sitting in the shipped bundle, and the IARC questionnaire asks about exactly
+// that. Six links were retargeted to the neutral number article and two were
+// dropped, so the jokes stay for whoever gets them and nothing in the app
+// asserts what they are about:
+//
+//   DUDE! 420, JACKPOT! 777, CARDS! 21   — drugs and gambling
+//   ENIGMA! 23, MASONIC! 33              — occult and fraternal
+//   NICE! 69, OIL! 710                   — dropped; both keep their blurb
+//
+// SATOR! moved to the palindrome article for a different reason: since v7 it
+// gilds every palindrome, so that is genuinely what its payoff is about.
+//
+// What was deliberately KEPT, because an encyclopedia article on it is not a
+// content rating: SEXY! -> Sexy primes (a real mathematical term), BEAST! and
+// OTHER BEAST! -> Number of the beast (biblical scholarship), REST! -> Sabbath,
+// SIT! -> Noble Eightfold Path, CHOIRS! -> Hierarchy of angels, SPARTA! ->
+// Battle of Thermopylae. §3's line holds here too: the app reports what
+// communities believe about numbers and asserts nothing.
+//
+// check-achievements.mjs scans every link against a denylist so this cannot
+// quietly come back.
+//
 // Every title was checked against the Wikipedia API: all resolve directly, and
 // none is a redirect or a disambiguation page. Eleven were wrong on the first
 // pass — CENTRAL! pointed at a disambiguation page, and every area-code article
@@ -745,7 +770,7 @@ const LINKS = {
   'body-heat': 'https://en.wikipedia.org/wiki/Human_body_temperature',
   'boiling': 'https://en.wikipedia.org/wiki/Fahrenheit',
   'bradbury': 'https://en.wikipedia.org/wiki/Fahrenheit_451',
-  'cards': 'https://en.wikipedia.org/wiki/Blackjack',
+  'cards': 'https://en.wikipedia.org/wiki/21_%28number%29',
   'catch': 'https://en.wikipedia.org/wiki/Catch-22_%28logic%29',
   'central': 'https://en.wikipedia.org/wiki/Fictitious_telephone_number',
   'choirs': 'https://en.wikipedia.org/wiki/Hierarchy_of_angels',
@@ -754,12 +779,12 @@ const LINKS = {
   'cousins': 'https://en.wikipedia.org/wiki/Cousin_prime',
   'deck': 'https://en.wikipedia.org/wiki/Standard_52-card_deck',
   'decompose': 'https://en.wikipedia.org/wiki/Fundamental_theorem_of_arithmetic',
-  'dude': 'https://en.wikipedia.org/wiki/420_%28cannabis_culture%29',
+  'dude': 'https://en.wikipedia.org/wiki/420_%28number%29',
   'eightfold': 'https://en.wikipedia.org/wiki/Noble_Eightfold_Path',
   'elements': 'https://en.wikipedia.org/wiki/Periodic_table',
   'emirp': 'https://en.wikipedia.org/wiki/Emirp',
   'empty-set': 'https://en.wikipedia.org/wiki/Empty_set',
-  'enigma': 'https://en.wikipedia.org/wiki/23_enigma',
+  'enigma': 'https://en.wikipedia.org/wiki/23_%28number%29',
   'exhaustive': 'https://en.wikipedia.org/wiki/Natural_number',
   'fermat': 'https://en.wikipedia.org/wiki/Fermat_number',
   'fibonacci': 'https://en.wikipedia.org/wiki/Fibonacci_sequence',
@@ -770,7 +795,7 @@ const LINKS = {
   'heinz': 'https://en.wikipedia.org/wiki/57_%28number%29',
   'help': 'https://en.wikipedia.org/wiki/911_%28emergency_telephone_number%29',
   'inherited': 'https://en.wikipedia.org/wiki/Chromosome',
-  'jackpot': 'https://en.wikipedia.org/wiki/Slot_machine',
+  'jackpot': 'https://en.wikipedia.org/wiki/777_%28number%29',
   'jumbo': 'https://en.wikipedia.org/wiki/Boeing_747',
   'leap': 'https://en.wikipedia.org/wiki/Leap_year',
   'lightspeed': 'https://en.wikipedia.org/wiki/Speed_of_light',
@@ -779,18 +804,16 @@ const LINKS = {
   'louder': 'https://en.wikipedia.org/wiki/Up_to_eleven',
   'lucas': 'https://en.wikipedia.org/wiki/Lucas_number',
   'lucky': 'https://en.wikipedia.org/wiki/7',
-  'masonic': 'https://en.wikipedia.org/wiki/Scottish_Rite',
+  'masonic': 'https://en.wikipedia.org/wiki/33_%28number%29',
   'memory': 'https://en.wikipedia.org/wiki/Conventional_memory',
   'metonic': 'https://en.wikipedia.org/wiki/Metonic_cycle',
   'months': 'https://en.wikipedia.org/wiki/Month',
   'moon': 'https://en.wikipedia.org/wiki/Lunar_month',
   'motor-city': 'https://en.wikipedia.org/wiki/Area_codes_313_and_679',
   'neat': 'https://en.wikipedia.org/wiki/Golden_angle',
-  'nice': 'https://en.wikipedia.org/wiki/69_%28number%29',
   'nola': 'https://en.wikipedia.org/wiki/Area_code_504',
   'not-found': 'https://en.wikipedia.org/wiki/HTTP_404',
   'ny': 'https://en.wikipedia.org/wiki/Area_codes_212%2C_646%2C_and_332',
-  'oil': 'https://en.wikipedia.org/wiki/Calculator_spelling',
   'other-beast': 'https://en.wikipedia.org/wiki/Number_of_the_beast',
   'parawhat': 'https://en.wikipedia.org/wiki/Phyllotaxis',
   'perfect': 'https://en.wikipedia.org/wiki/Perfect_number',
@@ -801,7 +824,7 @@ const LINKS = {
   'rest': 'https://en.wikipedia.org/wiki/Sabbath',
   'route': 'https://en.wikipedia.org/wiki/U.S._Route_66',
   'run': 'https://en.wikipedia.org/wiki/Prime_number',
-  'sator': 'https://en.wikipedia.org/wiki/Sator_Square',
+  'sator': 'https://en.wikipedia.org/wiki/Palindromic_number',
   'sexy': 'https://en.wikipedia.org/wiki/Sexy_primes',
   'shortest': 'https://en.wikipedia.org/wiki/February',
   'skeleton': 'https://en.wikipedia.org/wiki/Human_skeleton',

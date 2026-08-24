@@ -302,6 +302,43 @@ eq('links that are not Wikipedia articles',
    links.filter(a => !a.link.startsWith('https://en.wikipedia.org/wiki/')).map(a => a.name), []);
 // A title with a raw space in it would 404. They are stored percent-encoded.
 eq('links containing a raw space', links.filter(a => a.link.includes(' ')).map(a => a.name), []);
+
+// CONTENT RATING. The clues and the numbers are deniable; a LINK is not. 420
+// under "-what was I saying?-" is a number, but a link to "420 (cannabis
+// culture)" is documentary evidence of a drug reference inside the shipped
+// bundle, and the IARC questionnaire asks about precisely that. Six links were
+// retargeted to the neutral number article and two dropped — see the note above
+// LINKS in achievements-data.js.
+//
+// The tokens below are matched against the URL, lowercased. They are specific
+// on purpose: a bare 'sex' would catch SEXY! -> Sexy_primes, which is a real
+// mathematical term with a pure-mathematics article and is meant to stay.
+const RATING_TOKENS = [
+  'cannabis', 'marijuana', 'narcotic', 'psychedelic', 'recreational_drug',
+  'slot_machine', 'blackjack', 'gambling', 'casino', 'poker', 'lottery',
+  'sex_position', 'sexual_intercourse', 'pornograph', 'nudity',
+  'occultism', 'satanism', 'black_magic',
+];
+const flagged = links
+  .filter(a => RATING_TOKENS.some(t => a.link.toLowerCase().includes(t)))
+  .map(a => `${a.name} -> ${a.link}`);
+eq('links pointing at a rating-sensitive article', flagged, []);
+
+// And pin the six that were retargeted, so "tidying" one back is a decision
+// somebody made rather than one nobody noticed.
+const PINNED = {
+  dude: '420_%28number%29', jackpot: '777_%28number%29', cards: '21_%28number%29',
+  enigma: '23_%28number%29', masonic: '33_%28number%29', sator: 'Palindromic_number',
+};
+const drifted = Object.entries(PINNED)
+  .filter(([id, tail]) => !(A.find(a => a.id === id)?.link || '').endsWith(tail))
+  .map(([id]) => id);
+eq('the retargeted links still point at their neutral article', drifted, []);
+
+// NICE! and OIL! carry no link deliberately, and both keep a blurb, so nothing
+// is left unexplained. If a link ever appears on either, it was not thought about.
+eq('achievements deliberately left without a link',
+   ['nice', 'oil'].filter(id => A.find(a => a.id === id)?.link), []);
 // The ones with NO blurb are exactly the ones a link has to carry, because for
 // them it is the whole explanation rather than a footnote.
 const unexplained = A.filter(a => !a.blurb && !a.link).map(a => a.name);

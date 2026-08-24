@@ -807,9 +807,55 @@ guarantees that, never the class.
 
 ### The reference link
 
-87 of the 101 carry one; the rest are jokes a footnote would only flatten. They
+85 of the 101 carry one; the rest are jokes a footnote would only flatten. They
 appear on **earned rows only** — a link names the answer as surely as a blurb
 does.
+
+#### A link is an assertion; a number is not
+
+Decided 2026-08-24, and it is the kind of thing that is obvious once said and
+expensive to notice late. **420 under the clue `-what was I saying?-` is a
+number.** A link to *420 (cannabis culture)* is documentary evidence of a drug
+reference sitting in the shipped bundle — and the IARC questionnaire, which
+sets the Play Store age rating, asks about exactly that. The same goes for
+gambling and for sex.
+
+The clues and the blurbs were always deniable. The links were not, and that was
+an accident of picking the most *relevant* article each time rather than the
+most *defensible* one.
+
+**Six were retargeted to the neutral number article**, which costs an
+encyclopedia reader nothing, because the number is what this app is about:
+
+| | was | now |
+|---|---|---|
+| DUDE! 420 | 420 (cannabis culture) | 420 (number) |
+| JACKPOT! 777 | Slot machine | 777 (number) |
+| CARDS! 21 | Blackjack | 21 (number) |
+| ENIGMA! 23 | 23 enigma | 23 (number) |
+| MASONIC! 33 | Scottish Rite | 33 (number) |
+| SATOR! | Sator Square | Palindromic number |
+
+SATOR! is in that table for a different reason and would have moved anyway:
+since v7 it gilds every palindrome, so the palindrome article is genuinely what
+its payoff is about.
+
+**Two were dropped outright** — NICE! (69) and OIL! (710). No neutral article
+covers what those jokes are about, and both keep their blurb, so nothing is left
+unexplained.
+
+**What was deliberately kept**, because an encyclopedia article on a subject is
+not a content rating: SEXY! → *Sexy primes*, which is the real mathematical
+name and a pure-mathematics article; BEAST! and OTHER BEAST! → *Number of the
+beast*, which is biblical scholarship; REST! → *Sabbath*; SIT! → *Noble
+Eightfold Path*; CHOIRS! → *Hierarchy of angels*; SPARTA! → *Battle of
+Thermopylae*. §3's line covers these: the app reports what communities believe
+about numbers and asserts nothing.
+
+`check-achievements.mjs` scans every link against a token denylist and pins the
+six retargets, so neither can be undone quietly. The denylist is deliberately
+specific — a bare `sex` would catch SEXY! → *Sexy primes*, which is meant to
+stay.
 
 **Stored as a `link` field, never as markup inside the blurb.** Blurbs go to the
 Play Console through `achievements-table.mjs`, and an anchor written into blurb
@@ -818,6 +864,9 @@ deliberately outside the console column set.
 
 **The twelve with no blurb need it most** — for MASONIC!, ENIGMA!, CATCH!,
 JACKPOT! and the rest, the link is not a footnote but the entire explanation.
+Note that MASONIC!, ENIGMA! and JACKPOT! now point at their number article
+rather than at the reference, so for those three the link explains the *number*
+and the joke stays entirely in the clue. That is the intended trade.
 The checker asserts nothing has neither. MEME! is the single recorded exception,
 because an encyclopedia article cannot deliver a punchline.
 

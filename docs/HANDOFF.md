@@ -49,7 +49,7 @@ of things that did not exist before it, each with the document that owns it:
 |---|---|---|
 | **3 dropped, 3 added** — out: CEILING!, MERSENNE!, WHOLE!. In: DECOMPOSE!, GALLERY!, TEMPTED! | `achievements-data.js` | `ACHIEVEMENTS.md` §3 |
 | **The payoff rule** — a gild set may no longer be the selection that earned it; 5 widened | `achievements-data.js` | **`ACHIEVEMENTS.md` §2a** |
-| **Reference links** — 87 of 101, every title verified against the Wikipedia API | `achievements-data.js`, `achievements.js` | `ACHIEVEMENTS.md` §13 |
+| **Reference links** — 85 of 101, every title verified against the Wikipedia API; six retargeted and two dropped for content rating (§13) | `achievements-data.js`, `achievements.js` | `ACHIEVEMENTS.md` §13 |
 | **Criteria on unlocked rows and toasts** — because arriving by accident is common | `achievements.js`, `index.html` | `ACHIEVEMENTS.md` §13 |
 | **A trophy-room button**, not an automatic jump — the room is destructive | `achievements.js` | `ACHIEVEMENTS.md` §13 |
 | **Two new bus events** — `lens:decompose`, `ads:paywall` | `lens.js`, `ads.js` | `ACHIEVEMENTS.md` §7 |
