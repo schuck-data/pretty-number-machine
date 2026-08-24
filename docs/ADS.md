@@ -16,7 +16,8 @@
 >
 > **Two products**, replacing the single $0.99 unlock the older documents
 > describe: `ads-addition` at $0.99 and `ads-multiplication` at $4.95. The
-> second button does not exist until the first is owned.
+> second button does not exist until the first is owned. The paywall says
+> exactly one thing: *"Add Ads for a one-time payment of $0.99."*
 >
 > **Billing is not wired.** No Capacitor billing plugin has been chosen — that
 > is `ANDROID-BUILD.md` §4 and it is Dakota's decision — so every purchase
@@ -109,7 +110,9 @@ All 101 stay earnable by playing. See `ACHIEVEMENTS.md` §12.
 it.** No play, no pause, no arrows. **You are subjected to these.** A deck you
 can scrub is a gallery; the thing being parodied does not let you leave, and the
 entire point of having paid for advertising is that it behaves like advertising.
-It loops until closed.
+It plays one round and then closes itself — a commercial break ends, and a deck
+that looped forever would make the close button the only way out, which is quite
+enough work for one small grey mark.
 
 Ten seconds is long on purpose: the copy *is* the product and the punchline is
 usually the small print, so the dwell has to cover reading the slide rather than
@@ -158,36 +161,56 @@ advert, and the one thing this feature must never accidentally become.
 
 ---
 
-## 3a. KNOWN COLLISION — the corner column and the transport
+## 3a. RESOLVED — the corner column and the transport
 
-Unresolved as of 2026-08-23, and it needs a decision rather than a nudge.
+The controls went to the left edge for a while to escape the sheet's menu
+button, which sat bottom-right and rose with the sheet until it met the bottom
+of the column. **That moved the collision rather than ending it**: on the left,
+the transport's own scrub bar ran underneath the column instead. Measured with
+the sheet open, both products owned, the transport at 324-368 crossed the
+multiplication button at 332-376.
 
-The controls moved from the right edge to the left because the right-hand
-column collided with the sheet's menu button. **The move did not end the
-collision, it moved it.** The panel is a bottom sheet, and when it opens the
-transport row rides up above it. Measured on a Pixel 7, sheet open, both
-products owned:
+Fixed at the source on 2026-08-23. **The menu button moved to the LEFT of the
+transport**, and the controls came back to the right where a thumb reaches
+them. The transport now takes a right inset *only while the sheet is open* —
+12 inset + the 44 button + an 8 gap — because that is the only time it rides
+high enough to reach the column. With the sheet away it sits at the bottom of
+the screen and takes the full width, and insetting it there would shorten the
+scrub bar to avoid a collision that cannot happen.
 
-| | top | bottom | left | right |
-|---|---|---|---|---|
-| transport | 324 | 368 | 4 | 311 |
-| clear-view (last in the column) | 332 | 376 | 12 | 56 |
+Verified on a Pixel 7: sheet open, transport 100..347 against a column at
+355-399, zero overlaps across all seven slots. Sheet closed, transport
+100..407, full width.
 
-They overlap in both axes. With both products owned the column is six slots
-tall — lens gap, dazzle, trophy, plus, times, clear view — and reaches 376 in a
-914-tall viewport whose transport arrives at 324.
+## 3b. Motion
 
-Options, none of them free:
+Three slides animate, and each one demonstrates the product rather than
+decorating it — which is the only thing that earns the frames.
 
-- **Hide the column while the sheet is open.** Cheapest and it cannot collide.
-  Costs the ability to press Dazzle with the panel open, which works today
-- **Let the column stop above the transport** and scroll or wrap the overflow.
-  No lost function, but a scrolling strip of round buttons is a fussy control
-- **Shrink the buttons or the gaps.** Buys about 20px; the shortfall is 52. Not
-  enough on its own, and it fights the 44px touch target the accessibility pass
-  established
-- **Move something out of the column** — clear view is the obvious candidate,
-  since it is the one control whose whole job is to get rid of the others
+- **TIMES** enters rotated a quarter-turn back, which draws the cross as a
+  **plus**, then rolls into place and becomes a times. That is the headline —
+  "addition, but ambitious" — performed instead of asserted. Runs once; an
+  operator that kept spinning would be a logo, not a demonstration
+- **ASTERISK** turns forever and breathes. The claim is that it works
+  everywhere, so it never settles into one orientation — there is no canonical
+  way up for an asterisk
+- **MERE PROXIMITY** drifts an `i` and a `j` toward each other inside the empty
+  frame and stops them side by side: `ij`, the product written with no operator
+  at all. They stop a hair apart, because touching would read as one word and
+  what is being sold is the proximity
+
+Reduced motion drops all three. Each was arriving at a legible resting state, so
+nothing is lost but the arrival.
+
+**Typography rule: no orphans.** An advert never strands a single word on the
+last line under its main statement. Headlines and the CTA use `text-wrap:
+balance`; the longer runs use `pretty`.
+
+**A word is not a symbol.** The glyph size was chosen for one character, and
+`SUM()` ran off both edges of a 411px slide at it. Anything longer than two
+characters is sized to fit instead, with *positive* tracking — at negative
+tracking the parentheses closed up against the M and the whole thing read as
+the word SUMO.
 
 ## 4. The entitlement rule
 

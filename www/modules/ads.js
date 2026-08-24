@@ -268,9 +268,23 @@ function slideHTML(s) {
   // Only what the slide declares. An absent testimonial leaves no gap, and an
   // absent glyph leaves a lit empty frame rather than collapsing — see the note
   // on `proximity` in ads-data.js, where the empty space IS the product.
+  // A word needs a different size from a symbol — SUM() ran off both edges of
+  // the slide at the single-glyph display size. `anim` is a per-slide motion
+  // hook; index.html owns what each one does.
+  const cls = [
+    'ads-glyph',
+    s.glyph.length > 2 ? 'ads-glyph-word' : '',
+    s.anim ? `ads-anim-${s.anim}` : '',
+  ].filter(Boolean).join(' ');
   const glyph = s.glyph
-    ? `<p class="ads-glyph">${esc(s.glyph)}</p>`
-    : '<p class="ads-glyph ads-glyph-empty" aria-label="an empty advertising space"></p>';
+    ? `<p class="${cls}">${esc(s.glyph)}</p>`
+    // The empty frame. `proximity` fills it with two letters that close the gap
+    // between them; every other empty slide would just be an empty frame.
+    : `<p class="${cls} ads-glyph-empty" aria-label="an empty advertising space">${
+        s.anim === 'proximity'
+          ? '<span class="ads-ij"><span>i</span><span>j</span></span>'
+          : ''
+      }</p>`;
   const note = s.glyphNote ? `<p class="ads-glyphnote">${esc(s.glyphNote)}</p>` : '';
   const quote = s.quote ? `
         <blockquote class="ads-quote">
@@ -286,7 +300,7 @@ function slideHTML(s) {
         <p class="ads-wordmark">${esc(s.wordmark)}</p>
         ${glyph}
         ${note}
-        <h3 class="ads-headline">${esc(s.headline)}${s.tm ? '<sup>&trade;</sup>' : ''}</h3>
+        ${s.headline ? `<h3 class="ads-headline">${esc(s.headline)}${s.tm ? '<sup>&trade;</sup>' : ''}</h3>` : ''}
         ${quote}
         ${cta}
         ${legal}
@@ -366,11 +380,16 @@ function renderSlide(dir = 0) {
   showTimer = setTimeout(() => step(1), DWELL_MS);
 }
 
-// Wraps rather than stopping. The deck is short and modal, and a slideshow that
-// dead-ends on its last slide leaves the player looking at a disabled arrow
-// wondering whether it broke.
+// ONE ROUND, then it lets you go. A commercial break ends; a deck that looped
+// forever would make the close button the only way out, and the close button is
+// already doing quite enough work.
+//
+// The player can still leave early once the close arms at five seconds — this
+// is the ceiling, not the expectation.
 function step(d) {
-  showIndex = (showIndex + d + showSlides.length) % showSlides.length;
+  const next = showIndex + d;
+  if (next >= showSlides.length) { closeOverlay(); return; }
+  showIndex = (next + showSlides.length) % showSlides.length;
   renderSlide(d);
 }
 

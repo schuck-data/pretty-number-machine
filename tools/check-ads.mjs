@@ -80,7 +80,9 @@ eq('duplicate slide ids',
 //
 // `glyph` is NOT in this list. `proximity` sells implicit multiplication, whose
 // notation is the absence of notation, so its glyph is legitimately empty.
-const REQUIRED = ['wordmark', 'headline', 'palette', 'treatment'];
+// `headline` left this list when SIGMA dropped its own — its spec line does
+// the work instead. A slide still needs a name and a look.
+const REQUIRED = ['wordmark', 'palette', 'treatment'];
 for (const f of REQUIRED) {
   eq(`slides missing "${f}"`,
      D.SLIDES.filter(s => !s[f] || !String(s[f]).trim()).map(s => s.id), []);
@@ -105,7 +107,7 @@ console.log('\n[copy] the register');
 // the copy has actually gone wrong while being written: a headline long enough
 // to overflow the slide on a narrow phone, and a testimonial that reads as
 // coming from a person rather than a number or an institution.
-const LONG = D.SLIDES.filter(s => s.headline.length > 46).map(s => `${s.id} (${s.headline.length})`);
+const LONG = D.SLIDES.filter(s => s.headline && s.headline.length > 46).map(s => `${s.id} (${s.headline.length})`);
 eq('headlines too long for a 411px slide', LONG, []);
 
 const GLYPH_MAX = 5;   // SUM() is the longest and sets the ceiling
@@ -120,6 +122,16 @@ eq('slides whose small print is a stub',
    D.SLIDES.filter(s => s.legal !== undefined && s.legal.trim().length <= 12).map(s => s.id), []);
 eq('slides deliberately without small print',
    D.SLIDES.filter(s => !s.legal).map(s => s.id), ['plus', 'proximity']);
+eq('slides deliberately without a headline',
+   D.SLIDES.filter(s => !s.headline).map(s => s.id), ['sigma']);
+
+// Motion is declared, not hand-rolled per slide, so a typo yields a class no
+// stylesheet answers and a glyph that simply sits there.
+const ANIMS = ['roll', 'spin', 'proximity'];
+eq('slides declaring an animation nothing implements',
+   D.SLIDES.filter(s => s.anim && !ANIMS.includes(s.anim)).map(s => s.id), []);
+eq('animated slides', D.SLIDES.filter(s => s.anim).map(s => s.id),
+   ['times', 'asterisk', 'proximity']);
 
 // ============================================================
 console.log('\n[wiring] the module and the adapter agree');

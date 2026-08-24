@@ -1303,7 +1303,13 @@ function buildRow(a, enabled) {
   // because Play Console requires a public description per achievement; do not
   // tidy it away on the grounds that nothing displays it.
   text.innerHTML =
-    `<div class="ach-name"><span class="ach-no">${a.no}</span>${a.name}</div>` +
+    // DEV: the definition number is NOT shown. It used to sit immediately
+    // before the name — "49 SPARTA!" — and in an app whose entire subject is
+    // numbers, a bare integer beside a name reads as part of the achievement
+    // rather than as a database id. No amount of dimming fixes that; the only
+    // reliable fix is not printing it. It stays in the data, where the design
+    // sheet, the checker and the Play Console paste all need it.
+    `<div class="ach-name">${a.name}</div>` +
     `<div class="ach-hint">${a.clue}</div>` +
     (got && a.blurb ? `<div class="ach-blurb">${a.blurb}</div>` : '');
 

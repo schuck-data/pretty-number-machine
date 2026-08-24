@@ -61,8 +61,7 @@ export const PRODUCTS = [
     // deliver both — that double delivery is the payload, and it is destroyed
     // by a pitch that explains it. So: no operators named here, no wink, no
     // "commercials for the addition operators". Just a shop selling ads.
-    pitch: 'Advertisements, added to Pretty Number Machine. ' +
-           'One payment. Yours forever.',
+    pitch: 'Add Ads for a one-time payment of $0.99.',
     button: 'ads-btn',
     requires: null,
   },
@@ -74,8 +73,7 @@ export const PRODUCTS = [
     priceMicros: 4950000,
     // Same construction, same restraint. Before: your advertisements will be
     // multiplied. After: they are advertisements for multiplication.
-    pitch: 'Your advertisements, multiplied. ' +
-           'A premium tier, priced accordingly.',
+    pitch: 'Multiply your Ads for a one-time payment of $4.95.',
     button: 'ads-mul-btn',
     requires: 'ads-addition',
   },
@@ -165,9 +163,8 @@ export const SLIDES = [
   slide('ads-addition', {
     id: 'sigma',
     glyph: 'Σ',
-    glyphNote: 'CAPITAL SIGMA · SUMMATION · SINCE ANTIQUITY',
+    glyphNote: 'SUMMATION SINCE ANTIQUITY',
     wordmark: 'SIGMA',
-    headline: 'WHEN ONE PLUS IS NOT ENOUGH.',
     quote: 'It added all of us. At the same time. I have never felt so seen.',
     who: 'Natural Numbers',
     legal: 'Bounds sold separately. Sigma is not liable for divergent series.',
@@ -204,7 +201,11 @@ export const SLIDES = [
   // ---- MULTIPLICATION -------------------------------------------------
   slide('ads-multiplication', {
     id: 'times',
+    // The glyph IS a multiplication cross, and the animation is what makes the
+    // headline land: it enters rotated a quarter turn back, which draws it as a
+    // PLUS, then rolls into place and becomes a times. Addition, but ambitious.
     glyph: '×',
+    anim: 'roll',
     wordmark: 'TIMES',
     headline: 'ADDITION, BUT AMBITIOUS.',
     tm: true,
@@ -215,11 +216,10 @@ export const SLIDES = [
   slide('ads-multiplication', {
     id: 'asterisk',
     glyph: '*',
+    anim: 'spin',
     glyphNote: 'WORKS IN EVERY LANGUAGE YOU HAVE HEARD OF*',
     wordmark: 'ASTERISK',
-    headline: 'THE OPERATOR THAT GOES ANYWHERE.',
-    quote: 'I typed it on a keyboard. It just worked. No one helped me.',
-    who: 'a first-year',
+    headline: 'THE EVERYWHERE OPERATOR.',
     legal: '*Not valid as a footnote in this advert.',
     palette: 'corporate',
     treatment: 'flat',
@@ -227,7 +227,6 @@ export const SLIDES = [
   slide('ads-multiplication', {
     id: 'cdot',
     glyph: '·',
-    glyphNote: 'ACTUAL SIZE',
     wordmark: 'THE DOT',
     headline: 'MULTIPLICATION FOR PEOPLE WHO KNOW.',
     tm: true,
@@ -240,7 +239,7 @@ export const SLIDES = [
   slide('ads-multiplication', {
     id: 'bigpi',
     glyph: '∏',
-    glyphNote: "CAPITAL PI · PRODUCT · SIGMA'S SIBLING",
+    glyphNote: 'GROW THE PIE',
     wordmark: 'BIG PI',
     headline: "DON'T SETTLE FOR SIGMA.",
     legal: 'An empty product is 1. An empty sum is 0. We think that says it all.',
@@ -257,7 +256,11 @@ export const SLIDES = [
   // space, because the space IS the product.
   slide('ads-multiplication', {
     id: 'proximity',
+    // The empty frame is not static. Two letters drift toward each other inside
+    // it and stop side by side — `i` `j` becoming `ij`, which is the product,
+    // written with no operator at all. The animation IS the product demo.
     glyph: '',
+    anim: 'proximity',
     wordmark: 'MERE PROXIMITY',
     headline: 'OUR MOST EXCLUSIVE MODEL.',
     quote: 'You simply have to know.',

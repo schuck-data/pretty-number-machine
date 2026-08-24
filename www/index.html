@@ -481,27 +481,16 @@
     --lens-gap-h: 46px;
     position: absolute; z-index: 20;
     top: calc(12px + env(safe-area-inset-top));
-    /* LEFT, as of 2026-08-23, because the right-hand column collided with the
-       menu button. The panel is a bottom SHEET, and when it opens the transport
-       row rides up above it — so anything anchored down the right edge meets
-       the sheet's menu button on the way.
-       Reset is the one exception and keeps the top-right corner to itself: it
-       undoes everything, and it should sit nowhere near the controls you press
-       on purpose.
-       KNOWN, unresolved: this move did not end the collision, it moved it.
-       With the sheet open the transport occupies 324-368 and the last button
-       in this column reaches 376, so they still overlap — see docs/ADS.md. */
-    left: calc(12px + env(safe-area-inset-left));
-    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
-  }
-  /* Reset is no longer in the stack, so it carries its own box. Same circle,
-     same restraint — the shared look is below and applies to both. */
-  #corner-reset {
-    position: absolute; z-index: 20;
-    top: calc(12px + env(safe-area-inset-top));
+    /* RIGHT. It went left for a while to escape the sheet's menu button, which
+       used to sit at the bottom-right and rose with the sheet until it met the
+       bottom of this column. The menu moved to the LEFT of the transport
+       instead — see #panel-toggle in the phone layout — which fixes the
+       collision at its source and lets the controls come back to the side a
+       right-handed thumb reaches. */
     right: calc(12px + env(safe-area-inset-right));
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
   }
-  #corner-stack button, #corner-reset {
+  #corner-stack button {
     width: var(--corner-size); height: var(--corner-size); border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     background: transparent; border: 1px solid var(--border-corner);
@@ -509,7 +498,7 @@
     cursor: pointer; padding: 0; flex: none;
     transition: color 0.2s, border-color 0.2s, background 0.2s;
   }
-  #corner-stack button svg, #corner-reset svg { width: 16px; height: 16px; display: block; }
+  #corner-stack button svg { width: 16px; height: 16px; display: block; }
   #achievements-btn svg { width: 17px; height: 17px; }
   #dazzle-btn svg { width: 18px; height: 18px; }
   #ads-btn svg { width: 19px; height: 19px; }
@@ -538,10 +527,8 @@
   }
 
   @media (pointer: coarse) {
-    /* One place. The gap grows with the handle it is holding space for, and
-       #corner-reset reads the same properties off :root's cascade via the
-       shared rule above — so it is sized here too. */
-    #corner-stack, #corner-reset { --corner-size: 44px; --lens-gap-h: 52px; }
+    /* One place. The gap grows with the handle it is holding space for. */
+    #corner-stack { --corner-size: 44px; --lens-gap-h: 52px; }
   }
 
   /* ==========================================================
@@ -554,7 +541,6 @@
      new overlay has to be added to it.
      ========================================================== */
   body.clear-view #corner-stack,
-  body.clear-view #corner-reset,
   body.clear-view #panel,
   body.clear-view #transport,
   body.clear-view #transport-readout,
@@ -660,10 +646,7 @@
      blurb appears only when the row is tapped open; the explanation is part of
      the reward. */
   .ach-hint { font-size: 0.8125rem; color: var(--text-dim); font-style: italic; }
-  .ach-no {
-    display: inline-block; min-width: 1.9em;
-    color: var(--text-dim); font-variant-numeric: tabular-nums;
-  }
+
 
   /* THE ACCORDION. A hundred and one rows will not fit a phone sheet flat, so
      they group: a static branch divider, then one collapsible header per
@@ -882,7 +865,7 @@
     color: var(--text-dim); margin: 0 0 6px;
   }
   .ads-title { font-size: 1.5rem; margin: 0 0 10px; color: var(--text); }
-  .ads-pitch { color: var(--text-dim); line-height: 1.5; margin: 0 0 20px; }
+  .ads-pitch { color: var(--text-dim); line-height: 1.5; margin: 0 0 20px; text-wrap: pretty; }
   .ads-buy {
     display: block; width: 100%; min-height: 48px;
     border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.5);
@@ -930,6 +913,19 @@
     margin: 0; font-weight: 700;
     text-shadow: 0 0 32px color-mix(in srgb, var(--accent) 55%, transparent);
   }
+  /* A WORD is not a symbol. SUM() is five characters and ran off both edges of
+     a 411px slide at the display size above, because that size was chosen for
+     a single glyph. Anything longer than two characters gets sized to fit the
+     slide instead of to fill it. */
+  .ads-glyph-word {
+    font-size: clamp(40px, 15vw, 76px);
+    /* POSITIVE tracking, and it is not a taste call. At -0.01em the parentheses
+       of SUM() closed up against the M and against each other and the whole
+       thing read as the word SUMO. Letting them breathe is what keeps a
+       function call looking like a function call. */
+    letter-spacing: 0.05em;
+    overflow-wrap: anywhere;
+  }
   /* No product. `proximity` sells implicit multiplication, whose notation is
      the absence of notation, so the ad space is empty and lit and holds the
      same room a symbol would have taken. Collapsing it would throw away the
@@ -950,10 +946,18 @@
   .ads-headline {
     font-size: 1.12rem; letter-spacing: 0.04em; line-height: 1.3;
     margin: 16px 0 0; text-transform: uppercase;
+    /* NO ORPHANS. An advertisement never leaves a single word stranded on the
+       last line under its main statement — it is the most visible thing a
+       typesetter can get wrong, and at this size a two-line headline breaking
+       1-and-1 looks like a bug. `balance` evens the lines of short text, which
+       is exactly what a headline is. */
+    text-wrap: balance;
   }
   .ads-headline sup { font-size: 0.5em; vertical-align: super; opacity: 0.8; }
   .ads-quote { margin: 16px 0 0; }
-  .ads-quote p { font-size: 0.9rem; font-style: italic; line-height: 1.45; margin: 0; }
+  /* `pretty` rather than `balance`: these run longer, and pretty keeps the
+     last line from stranding a word without evening out everything above it. */
+  .ads-quote p { font-size: 0.9rem; font-style: italic; line-height: 1.45; margin: 0; text-wrap: pretty; }
   .ads-quote cite {
     display: block; font-size: 0.72rem; font-style: normal;
     opacity: 0.8; margin-top: 6px;
@@ -961,12 +965,12 @@
   /* A closing instruction, set apart from the body. Rare on purpose — only
      `proximity` has one, and it is the last line of the last slide. */
   .ads-cta {
-    margin: 18px 0 0; font-size: 0.9rem; font-weight: 600;
+    margin: 18px 0 0; font-size: 0.9rem; font-weight: 600; text-wrap: balance;
     letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--accent);
   }
   .ads-legal {
-    font-size: 0.6rem; line-height: 1.4; opacity: 0.7;
+    font-size: 0.6rem; line-height: 1.4; opacity: 0.7; text-wrap: pretty;
     margin: 18px 0 0; border-top: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
     padding-top: 8px;
   }
@@ -996,6 +1000,64 @@
     .ads-enter, .ads-enter-next, .ads-enter-prev {
       animation: ads-enter 200ms linear both;
     }
+  }
+
+  /* ==========================================================
+     PER-SLIDE MOTION. Declared as `anim` in modules/ads-data.js
+     and applied to the glyph. Each one demonstrates the product
+     rather than decorating it, which is the only reason any of
+     them earns the frames.
+     ========================================================== */
+
+  /* TIMES. Enters rotated a quarter-turn back, which draws the cross as a
+     PLUS, then rolls into place and becomes a times. That is the headline —
+     "addition, but ambitious" — performed rather than asserted. It runs once;
+     an operator that kept spinning would be a logo, not a demonstration. */
+  @keyframes ads-roll {
+    0%   { transform: translateX(-14%) rotate(-45deg); }
+    60%  { transform: translateX(2%) rotate(6deg); }
+    100% { transform: translateX(0) rotate(0deg); }
+  }
+  .ads-anim-roll { animation: ads-roll 1400ms cubic-bezier(0.3, 0.9, 0.25, 1) 260ms both; }
+
+  /* ASTERISK. Turns forever and breathes. The claim is that it works
+     everywhere, so it never settles into one orientation — there is no
+     canonical way up for an asterisk, and that is the joke. Slow enough to
+     read as luxury rather than as a loading spinner. */
+  @keyframes ads-spin { to { transform: rotate(360deg); } }
+  @keyframes ads-breathe {
+    0%, 100% { text-shadow: 0 0 22px color-mix(in srgb, var(--accent) 45%, transparent); }
+    50%      { text-shadow: 0 0 46px color-mix(in srgb, var(--accent) 90%, transparent); }
+  }
+  .ads-anim-spin {
+    animation: ads-spin 9s linear infinite, ads-breathe 3.2s ease-in-out infinite;
+  }
+
+  /* MERE PROXIMITY. Two letters drift toward each other inside the empty
+     frame and stop side by side: `i` `j` becoming `ij`, the product written
+     with no operator at all. The animation IS the product demo — there is
+     nothing else on the slide to look at, because there is nothing to sell
+     but the adjacency.
+
+     They stop with a hair of space left. Touching would read as one word;
+     what is being sold is the proximity, not the collision. */
+  .ads-ij {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; font-size: clamp(52px, 17vw, 84px); font-weight: 500;
+    font-style: italic; line-height: 1;
+  }
+  .ads-ij span:first-child { animation: ads-ij-left 5s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .ads-ij span:last-child  { animation: ads-ij-right 5s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  @keyframes ads-ij-left  { from { transform: translateX(-190%); } to { transform: translateX(-0.06em); } }
+  @keyframes ads-ij-right { from { transform: translateX(190%); }  to { transform: translateX(0.06em); } }
+
+  /* Reduced motion: the products still show, they simply stop performing.
+     TIMES lands as a times, ASTERISK stops turning, and the two letters are
+     already adjacent — which is the state each animation was arriving at, so
+     nothing is lost but the arrival. */
+  @media (prefers-reduced-motion: reduce) {
+    .ads-anim-roll, .ads-anim-spin,
+    .ads-ij span:first-child, .ads-ij span:last-child { animation: none; }
   }
 
   /* Three finishes, so ten slides do not look like one slide ten times. */
@@ -1131,17 +1193,17 @@
      height the two controls would land on top of each other. */
   #lens-handle {
     position: absolute; z-index: 19;
-    /* This is the SAME hole that #lens-gap holds open at the top of the
-       corner stack, and the two must agree. The stack moved to the LEFT
-       edge on 2026-08-23, which is where this handle RESTS — so the
-       collision is now at the start of the drag rather than the end of it,
-       and the hole moved to the top of the column to match.
-       The button wins the tap either way (z-index 20 against this one's
-       19), so a handle that does not line up with the gap is a handle you
-       cannot pick up at all. */
+    /* This is the SAME hole that #lens-gap holds open in the corner stack,
+       and the two must agree. The handle rests at the left edge and travels
+       RIGHTWARD as the lens opens, finishing its drag against that column —
+       so if it does not line up with the gap it lands on a button, the
+       button wins the tap (z-index 20 against this one's 19), and the handle
+       becomes unusable exactly where you finish the drag. That is how this
+       was found the first time, when Dazzle sat here.
+       12 top inset + Reset's 34 + an 8 gap. */
     /* The left inset matters in landscape, where a phone reports ~52px of
        cutout on that edge. At left:0 the handle sat underneath it. */
-    top: calc(12px + env(safe-area-inset-top));
+    top: calc(54px + env(safe-area-inset-top));
     left: env(safe-area-inset-left);
     width: 34px; height: 46px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center; gap: 4px;
@@ -1183,8 +1245,8 @@
      12 + 44 + 8 + 44 + 8 = 116. Without moving `top` here the handle would
      still overlap Dazzle on exactly the devices where it matters most. */
   @media (pointer: coarse) {
-    /* Top of the column. See #lens-gap. */
-    #lens-handle { width: 44px; height: 52px; top: calc(12px + env(safe-area-inset-top)); }
+    /* Reset's 44 + the 12 inset + an 8 gap. See #lens-gap. */
+    #lens-handle { width: 44px; height: 52px; top: calc(64px + env(safe-area-inset-top)); }
   }
 
   #panel::-webkit-scrollbar { width: 3px; }
@@ -1286,9 +1348,13 @@
        It reads as a handle for the drawer rather than as a stray button,
        and it stays in the thumb's arc either way. Both `left` rules from
        the desktop layout have to be beaten. */
+    /* LEFT of the transport, as of 2026-08-23. It used to sit bottom-RIGHT,
+       where it rose with the sheet and collided with the corner column — which
+       is what sent those controls to the far side of the screen for a while.
+       Moving the menu here fixes it at the source and lets them come back. */
     #panel-toggle,
     #panel:not(.collapsed) ~ #panel-toggle {
-      left: auto; right: 12px; top: auto;
+      right: auto; left: 12px; top: auto;
       transform: none;
       bottom: calc(var(--sheet-h) + 16px);
       width: 76px; height: 44px; border-radius: 22px;
@@ -1309,17 +1375,29 @@
     #panel-toggle::before { content: '\25BE'; font-size: 20px; line-height: 1; }
     #panel.collapsed ~ #panel-toggle::before { content: '\25B4'; }
 
-    /* Transport shares the bottom row with the drawer button, which has moved
-       to the right to make room. Both ride the sheet's top edge, so they stay
-       on one line whether the sheet is up or away. The right inset clears the
-       76px drawer button plus a gap. */
+    /* Transport shares the bottom row with the drawer button, which sits to
+       its LEFT. Both ride the sheet's top edge, so they stay on one line
+       whether the sheet is up or away. The left inset clears the 76px drawer
+       button plus a gap.
+
+       The RIGHT inset is the interesting one, and it is conditional. When the
+       sheet is up the transport rides high enough to reach the corner column,
+       and it used to run underneath it — measured on a Pixel 7, the transport
+       at 324-368 crossed the multiplication button at 332-376. So while the
+       sheet is open it stops short of that column: 12 inset + the 44 button +
+       an 8 gap.
+
+       When the sheet is AWAY the transport sits at the bottom of the screen,
+       far below the column, and takes the full width. Insetting it there would
+       shorten the scrub bar to avoid a collision that cannot happen. */
     #transport,
     #panel.collapsed ~ #transport {
-      left: 4px; right: 100px;
+      left: 100px; right: calc(64px + env(safe-area-inset-right));
       top: auto; bottom: calc(var(--sheet-h) + 16px);
       transition: bottom 0.3s ease;
     }
     #panel.collapsed ~ #transport {
+      right: 4px;
       bottom: calc(18px + env(safe-area-inset-bottom));
     }
 
@@ -1631,27 +1709,22 @@
      the buttons is what keeps the hole aligned with the handle when either
      one changes size.
      ========================================================== -->
-<!-- Reset stays in the top RIGHT, alone. Everything else moved to the left
-     edge, because the right-hand column was colliding with the sheet's menu
-     button. Reset survives on the right because it is the one control you want
-     nowhere near the others — it undoes everything.
-     Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
-     across platforms and some render as colour emoji, which is exactly how
-     the transport button ended up orange on Android. -->
-<button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M3 12a9 9 0 1 0 3-6.7"/>
-    <path d="M3 4v5h5"/>
-  </svg>
-</button>
-
 <div id="corner-stack">
-  <!-- The parking space for the lens handle, and it is FIRST now. The handle
-       rests at the left edge when the lens is closed, which is where this
-       column lives, so the hole it needs is at the top rather than one slot
-       down. It still has to line up with #lens-handle exactly — see the note
-       there. -->
+  <!-- Icon is inline SVG, not a character: circular-arrow glyphs vary wildly
+       across platforms and some render as colour emoji, which is exactly how
+       the transport button ended up orange on Android. -->
+  <button id="corner-reset" type="button" title="Reset to defaults" aria-label="Reset to defaults">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 3-6.7"/>
+      <path d="M3 4v5h5"/>
+    </svg>
+  </button>
+
+  <!-- The parking space for the lens handle. Empty on purpose: the handle
+       travels rightward as the lens opens and comes to rest against this
+       column, so it needs a hole to land in. It has to line up with
+       #lens-handle exactly — see the note there. -->
   <div id="lens-gap" aria-hidden="true"></div>
 
   <!-- A sparkle: two four-pointed stars with concave sides, drawn rather than
