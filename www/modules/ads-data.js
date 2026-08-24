@@ -52,10 +52,17 @@ export const PRODUCTS = [
     name: 'Addition Ads',
     price: '$0.99',
     priceMicros: 990000,
-    // Shown on the paywall. In character: this is a shop, not an explanation.
-    pitch: 'Commercials for the addition operators. Plus. Sigma. SUM(). ' +
-           'Yours forever, whenever you want them.',
-    // The button that opens it already exists in index.html.
+    // THE PITCH MUST NOT GIVE THE JOKE AWAY. Read it before buying and it says
+    // one thing: you are paying to have advertisements ADDED to the app. That
+    // is the surface gag and it is a complete, honest product description.
+    //
+    // The real joke only lands after the transaction, when the ads turn out to
+    // be advertisements FOR ADDITION. "Addition Ads" is true both ways and we
+    // deliver both — that double delivery is the payload, and it is destroyed
+    // by a pitch that explains it. So: no operators named here, no wink, no
+    // "commercials for the addition operators". Just a shop selling ads.
+    pitch: 'Advertisements, added to Pretty Number Machine. ' +
+           'One payment. Yours forever.',
     button: 'ads-btn',
     requires: null,
   },
@@ -65,10 +72,10 @@ export const PRODUCTS = [
     name: 'Multiplication Ads',
     price: '$4.95',
     priceMicros: 4950000,
-    pitch: 'The multiplication operators. Times. Asterisk. The Dot. ' +
+    // Same construction, same restraint. Before: your advertisements will be
+    // multiplied. After: they are advertisements for multiplication.
+    pitch: 'Your advertisements, multiplied. ' +
            'A premium tier, priced accordingly.',
-    // Created by ads.js and inserted into the corner stack once addition is
-    // owned. Nothing in index.html knows about it.
     button: 'ads-mul-btn',
     requires: 'ads-addition',
   },
@@ -95,6 +102,10 @@ export const PALETTES = {
   corporate:  { from: '#101418', to: '#1e2933', ink: '#e8eef4', accent: '#7cf6b0' },
   vhs:        { from: '#3d0a2a', to: '#120a2e', ink: '#ffe9f6', accent: '#ffcc00' },
   playroom:   { from: '#1b7fd4', to: '#0a3f7a', ink: '#ffffff', accent: '#ffd23f' },
+  // For `proximity`, whose product is nothing. A gallery wall rather than a
+  // gradient: the only light palette in the deck, because an empty space reads
+  // as a mistake when it is dark and as a luxury when it is lit.
+  lightbox:   { from: '#f4f1ea', to: '#dcd7cc', ink: '#1a1815', accent: '#8a7a52' },
 };
 
 // ============================================================
@@ -122,19 +133,32 @@ export const PALETTES = {
 // actual symbols, not pictures of them. The one place that matters in practice
 // is SUM(), which is a word, and the Greek capitals, which need a font that
 // has them. Both are covered by the stack in index.html.
+//
+// EVERY FIELD BELOW `headline` IS OPTIONAL, and that is a design decision
+// rather than laziness. The first pass gave all ten slides the same five-part
+// anatomy — wordmark, glyph, headline, testimonial, small print — and they read
+// as one slide printed ten times. Real advertising varies its density hard: a
+// full page for a luxury good is a picture and four words. So a slide takes
+// only the parts it needs, and the sparse ones are the strong ones.
+//
+//   glyph      may be EMPTY. `proximity` sells implicit multiplication, whose
+//              symbol is the absence of a symbol, so its ad space is empty
+//   quote/who  drop together. A testimonial is a mid-market device; the more
+//              expensive the pitch, the less it wants one
+//   legal      small print. Still the punchline where a slide has one
+//   cta        a closing instruction, set apart. Rare on purpose
 const slide = (product, s) => ({ product, ...s });
 
 export const SLIDES = [
   // ---- ADDITION -------------------------------------------------------
+  // Nothing but the product and the claim. The most expensive-looking slide in
+  // the deck is the one with the least on it.
   slide('ads-addition', {
     id: 'plus',
     glyph: '+',
     wordmark: 'PLUS',
     headline: 'ADDITION, PERFECTED.',
     tm: true,
-    quote: 'I used to carry. Now I just add.',
-    who: 'a satisfied integer',
-    legal: 'Plus is a registered operator. Results may vary by ring.',
     palette: 'neonDusk',
     treatment: 'chrome',
   }),
@@ -144,9 +168,8 @@ export const SLIDES = [
     glyphNote: 'CAPITAL SIGMA · SUMMATION · SINCE ANTIQUITY',
     wordmark: 'SIGMA',
     headline: 'WHEN ONE PLUS IS NOT ENOUGH.',
-    tm: false,
     quote: 'It added all of us. At the same time. I have never felt so seen.',
-    who: 'the numbers 1 through 100',
+    who: 'Natural Numbers',
     legal: 'Bounds sold separately. Sigma is not liable for divergent series.',
     palette: 'chromeCyan',
     treatment: 'chrome',
@@ -159,7 +182,7 @@ export const SLIDES = [
     headline: 'ADDITION FOR BUSINESS.',
     tm: true,
     quote: 'Our quarterly totals have never been more total.',
-    who: 'a mid-size regional distributor',
+    who: 'The Market',
     legal: 'Parentheses included. Arguments not included. Seat licence required.',
     palette: 'corporate',
     treatment: 'flat',
@@ -177,19 +200,6 @@ export const SLIDES = [
     palette: 'vhs',
     treatment: 'scan',
   }),
-  slide('ads-addition', {
-    id: 'sesame-plus',
-    glyph: '+',
-    glyphNote: "TODAY'S OPERATOR",
-    wordmark: 'BROUGHT TO YOU BY',
-    headline: 'THE LETTER T AND THE OPERATOR PLUS.',
-    tm: false,
-    quote: 'Can you find the plus sign? There it is! It was right there!',
-    who: 'a friendly voice, off camera',
-    legal: 'The operator plus is suitable for all ages and most fields.',
-    palette: 'sesame',
-    treatment: 'flat',
-  }),
 
   // ---- MULTIPLICATION -------------------------------------------------
   slide('ads-multiplication', {
@@ -198,8 +208,6 @@ export const SLIDES = [
     wordmark: 'TIMES',
     headline: 'ADDITION, BUT AMBITIOUS.',
     tm: true,
-    quote: 'Plus got me to ten. Times got me to a thousand. I do not speak to Plus.',
-    who: 'the number 1000',
     legal: 'Times is not addition. Any resemblance is repeated and intentional.',
     palette: 'neonDusk',
     treatment: 'chrome',
@@ -210,10 +218,9 @@ export const SLIDES = [
     glyphNote: 'WORKS IN EVERY LANGUAGE YOU HAVE HEARD OF*',
     wordmark: 'ASTERISK',
     headline: 'THE OPERATOR THAT GOES ANYWHERE.',
-    tm: false,
     quote: 'I typed it on a keyboard. It just worked. No one helped me.',
-    who: 'a first-year, unprompted',
-    legal: '*And several you have not. Not valid as a footnote in this advert.',
+    who: 'a first-year',
+    legal: '*Not valid as a footnote in this advert.',
     palette: 'corporate',
     treatment: 'flat',
   }),
@@ -226,7 +233,7 @@ export const SLIDES = [
     tm: true,
     quote: 'If you have to ask what it does, it is not for you.',
     who: 'a physicist, declining to elaborate',
-    legal: 'The Dot is small. This is deliberate. Do not ask us to enlarge it.',
+    legal: 'Left as an exercise for the reader.',
     palette: 'chromeCyan',
     treatment: 'chrome',
   }),
@@ -235,29 +242,28 @@ export const SLIDES = [
     glyph: '∏',
     glyphNote: "CAPITAL PI · PRODUCT · SIGMA'S SIBLING",
     wordmark: 'BIG PI',
-    headline: 'EVERYTHING SIGMA DOES. WORTH MORE.',
-    tm: false,
-    quote: 'Sigma adds. Pi multiplies. Our parents pretend not to have a favourite.',
-    who: 'Capital Pi',
+    headline: "DON'T SETTLE FOR SIGMA.",
     legal: 'An empty product is 1. An empty sum is 0. We think that says it all.',
     palette: 'playroom',
     treatment: 'flat',
   }),
-  // The price gag. It is the only slide that is about the transaction, and it
-  // stays in character while being about it — a brand explaining its premium
-  // tier with total confidence and no evidence. Deliberately last.
+  // The one with nothing in it. Implicit multiplication — `ab` — has no symbol
+  // at all, so the ad space is empty and lit, and the copy sells the absence as
+  // exclusivity. It is the last slide and the only one that closes on an
+  // instruction.
+  //
+  // DEV: `glyph` is deliberately the empty string. modules/ads.js draws an
+  // empty lit frame where the product would be rather than collapsing the
+  // space, because the space IS the product.
   slide('ads-multiplication', {
-    id: 'why-five',
-    glyph: '×5',
-    glyphNote: 'VALUE, ILLUSTRATED',
-    wordmark: 'A NOTE ON PRICE',
-    headline: 'THIS TIER COSTS FIVE TIMES MORE.',
-    tm: false,
-    quote: 'Because it is multiplication. We felt addition would be the wrong tool.',
-    who: 'the pricing department',
-    legal: 'Five times $0.99 is exactly $4.95. We have checked. Twice.',
-    palette: 'vhs',
-    treatment: 'scan',
+    id: 'proximity',
+    glyph: '',
+    wordmark: 'MERE PROXIMITY',
+    headline: 'OUR MOST EXCLUSIVE MODEL.',
+    quote: 'You simply have to know.',
+    cta: 'Multiply with your neighbor today.',
+    palette: 'lightbox',
+    treatment: 'empty',
   }),
 ];
 
@@ -277,7 +283,7 @@ export function slidesWithBadPalette() {
   return SLIDES.filter(s => !PALETTES[s.palette]).map(s => s.id);
 }
 
-export const TREATMENTS = ['chrome', 'flat', 'scan'];
+export const TREATMENTS = ['chrome', 'flat', 'scan', 'empty'];
 
 export function slidesWithBadTreatment() {
   return SLIDES.filter(s => !TREATMENTS.includes(s.treatment)).map(s => s.id);

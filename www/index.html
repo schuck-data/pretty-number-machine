@@ -839,12 +839,34 @@
   }
   #ads-overlay.open { display: flex; }
 
-  .ads-x {
+  /* The PAYWALL's close. Obvious, circled, immediately available — a shop you
+     cannot leave is not a joke, it is a complaint. */
+  .ads-close {
     position: absolute; top: 8px; right: 8px;
     width: 44px; height: 44px; border-radius: 50%;
     background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.25);
     color: #fff; font-size: 24px; line-height: 1;
     cursor: pointer; z-index: 2;
+  }
+
+  /* The SLIDESHOW's close, and it is a different animal on purpose. No circle,
+     no fill, small, and dim against whatever the slide is doing. It is added to
+     the DOM three seconds in and does nothing for two more — modules/ads.js
+     owns that clock and explains it.
+
+     It still meets the 44px touch target the accessibility pass established;
+     what shrank is the mark, not the tap area. Being hard to SEE is the joke.
+     Being hard to HIT would just be bad. */
+  .ads-x {
+    position: absolute; top: 0; right: 0;
+    width: 44px; height: 44px;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    padding: 6px 8px 0 0;
+    background: none; border: 0;
+    color: var(--ink, #fff); opacity: 0.35;
+    font-size: 15px; line-height: 1; font-weight: 400;
+    cursor: pointer; z-index: 3;
+    animation: ads-enter 500ms ease-out both;
   }
 
   /* ---- the paywall ---- */
@@ -883,7 +905,7 @@
        sizes to its own text and sits as a card in the middle of the screen
        instead of reading as a poster. */
     height: 100%;
-    display: flex; flex-direction: column; gap: 12px;
+    display: flex; flex-direction: column; gap: 10px;
   }
   .ads-stage { flex: 1; min-height: 0; }
 
@@ -908,6 +930,19 @@
     margin: 0; font-weight: 700;
     text-shadow: 0 0 32px color-mix(in srgb, var(--accent) 55%, transparent);
   }
+  /* No product. `proximity` sells implicit multiplication, whose notation is
+     the absence of notation, so the ad space is empty and lit and holds the
+     same room a symbol would have taken. Collapsing it would throw away the
+     only thing the slide is selling. */
+  .ads-glyph-empty {
+    height: clamp(88px, 30vw, 150px);
+    border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+    border-radius: 4px;
+    background:
+      radial-gradient(ellipse at 50% 0%,
+        color-mix(in srgb, var(--ink) 9%, transparent) 0%, transparent 70%);
+    text-shadow: none;
+  }
   .ads-glyphnote {
     font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase;
     opacity: 0.75; margin: 10px 0 0;
@@ -922,6 +957,13 @@
   .ads-quote cite {
     display: block; font-size: 0.72rem; font-style: normal;
     opacity: 0.8; margin-top: 6px;
+  }
+  /* A closing instruction, set apart from the body. Rare on purpose — only
+     `proximity` has one, and it is the last line of the last slide. */
+  .ads-cta {
+    margin: 18px 0 0; font-size: 0.9rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--accent);
   }
   .ads-legal {
     font-size: 0.6rem; line-height: 1.4; opacity: 0.7;
@@ -967,30 +1009,26 @@
       0deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 4px);
   }
   .ads-t-flat .ads-headline { font-weight: 800; }
+  /* A gallery wall. Generous, quiet, and the only slide in the deck that is
+     not shouting — which is how the expensive ones behave. */
+  .ads-t-empty { padding: 34px 26px; }
+  .ads-t-empty .ads-wordmark { letter-spacing: 0.42em; opacity: 1; }
+  .ads-t-empty .ads-headline { font-weight: 500; letter-spacing: 0.1em; }
+  .ads-t-empty .ads-quote p { font-style: normal; opacity: 0.75; }
 
-  .ads-controls {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    flex: none;
-  }
-  .ads-controls button {
-    min-width: 48px; min-height: 44px; padding: 0 14px;
-    border-radius: 10px; border: 1px solid var(--border-corner);
-    background: rgba(255, 255, 255, 0.05); color: var(--text);
-    font-size: 1rem; cursor: pointer;
-  }
-  .ads-count { font-size: 0.8125rem; color: var(--text-dim); min-width: 56px; text-align: center; }
-
-  /* The intrusion setting. It lives here rather than in the panel because it
-     can only be found by somebody who has bought something to be intruded
-     upon — see the note in modules/ads.js. */
+  /* The intrusion setting, dressed as the consent widget it is parodying. It
+     lives here rather than in the panel because it can only be found by
+     somebody who has bought something to be intruded upon — see the note in
+     modules/ads.js. Sitting under the slide for the whole show is correct: an
+     ad network's consent strip does exactly that. */
   .ads-intrude {
     display: block; flex: none;
-    font-size: 0.8125rem; color: var(--text-dim); line-height: 1.4;
-    padding: 10px 12px; border-radius: 10px;
+    font-size: 0.78rem; color: var(--text-dim); line-height: 1.4;
+    padding: 9px 11px; border-radius: 8px;
     border: 1px solid var(--border); cursor: pointer;
   }
-  .ads-intrude input { margin-right: 8px; }
-  .ads-intrude span { display: block; font-size: 0.72rem; opacity: 0.75; margin: 4px 0 0 24px; }
+  .ads-intrude input { margin-right: 8px; vertical-align: -1px; }
+  .ads-intrude span { display: block; font-size: 0.7rem; opacity: 0.7; margin: 3px 0 0 22px; }
 
   /* ---- the banner, when intrusion is on ---- */
   #ads-banner {

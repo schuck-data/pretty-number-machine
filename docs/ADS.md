@@ -7,7 +7,12 @@
 > The in-app purchase is **advertising as the product**. You pay to be shown
 > commercials for mathematical operators. Nothing is advertised to a player who
 > has not bought the advertising, there is no ad SDK, no network request and no
-> consent framework — the entire deck is ten slides of markup in the bundle.
+> consent framework — the entire deck is nine slides of markup in the bundle.
+>
+> **The pitch must never explain the joke.** "Addition Ads" reads before the
+> purchase as *advertising will be added* and after it as *the advertising is
+> for addition*. Both are true, both are delivered, and finding that out is the
+> payload. §1a is the rule; `check-ads.mjs` greps the pitch for tells.
 >
 > **Two products**, replacing the single $0.99 unlock the older documents
 > describe: `ads-addition` at $0.99 and `ads-multiplication` at $4.95. The
@@ -45,15 +50,31 @@ up. The rules that keep it in register:
   small print is a slide that has been written but not finished, and
   `check-ads.mjs` fails on one.
 
-One deliberate exception. `why-five` is about the transaction — it explains the
-$4.95 tier — and it stays in character while being about money, because a player
-who has just paid five times more is already thinking it.
+**Density is a tool and every slide uses a different amount of it.** The first
+pass gave all ten the same five-part anatomy — wordmark, glyph, headline,
+testimonial, small print — and they read as one slide printed ten times. Real
+advertising varies hard: a full page for a luxury good is a picture and four
+words. So every field below the headline is optional. `plus` is the product and
+the claim and nothing else; `proximity` has no product at all.
 
-**The price started at $4.99 and a failing test is why it did not stay there.**
-The checker asserted the ratio was 5 and got 5.0404…, because $4.99 is not five
-times $0.99. The price is now $4.95, which is exactly five times, and the
-assertion pins the exact ratio — so if the two ever move apart again, the slide
-that claims "five times" fails rather than quietly becoming a lie.
+A testimonial is a mid-market device. **The more expensive the pitch, the less
+it wants one** — which is why `times`, `bigpi` and `plus` do without.
+
+## 1a. The reveal, and why the shop must lie by omission
+
+The paywall sells one reading and one reading only: *you are paying to have
+advertisements added to the app.* That is a complete, honest description of the
+product, and it is funny on its own — you are buying ads.
+
+The second reading arrives only after the money does: they are advertisements
+**for addition**. Same for the premium tier — *your advertisements, multiplied*
+becomes *advertisements for multiplication*. We said exactly what we were
+selling, on both levels, and delivered both. **Finding out we double-delivered
+is the joke**, and a pitch that names an operator gives it away for free.
+
+`check-ads.mjs` greps both pitches for tells — "operator", "plus", "sigma",
+"SUM()", "asterisk", "times", "commercial" — because this is precisely the copy
+a well-meaning later edit would make *clearer*.
 
 ---
 
@@ -61,8 +82,14 @@ that claims "five times" fails rather than quietly becoming a lie.
 
 | Product | Price | Deck | Unlocks |
 |---|---|---|---|
-| `ads-addition` | $0.99 | `+`, `Σ`, `SUM()`, `⊕`, and a Sesame-Street plus | The plus button in the corner stack |
-| `ads-multiplication` | $4.95 | `×`, `*`, `·`, `∏`, and the price slide | A second button, which does not exist until addition is owned |
+| `ads-addition` | $0.99 | `+`, `Σ`, `SUM()`, `⊕` | The plus button in the corner stack |
+| `ads-multiplication` | $4.95 | `×`, `*`, `·`, `∏`, and `proximity` | A second button, which does not exist until addition is owned |
+
+`proximity` is the last slide and the only one selling nothing: implicit
+multiplication — `ab` — has no symbol, so its ad space is an empty lit frame on
+a gallery wall and the copy sells the absence as exclusivity. It is the only
+light palette in the deck, because an empty space reads as a mistake when it is
+dark and as a luxury when it is lit.
 
 The growing shop is a merchandising joke as much as a UI decision: the stack
 gains a door after you have used the first one, rather than opening with two
@@ -78,15 +105,34 @@ All 101 stay earnable by playing. See `ACHIEVEMENTS.md` §12.
 
 ## 3. Slideshow, and the intrusion setting
 
-**The slideshow plays itself, ten seconds a slide.** A deck that waits to be
-advanced is a gallery, and this is meant to behave like the thing it parodies —
-you open it and it starts, the way a commercial break does. Ten seconds is long
-on purpose: the copy *is* the product and the punchline is usually the small
-print at the bottom, so the dwell has to cover reading the whole slide rather
-than glancing at it. Pause and the arrows are there for anyone who wants longer,
-and touching an arrow stops the timer — somebody steering by hand has stopped
-watching and started reading. The deck wraps rather than dead-ending on a
-disabled arrow.
+**The slideshow plays itself, ten seconds a slide, and there is no way to stop
+it.** No play, no pause, no arrows. **You are subjected to these.** A deck you
+can scrub is a gallery; the thing being parodied does not let you leave, and the
+entire point of having paid for advertising is that it behaves like advertising.
+It loops until closed.
+
+Ten seconds is long on purpose: the copy *is* the product and the punchline is
+usually the small print, so the dwell has to cover reading the slide rather than
+glancing at it.
+
+**The close button is the joke's sharpest edge.** It does not exist for three
+seconds. Then it exists and does nothing for two more. Then it works. It is
+small, uncircled and dim against whatever the slide is doing — findable if you
+are looking for it, invisible if you are not. A click during the dead window is
+swallowed with no feedback at all, because feedback is a courtesy the thing
+being parodied does not extend. Escape is gated identically, or the joke has a
+keyboard-shaped hole in it.
+
+Verified on a Pixel 7: no button at 2.9s, present at 3.2s, clicks dead at 3.2s
+and 4.8s, closes at 5.5s.
+
+Two limits on the cruelty, both deliberate. Five seconds is the honest end of
+the real range — nobody is genuinely trapped. And the mark shrank, not the tap
+target: it still meets the 44px minimum the accessibility pass established,
+because being hard to *see* is the joke and being hard to *hit* is just bad.
+
+The **paywall** keeps a normal, obvious, immediately-available close. A shop you
+cannot leave is not a joke, it is a complaint.
 
 Slides cross-fade with a direction-aware slide: the incoming one enters from the
 side the deck moved. The first slide of a session gets a plain fade, because one

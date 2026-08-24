@@ -180,7 +180,9 @@ function openOverlay(html) {
   el.innerHTML = html;
   el.classList.add('open');
   document.body.classList.add('ads-open');
-  escHandler = (e) => { if (e.key === 'Escape') closeOverlay(); };
+  // Escape obeys the same clock as the close button — see scheduleClose(). The
+  // paywall has no clock, so `closeArmed` is set true when it opens.
+  escHandler = (e) => { if (e.key === 'Escape' && closeArmed) closeOverlay(); };
   document.addEventListener('keydown', escHandler);
   el.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeOverlay));
 }
@@ -194,7 +196,7 @@ function openOverlay(html) {
 function paywallHTML(p) {
   return `
     <div class="ads-sheet" data-kind="paywall">
-      <button class="ads-x" type="button" data-close aria-label="Close">&times;</button>
+      <button class="ads-close" type="button" data-close aria-label="Close">&times;</button>
       <p class="ads-eyebrow">AN OFFER</p>
       <h2 class="ads-title">${esc(p.name)}</h2>
       <p class="ads-pitch">${esc(p.pitch)}</p>
@@ -208,6 +210,7 @@ function paywallHTML(p) {
 }
 
 function openPaywall(p) {
+  closeArmed = true;              // a shop you cannot leave is not a joke
   openOverlay(paywallHTML(p));
   const buy = overlay.querySelector('[data-buy]');
   const status = overlay.querySelector('.ads-status');
@@ -254,67 +257,113 @@ const DWELL_MS = 10000;
 let showTimer = null;
 let showIndex = 0;
 let showSlides = [];
-let playing = false;
 
 function stopShow() {
   if (showTimer) { clearTimeout(showTimer); showTimer = null; }
-  playing = false;
+  clearCloseTimers();
 }
 
 function slideHTML(s) {
   const pal = PALETTES[s.palette];
+  // Only what the slide declares. An absent testimonial leaves no gap, and an
+  // absent glyph leaves a lit empty frame rather than collapsing — see the note
+  // on `proximity` in ads-data.js, where the empty space IS the product.
+  const glyph = s.glyph
+    ? `<p class="ads-glyph">${esc(s.glyph)}</p>`
+    : '<p class="ads-glyph ads-glyph-empty" aria-label="an empty advertising space"></p>';
+  const note = s.glyphNote ? `<p class="ads-glyphnote">${esc(s.glyphNote)}</p>` : '';
+  const quote = s.quote ? `
+        <blockquote class="ads-quote">
+          <p>&ldquo;${esc(s.quote)}&rdquo;</p>
+          ${s.who ? `<cite>&mdash; ${esc(s.who)}</cite>` : ''}
+        </blockquote>` : '';
+  const cta = s.cta ? `<p class="ads-cta">${esc(s.cta)}</p>` : '';
+  const legal = s.legal ? `<p class="ads-legal">${esc(s.legal)}</p>` : '';
   return `
     <div class="ads-slide ads-t-${esc(s.treatment)}"
          style="--from:${pal.from};--to:${pal.to};--ink:${pal.ink};--accent:${pal.accent}">
       <div class="ads-slide-inner">
         <p class="ads-wordmark">${esc(s.wordmark)}</p>
-        <p class="ads-glyph">${esc(s.glyph)}</p>
-        ${s.glyphNote ? `<p class="ads-glyphnote">${esc(s.glyphNote)}</p>` : ''}
-        <h3 class="ads-headline">${esc(s.headline)}${s.tm ? '<sup>™</sup>' : ''}</h3>
-        <blockquote class="ads-quote">
-          <p>&ldquo;${esc(s.quote)}&rdquo;</p>
-          <cite>&mdash; ${esc(s.who)}</cite>
-        </blockquote>
-        <p class="ads-legal">${esc(s.legal)}</p>
+        ${glyph}
+        ${note}
+        <h3 class="ads-headline">${esc(s.headline)}${s.tm ? '<sup>&trade;</sup>' : ''}</h3>
+        ${quote}
+        ${cta}
+        ${legal}
       </div>
     </div>`;
 }
 
+// No play, no pause, no arrows. **You are subjected to these.** A deck you can
+// scrub is a gallery; the thing being parodied does not let you leave, and the
+// whole point of having paid for advertising is that it behaves like
+// advertising. It loops until you close it.
+//
+// The close button is the only control, and it is the joke's sharpest edge —
+// see CLOSE_APPEAR_MS below.
 function showHTML() {
   return `
     <div class="ads-show" data-kind="show">
-      <button class="ads-x" type="button" data-close aria-label="Close">&times;</button>
       <div class="ads-stage"></div>
-      <div class="ads-controls">
-        <button type="button" data-prev aria-label="Previous">&lsaquo;</button>
-        <button type="button" data-play aria-label="Play">Play</button>
-        <span class="ads-count" role="status" aria-live="polite"></span>
-        <button type="button" data-next aria-label="Next">&rsaquo;</button>
-      </div>
       <label class="ads-intrude">
         <input type="checkbox" data-intrude ${state.adsIntrude ? 'checked' : ''}>
-        Let them interrupt me
-        <span>The real experience. They will appear over the figure now and then.</span>
+        I want the full advertising experience.
+        <span>(Interrupt me at inopportune times)</span>
       </label>
     </div>`;
 }
 
-// `dir` is which way the deck moved, so the incoming slide enters from the side
-// it came from. 0 means "no movement" — the first slide of a session, or a
-// re-render — and gets a plain fade instead, because a slide that flies in from
-// nowhere on open reads as a glitch.
+// THE CLOSE BUTTON, and every number here is deliberate.
+//
+// It does not exist for three seconds. Then it exists but does nothing for two
+// more. Then it works. It is small, it has no circle around it, and it sits in
+// low contrast against whatever the slide is doing — findable if you are
+// looking, invisible if you are not.
+//
+// This is a faithful reproduction of a real pattern, which is the point: the
+// player has PAID for the advertising experience and this is what that
+// experience is. Five seconds total is the honest end of the range — real ones
+// are worse — and it is short enough that nobody is genuinely trapped.
+//
+// DEV: the dead window is a real dead window. A click during it is swallowed
+// with no feedback at all, because feedback would be a courtesy the thing being
+// parodied does not extend. Escape is gated identically, or the joke has a
+// keyboard-shaped hole in it.
+const CLOSE_APPEAR_MS = 3000;
+const CLOSE_ARM_MS = 5000;
+let closeArmed = false;
+let closeTimers = [];
+
+function clearCloseTimers() {
+  for (const t of closeTimers) clearTimeout(t);
+  closeTimers = [];
+}
+
+function scheduleClose() {
+  clearCloseTimers();
+  closeArmed = false;
+  closeTimers.push(setTimeout(() => {
+    const show = overlay?.querySelector('.ads-show');
+    if (!show || show.querySelector('.ads-x')) return;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'ads-x';
+    x.setAttribute('aria-label', 'Close');
+    x.textContent = '×';
+    x.addEventListener('click', () => { if (closeArmed) closeOverlay(); });
+    show.appendChild(x);
+  }, CLOSE_APPEAR_MS));
+  closeTimers.push(setTimeout(() => { closeArmed = true; }, CLOSE_ARM_MS));
+}
+
 function renderSlide(dir = 0) {
   const stage = overlay?.querySelector('.ads-stage');
   if (!stage) return;
   stage.innerHTML = slideHTML(showSlides[showIndex]);
   const el = stage.firstElementChild;
   if (el) el.classList.add(dir > 0 ? 'ads-enter-next' : dir < 0 ? 'ads-enter-prev' : 'ads-enter');
-  const count = overlay.querySelector('.ads-count');
-  if (count) count.textContent = `${showIndex + 1} / ${showSlides.length}`;
-  if (playing) {
-    if (showTimer) clearTimeout(showTimer);
-    showTimer = setTimeout(() => step(1), DWELL_MS);
-  }
+  if (showTimer) clearTimeout(showTimer);
+  showTimer = setTimeout(() => step(1), DWELL_MS);
 }
 
 // Wraps rather than stopping. The deck is short and modal, and a slideshow that
@@ -329,26 +378,13 @@ function openShow(productId) {
   showSlides = slidesFor(productId);
   if (!showSlides.length) return;                 // checked headlessly; belt and braces
   showIndex = 0;
-  playing = true;                 // it starts by itself; see DWELL_MS
   openOverlay(showHTML());
-  overlay.querySelector('[data-prev]')?.addEventListener('click', () => { stopShow(); syncPlay(); step(-1); });
-  overlay.querySelector('[data-next]')?.addEventListener('click', () => { stopShow(); syncPlay(); step(1); });
-  overlay.querySelector('[data-play]')?.addEventListener('click', () => {
-    playing = !playing;
-    syncPlay();
-    if (playing) renderSlide(); else stopShow();
-  });
   overlay.querySelector('[data-intrude]')?.addEventListener('change', (e) => {
     update({ adsIntrude: e.target.checked });
   });
-  syncPlay();
+  scheduleClose();
   renderSlide();
   emit('ads:opened', { id: productId });
-}
-
-function syncPlay() {
-  const b = overlay?.querySelector('[data-play]');
-  if (b) b.textContent = playing ? 'Pause' : 'Play';
 }
 
 // The door. Owned goes to the slideshow, unowned to the paywall.

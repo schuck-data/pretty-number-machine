@@ -44,14 +44,11 @@ eq('addition requires nothing', D.PRODUCT_BY_ID.get('ads-addition').requires, nu
 // numbers, and this fails loudly if somebody edits one and not the other.
 const micros = Object.fromEntries(D.PRODUCTS.map(p => [p.id, p.priceMicros]));
 
-// EXACTLY five, and one slide says so in its small print. $4.99 was five-point-
-// oh-four times $0.99, which this assertion caught; $4.95 is five on the nose.
-// If the prices ever move apart again, the WHY-FIVE slide becomes a lie that
-// nobody would spot by looking at it.
-eq('multiplication costs exactly five times addition (the WHY-FIVE slide says so)',
+// The tiers still stand five apart, but nothing in the copy depends on it any
+// more — the slide that used to explain the price was replaced by `proximity`.
+// Kept as a sanity check on the shop rather than as a guard on a joke.
+eq('multiplication costs five times addition',
    micros['ads-multiplication'] / micros['ads-addition'], 5);
-ok('...and that slide still claims it in its small print',
-   /exactly \$4\.95/.test(D.SLIDES.find(s => s.id === 'why-five').legal));
 
 // A price string that disagrees with the micros is the kind of thing that
 // reaches a store listing and becomes a refund.
@@ -66,7 +63,7 @@ eq('products with no slides at all', D.productsWithoutSlides(), []);
 eq('slides naming a palette that does not exist', D.slidesWithBadPalette(), []);
 eq('slides with an unknown treatment', D.slidesWithBadTreatment(), []);
 
-eq('addition deck size', D.slidesFor('ads-addition').length, 5);
+eq('addition deck size', D.slidesFor('ads-addition').length, 4);
 eq('multiplication deck size', D.slidesFor('ads-multiplication').length, 5);
 
 // Every slide belongs to a real product. A typo here yields a slide that exists
@@ -77,13 +74,30 @@ eq('slides whose product is not in the catalogue',
 eq('duplicate slide ids',
    D.SLIDES.map(s => s.id).filter((id, i, a) => a.indexOf(id) !== i), []);
 
-// Presence. Each of these is a field that renders as a blank line if missing —
-// visible only if somebody re-reads all ten slides on a phone.
-const REQUIRED = ['glyph', 'wordmark', 'headline', 'quote', 'who', 'legal'];
+// Presence. Only the parts a slide cannot do without — everything below the
+// headline is optional by design, because a deck where every slide has the same
+// five parts reads as one slide printed nine times. See the note in ads-data.js.
+//
+// `glyph` is NOT in this list. `proximity` sells implicit multiplication, whose
+// notation is the absence of notation, so its glyph is legitimately empty.
+const REQUIRED = ['wordmark', 'headline', 'palette', 'treatment'];
 for (const f of REQUIRED) {
   eq(`slides missing "${f}"`,
      D.SLIDES.filter(s => !s[f] || !String(s[f]).trim()).map(s => s.id), []);
 }
+
+// The key must still EXIST even when empty, or the renderer cannot tell
+// "deliberately nothing" from "somebody forgot".
+eq('slides with no glyph key at all',
+   D.SLIDES.filter(s => typeof s.glyph !== 'string').map(s => s.id), []);
+eq('slides that deliberately show nothing',
+   D.SLIDES.filter(s => s.glyph === '').map(s => s.id), ['proximity']);
+
+// A testimonial without an attribution is a quote from nobody.
+eq('slides quoting nobody',
+   D.SLIDES.filter(s => s.quote && !s.who).map(s => s.id), ['proximity']);
+ok("...and proximity is the deliberate one: that line is the brand speaking, not a customer",
+   D.SLIDES.find(s => s.id === 'proximity').quote === 'You simply have to know.');
 
 // ============================================================
 console.log('\n[copy] the register');
@@ -98,10 +112,14 @@ const GLYPH_MAX = 5;   // SUM() is the longest and sets the ceiling
 eq('glyphs too wide to set at display size',
    D.SLIDES.filter(s => s.glyph.length > GLYPH_MAX).map(s => `${s.id} "${s.glyph}"`), []);
 
-// Every slide carries small print. It is the load-bearing half of the joke —
-// the headline is the gag and the legal line is the punchline — so a slide
-// without one is a slide that has been written but not finished.
-ok('every slide has small print', D.SLIDES.every(s => s.legal.length > 12));
+// Small print is the punchline WHERE A SLIDE HAS ONE, and it is no longer
+// universal: `plus` is deliberately bare and `proximity` closes on an
+// instruction instead. What is still checked is that a slide which HAS small
+// print carries enough of it to be a joke rather than a stub.
+eq('slides whose small print is a stub',
+   D.SLIDES.filter(s => s.legal !== undefined && s.legal.trim().length <= 12).map(s => s.id), []);
+eq('slides deliberately without small print',
+   D.SLIDES.filter(s => !s.legal).map(s => s.id), ['plus', 'proximity']);
 
 // ============================================================
 console.log('\n[wiring] the module and the adapter agree');
@@ -134,6 +152,18 @@ ok('the billing stub reports that it is not a real store',
    /available:\s*false/.test(PLAT));
 ok('reconcile() only trusts an entitlement list when a store actually answered',
    /res\?\.available === true/.test(ADS));
+
+// THE REVEAL. "Addition Ads" means one thing before the purchase (advertising
+// will be ADDED) and another after (the advertising is FOR addition). Both are
+// true and both get delivered, and finding that out is the whole payload — so
+// the pitch a player reads BEFORE paying must not name an operator or explain
+// the second reading. A helpful edit to this copy would quietly destroy it.
+const TELLS = [/operator/i, /\bplus\b/i, /sigma/i, /SUM\(\)/, /asterisk/i,
+               /commercial/i, /\btimes\b/i];
+for (const p of D.PRODUCTS) {
+  eq(`${p.id}'s pitch keeps the joke back`,
+     TELLS.filter(t => t.test(p.pitch)).map(String), []);
+}
 
 // The intrusion default. Off, and in HOT_KEYS so toggling it does not dispose
 // and rebuild a thousand meshes to start a timer.
