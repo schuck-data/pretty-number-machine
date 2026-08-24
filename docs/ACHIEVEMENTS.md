@@ -84,7 +84,7 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | `www/modules/achievements-data.js` | The number sets, the definitions, and the gilding rule. **No Three.js, no renderer** — so it can be checked headlessly |
 | `www/modules/achievements.js` | The ledger, the predicates, the UI, the toast, the sound, the gilding paint |
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
-| `tools/check-achievements.mjs` | **72 assertions**, in `npm run check` and CI |
+| `tools/check-achievements.mjs` | **81 assertions**, in `npm run check` and CI |
 | `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data, including the Play Console `initial_state` column. **Proofread the console paste here.** Rewritten 2026-08-23 for the v2 field names, having quietly thrown since the rebuild; now runs in CI so it cannot rot again |
 | `docs/achievements-v6.xlsx` | The v2 list. **History** — superseded by the code |
 | `docs/achievements-v7-proposal.xlsx` | The v7 design record: every row assessed, drops, additions, rejections |
@@ -648,7 +648,7 @@ N=10000, at 26.7 and 34.6 fps.
 | `platform/index.js` | **done.** 101 store ids, generated from the data file |
 | `sheet.js` | **done.** Collapse-to-peek on focus, driven by an event so the seam holds |
 | `index.html` | **done.** Accordion styles |
-| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard, the gild ceiling, the blurb count, the default-state guard and the en-dash guard in. 54 assertions at the time; 72 now |
+| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard, the gild ceiling, the blurb count, the default-state guard and the en-dash guard in. 54 assertions at the time; 81 now |
 | `renderer.js` | **done 2026-08-24.** `buildRunShapes()` / `lerpRunShapes()`, drawn by `lens.js` and now rewarded by DECOMPOSE! |
 | `transport.js` | not needed. REST! binds to `#transport-btn` through the existing delegated `onTrusted`, so nothing had to be added |
 
@@ -682,7 +682,7 @@ Nothing imports it and nothing should.
 | `index.html` | styles for `.ach-criteria`, `.ach-link`, `.ach-trophy-btn`, `.ach-toast-criteria` |
 | `platform/index.js` | store ids regenerated from the data file |
 | `achievements-table.mjs` | a `link` column, deliberately outside the Play Console set |
-| `check-achievements.mjs` | 60 → 72 assertions |
+| `check-achievements.mjs` | 60 → 81 assertions |
 
 ---
 
@@ -692,21 +692,35 @@ Nothing imports it and nothing should.
 npm run check
 ```
 
-Runs `tools/check.mjs` and `tools/check-achievements.mjs` — **72 assertions**
+Runs `tools/check.mjs` and `tools/check-achievements.mjs` — **81 assertions**
 over the list shape, the XP budget, trigger uniqueness, the dial guard, the
 computed families, the gilding rule, the gild-set ceiling, and from v7 the
-payoff rule and the reference links. Dependency-free, in CI.
+payoff rule, the reference links and the content-rating denylist.
+Dependency-free, in CI.
 
 ```bash
 node tools/achievements-table.mjs        # TSV
 node tools/achievements-table.mjs --json # JSON
 ```
 
-**v1's untestable half is still untestable.** The gilding *rule* is checked
-headlessly because `achievements-data.js` is free of Three.js. The ledger and
-display-set logic live in `achievements.js`, which imports the renderer and
-cannot load in Node — and **two of the bugs in §8 were in that half.** v2 is a
-good moment to lift the ledger and enabled-set into a third Three-free file.
+**The untestable half is still untestable, and it has now cost three bugs.**
+The gilding *rule* is checked headlessly because `achievements-data.js` is free
+of Three.js. The ledger, the display set and everything that renders a row live
+in `achievements.js`, which imports the renderer and cannot load in Node.
+
+Two of the bugs in §8 were in that half. **v7 added a third**: the
+`achievement:unlocked` payload did not carry `criteria`, so the toast rendered
+the literal string "undefined" — with every check green, found only by opening
+the app.
+
+What v7 did about it was **not** the refactor this note used to recommend. It
+added a source grep asserting the payload carries every field the toast prints,
+which is the same instrument as the SPARTA! tripwire: a poor test and a good
+tripwire, defending against a deletion rather than proving behaviour.
+
+**The refactor is still the right answer** — lift the ledger and the enabled set
+into a third Three-free file — and it is still not done. Every tripwire added
+instead is a small argument that it should be.
 
 ---
 

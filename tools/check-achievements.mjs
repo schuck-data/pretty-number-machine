@@ -17,9 +17,11 @@
 // this because every trigger was a hand-written predicate; v2 declares them,
 // so it can be checked.
 //
-// Expected values come from docs/achievements-v6.xlsx by way of
-// docs/ACHIEVEMENTS.md. If a number here changes, either the design moved and
-// this file should move with it, or something broke.
+// Expected values are the DESIGN, written down. achievements-data.js is the
+// source of truth for the list itself (docs/ACHIEVEMENTS.md §10 settled that;
+// achievements-v6.xlsx is history), and this file pins the numbers that the
+// design says must hold. If one changes, either the design moved and this file
+// should move with it, or something broke.
 
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
@@ -296,7 +298,11 @@ console.log('\n[links] the reference links');
 // Added in v7. A link only ever appears on an EARNED row, so it cannot give an
 // answer away — but a broken or non-https one ships to players either way.
 const links = A.filter(a => a.link);
-ok(`${links.length} of ${A.length} carry a reference link`);
+// PINNED, not merely reported. The count lived in a comment in
+// achievements-data.js and went stale within a day of being written, when two
+// links were dropped for content rating and the comment did not follow. A
+// number that matters belongs in an assertion or nowhere.
+eq('achievements carrying a reference link', links.length, 85);
 eq('links that are not https', links.filter(a => !a.link.startsWith('https://')).map(a => a.name), []);
 eq('links that are not Wikipedia articles',
    links.filter(a => !a.link.startsWith('https://en.wikipedia.org/wiki/')).map(a => a.name), []);

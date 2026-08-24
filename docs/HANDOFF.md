@@ -591,7 +591,7 @@ parse check of every module and a run of the achievement table exporter.
 | | Asserts |
 |---|---|
 | `tools/check.mjs` | Precache paths exist, `CACHE_VERSION` matches `CACHE_PREFIX`, the UI version label agrees, no hardcoded frame step, prime colours reach 4.5:1 |
-| `tools/check-achievements.mjs` | 60 assertions. The number sets, the gilding rule, no two achievements sharing a selection, nothing true at the defaults, the published Revealed/Hidden split |
+| `tools/check-achievements.mjs` | 81 assertions. The number sets, the gilding and payoff rules, no two achievements sharing a selection, nothing true at the defaults, the published Revealed/Hidden split, and the reference links including a content-rating denylist |
 | `tools/check-ads.mjs` | 43 assertions. Every deck whole, prices agreeing with themselves, **the pitch not giving the joke away**, no development bypass that entitles without a purchase, the two shimmer cadences |
 
 Several of those are **source greps rather than behavioural tests**, and that

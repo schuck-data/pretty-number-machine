@@ -22,21 +22,39 @@ modules and a locally vendored Three.js. Serve the directory over HTTP:
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000`. Opening `index.html` directly off disk will
-not work — ES modules require a real origin.
+Then open `http://localhost:8000` for the published build, or
+`http://localhost:8000/www/` for the living one. Opening `index.html` directly
+off disk will not work — ES modules require a real origin.
+
+**A warning that has cost hours twice.** Serving the repository root registers
+the *published* build's service worker at scope `/`, and it then answers
+requests for `/www/` with the root build's cached files. The tell is the version
+label in the footer: the published build and the `www/` build carry different
+ones. Unregister the worker and clear caches after every server restart, or work
+from `www/` as its own root. `docs/ACHIEVEMENTS.md` §8 has the full account.
 
 It also installs as an app and runs with no network connection.
 
 ## Layout
 
+**There are two copies of the web app, and only one of them is alive.**
+`www/` is the living codebase and everything is built there. The tree at the
+repository root — `index.html`, `core/`, `modules/`, `lib/`, `sw.js` — is the
+*published website*, frozen, and receives no further work. They were split
+rather than moved so the live site keeps working; the cost is that editing the
+wrong one looks like nothing happening, so check which tree you are in first.
+
 | Path | What it is |
 |---|---|
-| `core/` | State bus, prime maths, layout, control panel, Three.js renderer |
-| `modules/` | Optional features, registered at boot and isolated from crashes |
-| `lib/` | Vendored Three.js and Space Grotesk — see THIRD-PARTY.md |
-| `sw.js` | Service worker for the web builds. **Bump `CACHE_VERSION` on any deploy.** |
+| **`www/`** | **The living codebase.** Same shape as the root — `core/`, `modules/`, `lib/` — and the source for the Android app |
+| `android/` | The Capacitor 8 shell. `webDir` points at `www/` |
+| `tools/` | Dependency-free checkers and the achievement table exporter. `npm run check` |
+| `index.html`, `core/`, `modules/`, `lib/`, `sw.js` | The **frozen** published website. **Bump `CACHE_VERSION` on any deploy of it.** |
+| `v1/` | An earlier frozen web build, kept for the Capacitor spike's history |
 | `docs/HANDOFF.md` | **Start here.** Where things stand, decisions, traps, codebase directory |
 | `docs/ANDROID-BUILD.md` | The plan for the Google Play build (Capacitor, achievements, in-app product) |
+| `docs/ACHIEVEMENTS.md` | The achievement layer: the gilding and payoff rules, clue craft, and the traps |
+| `docs/ADS.md` | The satirical ads layer: two products, the paywall, the register the copy holds |
 | `docs/PLAN.md`, `docs/V1-PLAN.md` | Charter and history of the web app |
 | `docs/archive/` | Superseded documents, kept for history |
 

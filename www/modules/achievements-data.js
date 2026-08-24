@@ -725,10 +725,14 @@ const BLURBS = {
 // Console paste through tools/achievements-table.mjs, and an anchor written
 // into blurb text would leak straight into that column.
 //
-// 87 of the 101 carry one. The rest are jokes that a footnote would only
+// Most of the 101 carry one. The rest are jokes that a footnote would only
 // flatten — ORBS!, TRIPPY!, MEME! and the like. The ones that need it MOST are
 // the twelve with no blurb at all, where the link is not a footnote but the
 // entire explanation.
+//
+// The exact count is NOT written here. It was, and it went stale within a day
+// when two links were dropped for content rating. check-achievements.mjs
+// asserts it instead, which is the only place a number like that stays true.
 //
 // CONTENT RATING. A link is a MACHINE-READABLE ASSERTION in a way a number is
 // not. 420 on its own, under the clue "-what was I saying?-", is a number; a
