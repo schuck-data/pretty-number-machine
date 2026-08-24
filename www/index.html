@@ -825,6 +825,79 @@
   .author-ps span { letter-spacing: 0.08em; color: var(--text); }
 
   /* ==========================================================
+     THE TWO INVITATIONS.
+
+     Both are gold, both stop once accepted, and both exist for the same
+     reason: this app hides two entire features behind controls that look
+     exactly like every other control. A player can finish with it never
+     knowing there are a hundred and one achievements, or that the plus
+     button opens anything at all.
+
+     So each says so itself, once, quietly, and then shuts up. The rule
+     throughout is that an invitation which keeps pestering after it has
+     been accepted is a nag — see modules/achievements.js and
+     modules/ads.js for where each one is switched off.
+     ========================================================== */
+
+  /* The achievements master switch, before it is switched on. A steady
+     gold glow with a sparkle crossing it every few seconds. Continuous
+     rather than occasional because it is INSIDE a collapsed panel section
+     — it can only be seen by somebody already looking at it, so it has no
+     opportunity to interrupt anybody. */
+  @keyframes ach-invite-glow {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.30),
+                           0 0 10px rgba(212, 175, 55, 0.16); }
+    50%      { box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.55),
+                           0 0 20px rgba(212, 175, 55, 0.34); }
+  }
+  @keyframes ach-invite-sweep {
+    0%   { transform: translateX(-120%); }
+    55%  { transform: translateX(120%); }
+    100% { transform: translateX(120%); }
+  }
+  label.toggle.ach-unlit {
+    position: relative; overflow: hidden;
+    border-radius: 8px;
+    color: rgba(233, 200, 100, 0.95);
+    animation: ach-invite-glow 2.8s ease-in-out infinite;
+  }
+  label.toggle.ach-unlit::after {
+    content: ''; position: absolute; inset: 0;
+    pointer-events: none;
+    background: linear-gradient(100deg,
+      transparent 30%,
+      rgba(255, 236, 170, 0.26) 48%,
+      rgba(255, 236, 170, 0.42) 52%,
+      transparent 70%);
+    animation: ach-invite-sweep 4.2s ease-in-out infinite;
+  }
+
+  /* The ads button, before it has been bought. A single wave of gold
+     across the icon — no steady glow, because unlike the switch above this
+     one sits permanently over the figure and a control that pulsed
+     forever in the corner of a toy would be intolerable. modules/ads.js
+     owns the schedule and adds the class for one pass at a time. */
+  @keyframes ads-shimmer {
+    0%   { color: var(--text-corner); border-color: var(--border-corner); }
+    35%  { color: rgba(233, 200, 100, 0.95);
+           border-color: rgba(212, 175, 55, 0.75);
+           box-shadow: 0 0 16px rgba(212, 175, 55, 0.35); }
+    100% { color: var(--text-corner); border-color: var(--border-corner);
+           box-shadow: none; }
+  }
+  #corner-stack button.shimmer { animation: ads-shimmer 2200ms ease-in-out 1; }
+
+  /* Reduced motion keeps the INVITATION and drops the MOVEMENT. Somebody
+     who has asked for less animation still deserves to know the feature is
+     there, so the gold stays and only the travelling highlight goes. */
+  @media (prefers-reduced-motion: reduce) {
+    label.toggle.ach-unlit { animation: none;
+      box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.45); }
+    label.toggle.ach-unlit::after { animation: none; opacity: 0; }
+    #corner-stack button.shimmer { animation: ads-shimmer 2200ms steps(3) 1; }
+  }
+
+  /* ==========================================================
      THE ADS — paywall and slideshow. modules/ads.js builds the
      markup; the look lives here so it follows the same rules as
      the rest of the app's chrome and can be re-graded in one

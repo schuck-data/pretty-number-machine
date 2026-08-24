@@ -755,6 +755,14 @@ function restoreCurveVisibility() {
   for (const c of curveRefs) c.line.visible = true;
 }
 
+// The invitation ends the moment it is accepted. Called wherever `ledger.on`
+// changes rather than being polled, so there is no frame where the switch is
+// on and still glowing at you.
+function syncUnlit() {
+  const el = document.getElementById('achievements-toggle');
+  el?.closest('label')?.classList.toggle('ach-unlit', !ledger.on);
+}
+
 function refreshGilding() {
   const on = state._gildView === true;
   paintGilding(on);
@@ -1083,6 +1091,15 @@ function buildSection() {
   master.className = 'toggle';
   master.innerHTML = '<input type="checkbox" id="achievements-toggle">' +
                      '<span class="toggle-track"></span>Track achievements';
+  // UNLIT UNTIL IT IS SWITCHED ON. Achievements are opt-in, which is the right
+  // design and also means a player can go the whole way through the app never
+  // realising there are a hundred and one things to find. So the switch says so
+  // itself: gold, glowing, with a sparkle crossing it every few seconds — the
+  // one piece of chrome in this app allowed to ask for attention.
+  //
+  // It stops the instant it is turned on and never comes back. An invitation
+  // that keeps pestering after it has been accepted is a nag.
+  master.classList.toggle('ach-unlit', !ledger.on);
   content.appendChild(master);
 
   progressEl = document.createElement('div');
@@ -1137,6 +1154,7 @@ function buildSection() {
   masterCb.addEventListener('change', () => {
     ledger.on = masterCb.checked;
     writeLocal();
+    syncUnlit();
     if (ledger.on) sweepState();
     renderList();
   });

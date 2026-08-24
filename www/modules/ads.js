@@ -99,6 +99,7 @@ async function reconcile() {
   }
   ready = true;
   paintButtons();
+  scheduleShimmer();
 }
 
 // ============================================================
@@ -146,6 +147,70 @@ function paintButtons() {
     const el = document.getElementById(p.button);
     if (el) el.classList.toggle('owned', isOwned(p.id));
   }
+}
+
+// ============================================================
+// THE SHIMMER
+// ============================================================
+// The plus button is a door with nothing on it saying so. It looks exactly like
+// Reset and Dazzle and the trophy, and a player can use this app for a long time
+// without ever pressing it — which would be fine if there were nothing behind
+// it, and there is.
+//
+// So it catches the light occasionally. TWO cadences, and the difference is the
+// whole design:
+//
+//   Never opened     — every 5 minutes. This player does not know the door is
+//                      there. Telling them is the entire job.
+//   Opened, not sold — every 20 minutes. This player has seen the paywall and
+//                      said no, or not yet. They know. Reminding them at the
+//                      same rate would be pestering somebody who has already
+//                      given an answer, which is what the four-times gap is
+//                      for.
+//   Owned            — never. There is nothing left to advertise, and the
+//                      button already carries the gold `owned` ring.
+//
+// One wave, not a pulse. This button sits permanently over the figure, and a
+// control that glowed continuously in the corner of a toy would be intolerable
+// — which is exactly why the achievements switch, which lives inside a
+// collapsed panel section and can only be seen on purpose, is allowed a steady
+// glow and this is not.
+const SHIMMER_UNSEEN_MS = 300000;      // 5 minutes
+const SHIMMER_SEEN_MS = 1200000;       // 20 minutes
+const SEEN_KEY = 'pnm-ads-seen-v1';
+let shimmerTimer = null;
+
+// Whether the paywall has ever been opened. Persisted, because "have you seen
+// this yet" is a fact about the player rather than about this launch — a
+// five-minute reminder on every cold start would be the nagging the two
+// cadences exist to avoid.
+function paywallSeen() {
+  try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return false; }
+}
+function markPaywallSeen() {
+  try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* private mode */ }
+  scheduleShimmer();                    // drop to the slower cadence at once
+}
+
+function shimmerOnce() {
+  const el = document.getElementById('ads-btn');
+  // Not while something is open over the figure, and not in clear view. A
+  // shimmer is an invitation, and both of those states mean the player is
+  // already busy with something else.
+  if (!el || isOwned('ads-addition')) return;
+  if (document.body.classList.contains('ads-open')) return;
+  if (document.body.classList.contains('clear-view')) return;
+  el.classList.remove('shimmer');
+  void el.offsetWidth;                  // restart the animation
+  el.classList.add('shimmer');
+  setTimeout(() => el.classList.remove('shimmer'), 2400);
+}
+
+function scheduleShimmer() {
+  if (shimmerTimer) { clearInterval(shimmerTimer); shimmerTimer = null; }
+  if (isOwned('ads-addition')) return;  // nothing left to say
+  const every = paywallSeen() ? SHIMMER_SEEN_MS : SHIMMER_UNSEEN_MS;
+  shimmerTimer = setInterval(shimmerOnce, every);
 }
 
 // ============================================================
@@ -211,6 +276,7 @@ function paywallHTML(p) {
 
 function openPaywall(p) {
   closeArmed = true;              // a shop you cannot leave is not a joke
+  markPaywallSeen();
   openOverlay(paywallHTML(p));
   const buy = overlay.querySelector('[data-buy]');
   const status = overlay.querySelector('.ads-status');
@@ -227,6 +293,7 @@ function openPaywall(p) {
       owned.add(p.id);
       saveLocal();
       paintButtons();
+      scheduleShimmer();          // owned now: the invitation stops
       emit('ads:purchased', { id: p.id });
       openShow(p.id);
       return;
@@ -523,6 +590,7 @@ const mod = {
     // Clear view means the figure alone. An advert is an interface.
     on('clearView', ({ on: clearing }) => { if (clearing) { hideBanner(); closeOverlay(); } });
     scheduleIntrusion();
+    scheduleShimmer();
   },
 
   destroy() {
@@ -530,6 +598,7 @@ const mod = {
     hideBanner();
     if (intrudeTimer) clearInterval(intrudeTimer);
     if (intrudeFirst) clearTimeout(intrudeFirst);
+    if (shimmerTimer) clearInterval(shimmerTimer);
     closeOverlay();
   },
 };
