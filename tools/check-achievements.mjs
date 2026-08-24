@@ -29,7 +29,21 @@ import { readFileSync } from 'node:fs';
 const dataUrl = new URL('../www/modules/achievements-data.js', import.meta.url);
 
 let pass = 0, failed = 0;
-const ok = (m) => { pass++; console.log(`  ok    ${m}`); };
+// TAKES AN OPTIONAL CONDITION, and that is a repair rather than a feature.
+// This used to be `(m) => { pass++; ... }` — one argument. Two tripwires were
+// written as `ok('...', someRegex.test(SRC))`, copying the shape of
+// tools/check-ads.mjs whose `ok` DOES take a condition, and the extra argument
+// was silently discarded. Both passed unconditionally and had never tested
+// anything: the SPARTA! range gate, which this file's own comment calls the
+// thing defending a one-line deletion, and the countUnlocked() orphan filter.
+// Found by deliberately breaking the code they guard and watching them pass.
+//
+// `undefined` still means "no condition given", so the many one-argument
+// reporting calls below keep working.
+const ok = (m, cond) => {
+  if (cond === undefined || cond) { pass++; console.log(`  ok    ${m}`); }
+  else { failed++; console.log(`  FAIL  ${m}`); }
+};
 const fail = (m) => { failed++; console.log(`  FAIL  ${m}`); };
 const eq = (label, got, want) => {
   const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -210,6 +224,19 @@ for (const field of ['name', 'clue', 'criteria', 'blurb', 'link', 'xp']) {
       `the unlock payload carries ${field}`,
       `achievement:unlocked does not carry ${field} — the toast will print "undefined"`);
 }
+// THE CAPSTONE MUST NOT BE COUNTABLE BY ORPHANS. The ledger never withdraws an
+// unlock, so an achievement dropped from the design leaves its entry behind —
+// v7 dropped three. UNITY! fires on `countUnlocked() >= ACHIEVEMENT_DEFS.length
+// - 1`, so counting raw ledger keys meant three orphans could award the
+// capstone three achievements early, to whoever had played longest. Verified on
+// a Pixel 7 both ways: 97 real + 3 orphans withholds it, and earning the 100th
+// real one still fires it.
+//
+// A source grep, like the SPARTA! one below, because achievements.js imports
+// three.js and cannot be loaded here. What it defends is the `BY_ID.has` filter.
+ok('countUnlocked() ignores ledger entries with no definition',
+   /function countUnlocked\(\)[\s\S]{0,400}?BY_ID\.has\(id\)/.test(SRC));
+
 ok('SPARTA! overrides its generated test with the range gate',
    /sparta:\s*\(\)\s*=>\s*isExactly\(\[2,\s*3,\s*5\]\)\s*&&\s*resolveN\(\)\s*===\s*300/.test(SRC));
 

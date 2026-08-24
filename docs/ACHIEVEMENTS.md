@@ -595,6 +595,49 @@ reference, so a detached element is returned forever and nothing appears again.
 Nothing in the app does this; a test harness that tidies up between cases does,
 and it presents as "the toast stopped working" several steps later.
 
+**A dropped achievement leaves an orphan in the ledger, and the capstone was
+counting it.** `mergeLedgers()` never withdraws an unlock — deliberately, since
+losing an achievement because a device was offline is the worst failure this
+system could have — so an id removed from the design stays in `unlocked`
+forever. v7 dropped three.
+
+`countUnlocked()` counted raw ledger keys, and UNITY! fires on
+`countUnlocked() >= ACHIEVEMENT_DEFS.length - 1`. So a player carrying
+`ceiling`, `mersenne` and `thelema` reached the threshold **three achievements
+early** — the flood, the finale, handed to exactly the players who had been
+there longest. The same count also drives the panel's progress line, which would
+have read "101 of 101" with rows still locked underneath.
+
+The remote path already had this right: `reconcile()` filters the PGS list
+through `BY_ID.has`. Only the local count was missing it. **The fix is to ignore
+orphans in the COUNT, never to prune them from the ledger** — a dropped
+achievement might come back, and the ledger's one promise is that it does not
+forget. Verified on a Pixel 7 in both directions: 97 real unlocks plus three
+orphans withholds the capstone, and earning the 100th real one still fires it.
+
+**Anything that drops an achievement has to think about this**, and dropping is
+free only until publication — Play Games lets you add achievements afterwards
+and effectively never remove them (§3).
+
+**A tripwire that cannot fail is worse than no tripwire.** `check-ads.mjs`
+declares `ok(label, cond)` — it evaluates the condition and fails. This file
+declared `ok(m)`, one argument. Two guards here were written in the *ads* shape,
+`ok('...', regex.test(SRC))`, and JavaScript discarded the second argument in
+silence. **Both passed unconditionally and had never tested anything**, printing
+a reassuring green line on every run for as long as they had existed. One of
+them was the SPARTA! range gate — the guard this document describes as the thing
+standing between the codebase and a bug that "took a phone and a real ledger to
+find".
+
+`ok()` here now takes an optional condition and fails on `false`, with
+`undefined` still meaning "no condition given" so the reporting calls keep
+working. **Both were then verified by deliberately breaking the code they guard
+and watching them fail.**
+
+Do that for every new tripwire. A source grep is a poor test and a good
+tripwire, but only if somebody has seen it go red once — and the cost of not
+checking is a check that reports success forever.
+
 **Installing wipes the ledger.** `adb install -r` does not clear the WebView's
 HTTP cache, so `pm clear` is necessary — and it takes the ledger with it. To
 preserve real progress across an install, read `pnm-achievements-v1` and
@@ -720,7 +763,8 @@ tripwire, defending against a deletion rather than proving behaviour.
 
 **The refactor is still the right answer** — lift the ledger and the enabled set
 into a third Three-free file — and it is still not done. Every tripwire added
-instead is a small argument that it should be.
+instead is a small argument that it should be, and §8 records the day two of
+them turned out to have been no-ops the whole time.
 
 ---
 

@@ -269,7 +269,28 @@ const LEDGER_KEY = 'pnm-achievements-v1';
 let ledger = { unlocked: {}, counters: {}, on: false };
 let ready = false;
 
-function countUnlocked() { return Object.keys(ledger.unlocked).length; }
+// COUNT ONLY IDS THAT STILL EXIST. The ledger is a union that never withdraws
+// an unlock (see mergeLedgers), so an achievement DROPPED from the design leaves
+// its entry behind forever — v7 dropped three, and anyone who had earned them
+// still carries `ceiling`, `mersenne` or `thelema`.
+//
+// Counting those was a real bug and the worst kind: UNITY! fires on
+// `countUnlocked() >= ACHIEVEMENT_DEFS.length - 1`, so three orphans meant the
+// capstone — the flood, the finale, the whole board catching fire — could be
+// awarded three achievements early, to the players who had played the LONGEST.
+// It would also have shown "101 of 101 earned" in the panel with things still
+// locked underneath.
+//
+// Nothing prunes the local ledger, deliberately: a dropped achievement might
+// come back, and discarding an unlock is the one thing this system must never
+// do. So the entry stays and the COUNT ignores it. Note the remote path already
+// did this — reconcile() filters the PGS list through BY_ID.has — and only the
+// local count was missing it.
+function countUnlocked() {
+  let n = 0;
+  for (const id in ledger.unlocked) if (BY_ID.has(id)) n++;
+  return n;
+}
 
 export function isUnlocked(id) { return !!ledger.unlocked[id]; }
 export function isTracking() { return !!ledger.on; }
