@@ -337,7 +337,7 @@ function buildModuleSections() {
     // Cap message (shown once at top when N exceeds limit)
     const capMsg = document.createElement('div');
     capMsg.className = 'module-cap-msg';
-    capMsg.style.cssText = 'display:none; opacity:0.5; font-size:0.7rem; margin:4px 0';
+    capMsg.style.cssText = 'display:none; font-size:0.8125rem; color:var(--text-dim); margin:4px 0';
     capMsg.textContent = '(too many nodes)';
     content.appendChild(capMsg);
 
@@ -416,7 +416,7 @@ function buildModuleSections() {
       } else if (ctrl.type === 'button') {
         const btn = document.createElement('button');
         btn.textContent = ctrl.label;
-        btn.style.cssText = 'width:100%; padding:5px; margin-top:6px; background:transparent; border:1px solid var(--border); color:var(--text-faint); font-size:10px; font-family:inherit; cursor:pointer; border-radius:6px; transition:all 0.2s; letter-spacing:0.05em;';
+        btn.style.cssText = 'width:100%; padding:5px; margin-top:6px; background:transparent; border:1px solid var(--border); color:var(--text-dim); font-size:0.8125rem; font-family:inherit; cursor:pointer; border-radius:6px; transition:all 0.2s; letter-spacing:0.05em;';
         btn.addEventListener('mouseenter', () => { btn.style.borderColor = 'rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3)'; btn.style.color = 'rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.6)'; });
         btn.addEventListener('mouseleave', () => { btn.style.borderColor = ''; btn.style.color = 'var(--text-faint)'; });
         btn.addEventListener('click', () => { if (ctrl.onClick) ctrl.onClick(); });
@@ -428,7 +428,7 @@ function buildModuleSections() {
     // Optional hint text
     if (mod.hint) {
       const hintEl = document.createElement('div');
-      hintEl.style.cssText = 'font-size:0.7rem; color:var(--text-dim); margin:4px 0; font-style:italic;';
+      hintEl.style.cssText = 'font-size:0.8125rem; color:var(--text-dim); margin:4px 0; font-style:italic;';
       hintEl.textContent = mod.hint;
       content.appendChild(hintEl);
     }
