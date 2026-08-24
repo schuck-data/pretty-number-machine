@@ -196,10 +196,22 @@ describes**, which costs no slots:
 | BEST! | 37 and 73 | 12, 21, 37, 73 — the whole four-number joke |
 | MERSENNE! | the 4 primes you tapped | **dropped**; PERFECT! covers the subject and pays off |
 
-`check-achievements.mjs` now asserts this, and **SUPERPRIME! is the recorded
-exception**: eleven taps returning the same eleven nodes. It survives because the
-idea — count along the primes and land on a prime position — is the most
-intuitive thing in the cluster and no gild set expresses it any better.
+`check-achievements.mjs` now asserts this, and **there are no exceptions left.**
+SUPERPRIME! was the last one — eleven taps returning the same eleven nodes — and
+it stopped being one when the cause turned out to be a different bug entirely.
+
+**SUPERPRIME! was gilding the grid, not the family.** The comment above `SERIES`
+states the rule plainly: *a family should light all of its members that fit on
+the figure, not just the handful the panel happens to offer.* Every family
+obeyed it — twins, cousins, sexy, Germain, emirps, palindromes, prime-digit
+numbers all gild every member below 1000 — except `SUPER_PRIMES`, which computed
+the property over the full range and then filtered back down to the grid. So it
+lit **11 of the 39** super-primes on the figure.
+
+Gilding all 39 fixes the flat payoff and the family rule in one move: counting
+along the panel is still how you find it, and what lights up is now the whole
+family, most of it past the end of the grid. There is now an assertion holding
+the rule for every family, which is what should have caught this.
 
 **Node 1 is not available to any of this.** The first version of
 `PALINDROME_NODES` counted from 1, and 1 is a palindrome, so SATOR! lit the node

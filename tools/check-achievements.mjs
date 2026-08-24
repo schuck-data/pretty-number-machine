@@ -304,13 +304,32 @@ const flat = A.filter(a => a.sel && a.sel.length > 1
                             && a.gildNodes.length === a.sel.length
                             && a.sel.every(p => a.gildNodes.includes(p)))
               .map(a => a.name);
-eq('multi-prime selections whose payoff is just the selection back', flat, [
-  // SUPERPRIME! is the knowing exception: 11 taps returning the same 11 nodes.
-  // Kept because the IDEA — count along the primes and land on a prime position
-  // — is the most intuitive thing in the cluster, and no gild set expresses it
-  // any better. Recorded so it stays a decision rather than an oversight.
-  'SUPERPRIME!',
-]);
+// No exceptions left. SUPERPRIME! was the last one and stopped being one when
+// its gild grew from the 11 in-grid super-primes to all 39 below the ceiling.
+eq('multi-prime selections whose payoff is just the selection back', flat, []);
+
+// THE FAMILY RULE, from the comment above SERIES in achievements-data.js: a
+// family gilds every member that fits on the figure, not just the handful the
+// panel happens to offer. SUPERPRIME! was the one place that was not true —
+// eleven of thirty-nine — and nothing had asserted it.
+const P1K = [];
+for (let n = 2; n <= D.TROPHY_N; n++) if (isPrimeNumber(n)) P1K.push(n);
+const P1KSET = new Set(P1K);
+const revn = n => +String(n).split('').reverse().join('');
+const FAMILIES = {
+  twinning:      P1K.filter(p => P1KSET.has(p - 2) || P1KSET.has(p + 2)),
+  cousins:       P1K.filter(p => P1KSET.has(p - 4) || P1KSET.has(p + 4)),
+  sexy:          P1K.filter(p => P1KSET.has(p - 6) || P1KSET.has(p + 6)),
+  germain:       P1K.filter(p => isPrimeNumber(2 * p + 1)),
+  emirp:         P1K.filter(p => revn(p) !== p && isPrimeNumber(revn(p))),
+  'super-prime': P1K.filter((p, i) => isPrimeNumber(i + 1)),
+};
+const shortfall = Object.entries(FAMILIES).flatMap(([id, want]) => {
+  const a = A.find(x => x.id === id);
+  const miss = want.filter(n => !a.gildNodes.includes(n));
+  return miss.length ? [`${a.name} gilds ${a.gildNodes.length} of ${want.length}`] : [];
+});
+eq('every prime family gilds all of its members below the ceiling', shortfall, []);
 eq('repdigits', D.REPDIGITS, [111,222,333,444,555,666,777,888,999]);
 eq('every repdigit is a multiple of 37', D.REPDIGITS.every(n => n % 37 === 0), true);
 eq('run targets', D.RUN_TARGETS, [17,23,31,41,53,59,67,71,83,97,101,109,127,131]);

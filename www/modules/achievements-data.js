@@ -123,7 +123,17 @@ export const PRIME_DIGIT_PRIMES = P.filter(p => String(p).split('').every(d => '
 // EDU: a super-prime sits at a PRIME position in the list of primes. 2 is the
 // 1st prime, 3 the 2nd, 5 the 3rd — so 3, 5, 11, 17 … are the primes you reach
 // by counting with primes. Not the same thing as a prime whose digits are prime.
-export const SUPER_PRIMES = P1000.filter((p, i) => isPrimeNumber(i + 1)).filter(p => PSET.has(p));
+// Every super-prime on the figure — 39 of them. This is the GILD.
+export const SUPER_PRIME_NODES = P1000.filter((p, i) => isPrimeNumber(i + 1));
+// The eleven inside the selectable grid. This is the SELECTION, because those
+// are the only ones the panel offers.
+//
+// DEV: the gild used to be this set as well, which made SUPERPRIME! eleven taps
+// returning the same eleven nodes — the flat payoff §2a exists to prevent, and
+// the one place the family rule at the top of this section was not followed.
+// Counting along the panel is still how you FIND it; what lights up is now the
+// whole family, most of which is past the end of the grid.
+export const SUPER_PRIMES = SUPER_PRIME_NODES.filter(p => PSET.has(p));
 
 // RUN!: primes reachable as the sum of three or more consecutive primes.
 export const RUN_TARGETS = (() => {
@@ -329,7 +339,7 @@ d(30, 'Primes', 'smart',       'SMART!',        '-intro class-',                
 d(31, 'Primes', 'balanced',    'BALANCED!',     '-exactly halfway between its neighbours-','Select exactly 5 and 53.',                       [3, 5, 7, 47, 53, 59],            sel(5, 53));
 d(32, 'Primes', 'stride',      'STRIDE!',       '-the widest step-',                     'Select exactly 113 and 127.',                    STRIDE_GAP,                       sel(113, 127));
 d(33, 'Primes', 'all-prime',   'PRIME DIGITS!', '-every digit too-',                     'Select exactly 2, 3, 5, 7, 23, 37, 53 and 73.',  PRIME_DIGIT_NODES,                sel(...PRIME_DIGIT_PRIMES));
-d(34, 'Primes', 'super-prime', 'SUPERPRIME!',   '-count the primes and land on one-',    'Select exactly 3, 5, 11, 17, 31, 41, 59, 67, 83, 109 and 127.', SUPER_PRIMES,        sel(...SUPER_PRIMES));
+d(34, 'Primes', 'super-prime', 'SUPERPRIME!',   '-count the primes and land on one-',    'Select exactly 3, 5, 11, 17, 31, 41, 59, 67, 83, 109 and 127.', SUPER_PRIME_NODES,   sel(...SUPER_PRIMES));
 
 // ---- MATH · PUZZLES -----------------------------------------------------
 d(35, 'Puzzles', 'goldbach',  'GOLDBACH!',   '-two make an even-',                'With the range set to an even number, select exactly two primes that add up to it.', GOLDBACH_EVENS,  custom());
@@ -375,7 +385,7 @@ d(63, 'Lore', 'choirs',      'CHOIRS!',      '-nine ranks of them-',    'Select 
 d(64, 'Geek', 'not-found',  'NOT FOUND!',  '-missing-',                   'Select exactly 2 and 101.',                          [404], sel(2, 101));
 d(65, 'Geek', 'teapot',     'TEAPOT!',     '-short and stout-',           'Select exactly 2, 11 and 19.',                       [418], sel(2, 11, 19));
 d(66, 'Geek', 'bradbury',   'BRADBURY!',   '-burning point-',             'Select exactly 11 and 41.',                          [451], sel(11, 41));
-d(67, 'Geek', 'trek',       '1701!',       '-deck 47, sector 47-',        'Select exactly 47.',                                 [47],  sel(47));
+d(67, 'Geek', 'trek',       '1701!',       '-turns up more often than it should-',        'Select exactly 47.',                                 [47],  sel(47));
 d(68, 'Geek', 'localhost',  'LOCALHOST!',  '-no place like it-',          'Select exactly 127, with the range set to 127.',     [127], custom());
 d(69, 'Geek', 'rawr',       'RAWR!',       '-so random-',                 'Select exactly 17.',                                 [17],  sel(17));
 d(70, 'Geek', 'best',       'BEST!',       '-the twenty-first, reflected-','Select exactly 37 and 73.',                         [12, 21, 37, 73], sel(37, 73));
@@ -541,8 +551,8 @@ const BLURBS = {
   'super-prime':
     '2 is the 1st prime, 3 is the 2nd, 5 is the 3rd, 7 is the 4th. Now ask which primes sit at a ' +
     'prime position – the 2nd, the 3rd, the 5th, the 7th, and so on. You get 3, 5, 11, 17, 31, 41, ' +
-    '59, 67, 83, 109 and 127. Primes counted by primes, and you can do the whole thing by ' +
-    'counting.',
+    '59, 67, 83, 109 and 127 — and they keep going, thirty-nine of them below a thousand. ' +
+    'Primes counted by primes, and you can do the whole thing by counting.',
   'goldbach':
     'Every even number bigger than 2 seems to be the sum of two primes. 100 = 3 + 97. 232 = 101 + ' +
     '131. Nobody has ever found an exception, and nobody has ever proved there isn\'t one – it has ' +
@@ -600,8 +610,7 @@ const BLURBS = {
     'a hundred and eight of them below a thousand.',
   'choirs':
     'Pseudo-Dionysius sorted the angels into nine choirs in the sixth century: seraphim, cherubim, ' +
-    'thrones, dominions, virtues, powers, principalities, archangels, angels. It is the reason ' +
-    'archangel is a rank rather than a job.',
+    'thrones, dominions, virtues, powers, principalities, archangels, angels.',
   'not-found':
     '404 is the code a server sends when the thing you asked for is not there. It is also the area ' +
     'code for Atlanta.',
