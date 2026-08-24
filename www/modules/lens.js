@@ -41,6 +41,10 @@ import * as THREE from 'three';
 import { registerModule, state, on } from '../core/state.js';
 import { showInfoAt, hideInfo } from './info.js';
 import { primeFactorsOf } from '../core/math.js';
+import { buildRunShapes, lerpRunShapes } from '../core/renderer.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 // Labels used to be all-or-nothing: above 150 nodes every one of them vanished
 // and the lens degraded to bare chalkboard. That cliff is gone. Labels now show
@@ -83,28 +87,20 @@ const occupied = new Set();
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
 
-// THE HANDLE MUST NOT REACH THE RIGHT EDGE.
+// THE HANDLE MUST NOT REACH THE RIGHT EDGE — but the CURTAIN must.
 //
-// It used to travel the full width, which put it flush against the edge at
-// full open — its own width the only thing left to grab, and nothing outside
-// it at all. On a phone that edge is also where the system's back gesture
-// lives, so the swipe that should have dragged the lens closed went to Android
-// instead and the lens could not be shut.
+// These are two different things and conflating them was the first fix's
+// mistake. The board should cover the whole screen at full open; it is a
+// classroom layer and half a centimetre of bare scene down one side is just a
+// gap. What must stay inland is the handle, because at the edge its own width
+// is the only thing left to grab, and on a phone that edge is where the
+// system's back gesture lives — so the swipe meant to drag the lens shut went
+// to Android instead and the lens could not be closed.
 //
-// So the curtain stops short. The reserve is a full touch target, which means
-// there is always a thumb's worth of handle over the scene with room on both
-// sides of it. A lens covering all but 48px of the screen is fully open for
-// every purpose except getting back out of it.
+// So openFraction still runs the whole way to 1 and the clip-path with it. Only
+// the handle's own position is held back, by a full touch target, which leaves
+// a thumb's worth of it over the board with room on both sides.
 const EDGE_RESERVE_PX = 48;
-
-function maxOpenFraction() {
-  const w = viewportRect().width;
-  if (!w) return 1;
-  const hw = handleEl?.offsetWidth || 26;
-  return Math.max(0, (w - hw - EDGE_RESERVE_PX) / w);
-}
-
-const clampOpen = v => Math.min(maxOpenFraction(), Math.max(0, v));
 const isOpen = () => openFraction > 0.001;
 
 // The lens lives inside the viewport box, not the window. On desktop the
@@ -162,7 +158,13 @@ function applyOpen() {
   // extremes.
   const w = viewportRect().width;
   const hw = handleEl.offsetWidth || 26;
-  const x = Math.min(Math.max(openFraction * w, 0), Math.max(0, w - hw));
+  // The handle stops EDGE_RESERVE_PX short of the right edge while the curtain
+  // behind it carries on to the end — see the note on EDGE_RESERVE_PX. At full
+  // open the handle is therefore no longer sitting exactly on the boundary,
+  // and that is the intended trade: a boundary you can see against a handle you
+  // can actually grab.
+  const limit = Math.max(0, w - hw - EDGE_RESERVE_PX);
+  const x = Math.min(Math.max(openFraction * w, 0), limit);
   handleEl.style.left = `${x}px`;
   handleEl.classList.toggle('open', isOpen());
 
@@ -185,7 +187,7 @@ function onHandleDown(e) {
   handleEl.classList.add('dragging');
 
   const onMove = (ev) => {
-    openFraction = clampOpen(startFraction + (ev.clientX - startX) / viewportRect().width);
+    openFraction = clamp01(startFraction + (ev.clientX - startX) / viewportRect().width);
     applyOpen();
   };
   const onEnd = () => {
@@ -334,42 +336,39 @@ const mod = {
 // DECOMPOSITION — what a number is made of
 // ============================================================
 // Tap a node with the lens open and the figure answers the question the lens
-// exists to ask: **what is this number built from?** The node swells and every
-// prime in its factorisation swells with it, all of them in silver, so the
-// factorisation is legible on the figure itself rather than only in the
-// tooltip.
+// exists to ask: **what is this number built from?** The node swells, every
+// prime in its factorisation swells with it, and a silver line runs from each
+// of those primes up to it along that prime's own parastichy family.
 //
-// THE LINES ARE NOT BUILT YET, and the reason is worth writing down because
-// the obvious implementation is wrong.
+// The lines are the point. A prime's parastichy curve is the sequence of its
+// multiples — p, 2p, 3p, … — so the stretch from p up to n IS the repeated
+// addition that builds n out of p. Drawing only that stretch, rather than the
+// whole family, is the difference between "here is where 7 lives" and "here is
+// how 7 gets to 42".
 //
-// The intended picture is a line from each prime up to the tapped node along
-// that prime's parastichy family — the stretch from p to n, which is the
-// repeated addition that builds n out of p. The first attempt drew it as a
-// polyline through the multiples: p, 2p, 3p, … n, straight segments between
-// consecutive node positions.
+// The geometry comes from renderer.js's buildRunShapes(), which is the same
+// machinery the real curves use — Catmull-Rom through POLAR knots, not straight
+// segments between nodes. The note there says why that distinction is
+// load-bearing and what the first attempt looked like when it was not.
 //
-// It looked wrong on the phone and core/math.js already says why, in the note
-// above buildParastichy: those curves are interpolated in POLAR space, because
-// "interpolating a spiral in Cartesian x/y cuts corners across the curve, while
-// interpolating in (r, θ) follows the winding". A straight segment between two
-// multiples is exactly that corner-cut. At N=60 the run for prime 2 threw
-// chords clean across the figure while the renderer's own curve for 2 wound
-// smoothly beside it.
-//
-// Doing it properly means a PARTIAL parastichy curve — the same Catmull-Rom
-// through polar knots that buildParastichy does, clipped to [p, n], and lerped
-// across the morph like every other curve. That belongs in core/renderer.js
-// beside the machinery it shares, and it is the piece docs/ACHIEVEMENTS.md §2
-// has been calling "the one genuinely new piece of rendering in the design".
-// It is the same work the gilded decomposition view needs, so it should be
-// built once and used by both.
+// DEV: runs are built for a prime whether or not it is SELECTED. Tapping 42
+// with only {2, 3} switched on still draws the 7-run, because a decomposition
+// that silently omits a factor is worse than no decomposition at all.
+const DECOMP_LINE_WIDTH = 3.4;
 const DECOMP_GLOW = 0.9;
 
 let sceneRef = null;
 let decompN = null;
+let decompRuns = [];         // { line, run, buf }
 let decompNodes = [];        // { nd, scale, emissive, intensity } — what to put back
 
 function clearDecomposition() {
+  for (const r of decompRuns) {
+    r.line.parent?.remove(r.line);
+    r.line.geometry?.dispose();
+    r.line.material?.dispose();
+  }
+  decompRuns = [];
   // Give back what was borrowed. The renderer owns these meshes; this module
   // only ever borrows their appearance and must hand it back exactly.
   for (const st of decompNodes) {
@@ -387,7 +386,7 @@ function clearDecomposition() {
 
 function buildDecomposition(n) {
   clearDecomposition();
-  if (!nodesRef.length || !n || n < 2) return;
+  if (!sceneRef || !nodesRef.length || !n || n < 2) return;
 
   const byN = new Map(nodesRef.map(nd => [nd.n, nd]));
   if (!byN.get(n)) return;
@@ -398,6 +397,43 @@ function buildDecomposition(n) {
   if (!factors.length) return;
   decompN = n;
 
+  const W = rendererEl ? rendererEl.width : 800;
+  const H = rendererEl ? rendererEl.height : 600;
+
+  for (const p of factors) {
+    const run = buildRunShapes(p, n);
+    if (!run) continue;
+
+    const buf = new Float32Array(run.numPts * 3);
+    lerpRunShapes(run, state.dimension, buf);
+
+    const geo = new LineGeometry();
+    geo.setPositions(buf);
+    const mat = new LineMaterial({
+      // Silver rather than the prime's own colour. This figure is already
+      // coloured BY factorisation, so drawing the run in the prime's hue would
+      // repeat what the nodes already say. A neutral line means "this is the
+      // path", and leaves colour meaning the one thing it always means here.
+      color: 0xe8edf3,
+      linewidth: DECOMP_LINE_WIDTH,
+      worldUnits: false,
+      resolution: new THREE.Vector2(W, H),
+      transparent: true,
+      opacity: 0.95,
+      // Drawn over the figure rather than through it. The run is an explanation
+      // laid on top, not another object in the scene, and one that disappears
+      // behind the sphere explains nothing.
+      depthTest: false,
+    });
+    const line = new Line2(geo, mat);
+    line.computeLineDistances();
+    line.frustumCulled = false;
+    line.renderOrder = 3;
+    sceneRef.add(line);
+    decompRuns.push({ line, run, buf });
+  }
+
+  // The nodes: the target, and each prime in it. Stash before touching.
   for (const k of new Set([n, ...factors])) {
     const nd = byN.get(k);
     if (!nd || !nd.mesh) continue;
@@ -416,7 +452,7 @@ function buildDecomposition(n) {
 // The set is tiny by construction (a number below 10000 has at most five
 // distinct prime factors), so this is a handful of writes per frame.
 function paintDecomposition() {
-  if (!decompNodes.length) return;
+  if (!decompNodes.length && !decompRuns.length) return;
   if (!isOpen()) { clearDecomposition(); return; }
 
   for (const st of decompNodes) {
@@ -428,6 +464,15 @@ function paintDecomposition() {
       m.material.emissive.setRGB(0.62, 0.68, 0.78);
       m.material.emissiveIntensity = isTarget ? DECOMP_GLOW : DECOMP_GLOW * 0.6;
     }
+  }
+
+  // The morph runs underneath this, so the runs have to travel with it or the
+  // explanation comes unstuck from the thing it explains. Only the lerp happens
+  // here — the shape arrays were built once, on the tap. Same division of
+  // labour the renderer uses for its own curves.
+  for (const r of decompRuns) {
+    lerpRunShapes(r.run, state.dimension, r.buf);
+    r.line.geometry.setPositions(r.buf);
   }
 }
 

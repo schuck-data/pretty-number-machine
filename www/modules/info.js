@@ -337,6 +337,30 @@ export function showInfoAt(clientX, clientY) {
   return false;
 }
 
+// A TOOLTIP DESCRIBES A NODE, so it must not outlive the figure that node was
+// part of. Touch any control — a prime, a slider, Reset, Dazzle, the trophy —
+// and the thing being explained has changed underneath the explanation, which
+// leaves a card of confident arithmetic about a number that may not be on
+// screen any more.
+//
+// Bound once, on document with capture, so it survives the panel rebuilding
+// its controls. Deliberately NOT bound to the canvas: a tap there is either a
+// new node, which replaces the tooltip anyway, or empty space, and dismissing
+// on a stray orbit-drag would make the tooltip impossible to read while
+// turning the figure to see what it is talking about.
+let dismissBound = false;
+function bindDismissOnControls() {
+  if (dismissBound) return;
+  dismissBound = true;
+  document.addEventListener('pointerdown', (e) => {
+    if (!stickyTooltip) return;
+    const t = e.target;
+    if (!t?.closest) return;
+    if (t.closest('#info-tooltip')) return;        // reading it is not dismissing it
+    if (t.closest('button, input, select, label, #panel, #transport, #corner-stack')) hideInfo();
+  }, true);
+}
+
 export function hideInfo() {
   stickyTooltip = false;
   hideTooltip();
@@ -360,6 +384,7 @@ const mod = {
     cameraRef = ctx.camera;
     rendererEl = ctx.renderer.domElement;
     tooltipEl = createTooltip();
+    bindDismissOnControls();
 
     _onContext = onContextMenu;
     _onDown = onPointerDown;

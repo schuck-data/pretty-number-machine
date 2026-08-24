@@ -423,6 +423,113 @@ function lerpShapeArrays(entries, dim, out) {
 // ============================================================
 // BUILD SCENE
 // ============================================================
+// ============================================================
+// DECOMPOSITION RUNS — a partial parastichy curve
+// ============================================================
+// The stretch of prime p's parastichy family from p up to n: the repeated
+// addition that builds n out of p, drawn on the figure. modules/lens.js uses it
+// for tap-to-decompose, and the gilded decomposition view in
+// docs/ACHIEVEMENTS.md 2 wants the same thing. Built once, used twice.
+//
+// WHY THIS LIVES HERE and not in the module that asked for it. The first
+// attempt drew the run as a polyline through the multiples — straight segments
+// from p to 2p to 3p — and it threw chords clean across the figure. core/math.js
+// says why in the note above buildParastichy: these curves are interpolated in
+// POLAR space, because "interpolating a spiral in Cartesian x/y cuts corners
+// across the curve, while interpolating in (r, θ) follows the winding". A
+// straight segment between two multiples IS that corner-cut. Getting it right
+// means the same Catmull-Rom through polar knots the real curves use, which is
+// machinery that lives here.
+//
+// WHY IT BUILDS THE WHOLE CURVE AND THEN SLICES. The obvious economy would be
+// to build only as far as n — but the shape builders take N for two different
+// jobs at once. buildSpringArcs plants its coil at chordRadius(N) and
+// buildStringArcs places every node at SPHERE_R * (1 - 2n/N), so passing a
+// smaller N does not shorten the curve, it builds a DIFFERENT curve for a
+// smaller figure. The extent has to be trimmed after the fact.
+//
+// The slice is exact rather than approximate: catmullRom emits samplesPerSeg
+// points per knot interval and the knots are the multiples, so multiple m sits
+// at vertex (m - 1) * samplesPerSeg with no searching required.
+//
+// COST. This walks the full curve for one prime at the figure's current N, so
+// it is O(N/p) and it runs on a TAP, not per frame. What runs per frame is
+// lerpRunShapes below, which only interpolates between arrays that are already
+// built — the same division of labour the renderer's own curves use.
+export function buildRunShapes(p, upTo) {
+  const N = resolveN();
+  if (!p || !upTo || upTo < p || upTo > N) return null;
+
+  const S = SAMPLES_PER_SEG;
+  const lineArcPts = buildLineArcs(p, N, S);
+  const flatCurve = buildParastichy(p, N, n => flatPolar(n), S);
+  const sphereCurve = buildParastichy(p, N, n => spherePolar(n, N), S);
+  const chordCurve = buildParastichy(p, N, n => chordPolar(n, N), S);
+  // The spring's coil radius is scaled against the largest SELECTED prime, so a
+  // run for an unselected prime has to be told what to measure itself against
+  // or its coil sits at a different radius from every other curve on screen.
+  const sel = state.primes || [];
+  const maxPrime = Math.max(sel[sel.length - 1] || p, p);
+  const springArcPts = buildSpringArcs(p, N, maxPrime, S);
+  const stringArcPts = buildStringArcs(p, N, S);
+  if (!lineArcPts || !springArcPts || !stringArcPts
+      || flatCurve.length < 2 || sphereCurve.length < 2 || chordCurve.length < 2) return null;
+
+  const full = Math.min(lineArcPts.length / 3, flatCurve.length, sphereCurve.length,
+                        chordCurve.length, springArcPts.length / 3, stringArcPts.length / 3);
+
+  // Where the run stops. Multiple m is vertex (m - 1) * S; +1 so the last knot
+  // is included rather than being the exclusive end of the previous interval.
+  const lastMult = Math.floor(upTo / p);
+  const numPts = Math.max(2, Math.min(full, (lastMult - 1) * S + 1));
+
+  // Same normalisation buildScene() applies to its own disk positions. It has
+  // to be identical or the run sits at a different scale from the figure.
+  const maxR = SPACING_2D * Math.sqrt(N);
+  const flatScale = maxR > 0 ? SPHERE_R / maxR : 1;
+
+  const diskPts = new Float32Array(numPts * 3);
+  const spherePts = new Float32Array(numPts * 3);
+  const chordPts = new Float32Array(numPts * 3);
+  for (let i = 0; i < numPts; i++) {
+    const fv = flatFromPolar(flatCurve[i][0], flatCurve[i][1]);
+    diskPts[i * 3] = fv.x * flatScale;
+    diskPts[i * 3 + 1] = fv.y * flatScale;
+    diskPts[i * 3 + 2] = fv.z * flatScale;
+    const sv = sphereFromPolar(sphereCurve[i][0], sphereCurve[i][1]);
+    spherePts[i * 3] = sv.x; spherePts[i * 3 + 1] = sv.y; spherePts[i * 3 + 2] = sv.z;
+    const cv = chordFromPolar(chordCurve[i][0], chordCurve[i][1], N);
+    chordPts[i * 3] = cv.x; chordPts[i * 3 + 1] = cv.y; chordPts[i * 3 + 2] = cv.z;
+  }
+
+  const byName = {
+    Line: lineArcPts.slice(0, numPts * 3),
+    Disk: diskPts,
+    Sphere: spherePts,
+    Chord: chordPts,
+    Spring: springArcPts.slice(0, numPts * 3),
+    String: stringArcPts.slice(0, numPts * 3),
+  };
+
+  // Reads getShapes() rather than listing the order, for the reason
+  // docs/HANDOFF.md gives about nodes and curves disagreeing: the registry is
+  // the single source of truth for the morph order, and anything that
+  // interpolates between shapes has to read it or the figure tears in half with
+  // no error raised anywhere.
+  const entries = getShapes()
+    .map(([shapeDim, shape]) => ({ dim: shapeDim, pts: byName[shape.name] }))
+    .filter(e => e.pts);
+
+  return { entries, numPts, prime: p, upTo };
+}
+
+// Per-frame half. Interpolates the already-built arrays into `out` at the
+// current morph position, exactly as the renderer does for its own curves.
+export function lerpRunShapes(run, dim, out) {
+  if (!run) return;
+  lerpShapeArrays(run.entries, dim, out);
+}
+
 export function buildScene() {
   // DEV: first, before a single position is computed. positions.js holds the
   // divergence angle as module state, and a cold rebuild triggered by some

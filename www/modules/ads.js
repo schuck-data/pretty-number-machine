@@ -203,8 +203,8 @@ function paywallHTML(p) {
       <button class="ads-buy" type="button" data-buy="${esc(p.id)}">
         Buy for ${esc(p.price)}
       </button>
-      <p class="ads-fine">One payment. Yours forever. No subscription, no
-        network, no tracking — the whole thing is already on your phone.</p>
+      <p class="ads-fine">One Time Payment. No Subscription. No Data Tracking.
+        Just a helpful contribution to the Pretty Number Machine Dev Team.</p>
       <div class="ads-status" role="status" aria-live="polite"></div>
     </div>`;
 }

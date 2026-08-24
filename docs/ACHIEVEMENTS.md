@@ -15,10 +15,12 @@ two open Play Console decisions were settled — see §12.
 > **Published visibility is decided: Tutorial Revealed, everything else Hidden.**
 > §12 has the reasoning, and it is the kind that is hard to reconstruct.
 >
-> **What is NOT built: the decomposition view** — the silver prime factors and
-> the silver line-runs from each factor up to the gilded node (§2). That needs
-> partial parastichy segments in `renderer.js` and is the one genuinely new
-> piece of rendering in the design.
+> **The decomposition view's RENDERING now exists.** `renderer.js` exports
+> `buildRunShapes()` and `lerpRunShapes()` — a partial parastichy curve, the
+> stretch of a prime's family from p up to n, built the same way the real
+> curves are and lerped across the morph. `modules/lens.js` already draws with
+> them for tap-to-decompose (2026-08-24). **The gilded version in §2 is now a
+> matter of calling them with the gild set**, not new rendering work.
 >
 > **Everything visual has to be judged on a phone.** The render loop does not
 > run in a desktop preview pane (§8), and six separate bugs in this layer were

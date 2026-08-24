@@ -135,27 +135,22 @@ its background before it. `npm run check` covers it with 60 assertions.
 
 **One thing is outstanding:**
 
-- **The decomposition view is half built.** The silver prime factors exist:
-  tap a node with the lens open and it swells along with every prime in its
-  factorisation (`modules/lens.js`, 2026-08-24). **The line-runs do not**, and
-  the reason is recorded beside the code because the obvious implementation is
-  wrong. A polyline through the multiples — p, 2p, 3p, … n — cuts straight
-  chords across the figure, which is exactly what `core/math.js` warns about
-  above `buildParastichy`: those curves interpolate in POLAR space because
-  Cartesian interpolation "cuts corners across the curve". It was built that
-  way, looked wrong on a Pixel 7 at N=60, and was taken back out.
+- ~~**The decomposition view is not built.**~~ **Built 2026-08-24**, and the
+  shared piece it needed exists: `renderer.js` now exports `buildRunShapes()`
+  and `lerpRunShapes()`, which produce a **partial parastichy curve** — the
+  stretch of prime p's family from p up to n. Same Catmull-Rom through polar
+  knots the real curves use, sliced to the run, and lerped across the morph.
 
-  Doing it properly means a **partial parastichy curve** — the same Catmull-Rom
-  through polar knots, clipped to [p, n] and lerped across the morph — and that
-  belongs in `renderer.js` beside the machinery it shares. It is the same piece
-  the gilded decomposition needs, so build it once and use it twice.
-  `ACHIEVEMENTS.md` §2 has the gilded half.
-- ~~**SPARTA! is free.**~~ **Fixed 2026-08-23**, verified on a Pixel 7. The
-  number stays and the RANGE is a second gate: SPARTA! needs exactly
-  `{2, 3, 5}` and the range at 300. 300 is the number the achievement is about,
-  and the auto-range for those three primes is 30, so getting there is a
-  deliberate act. An arming-flag version was tried first and failed on the
-  phone — `ACHIEVEMENTS.md` §12 records why, because the trap is general.
+  `modules/lens.js` uses it for tap-to-decompose: tap a node with the lens open
+  and the node swells, its primes swell, and a silver run climbs from each prime
+  to it. **The gilded half of the design (`ACHIEVEMENTS.md` §2) can now use the
+  same two functions** rather than needing rendering work of its own.
+
+  The trap, recorded because the wrong version looked plausible: a polyline
+  through the multiples cuts straight chords across the figure. `core/math.js`
+  says why above `buildParastichy` — those curves interpolate in POLAR space,
+  because Cartesian interpolation "cuts corners across the curve". It was built
+  that way first, looked wrong on a Pixel 7 at N=60, and was rebuilt.
 
 **Judge anything visual on a phone.** The render loop does not run in a desktop
 preview pane, and six separate bugs in this layer were invisible until the app
