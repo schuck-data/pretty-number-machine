@@ -5,8 +5,8 @@ things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
 **Written:** 2026-08-15. **Last revised: 2026-08-23**, when the achievement
-layer was rebuilt from forty achievements to a hundred and one. One piece of it
-is still missing and none of it has been seen on a phone — see §1.
+layer was rebuilt from forty achievements to a hundred and one, verified on a
+Pixel 7, and given a WCAG AA pass. Two small things are outstanding — see §1.
 
 **The web app is feature-complete; it builds and runs as an Android app; and the
 achievement layer is built, working and verified on a Pixel 7 and a Pixel 9. The
@@ -126,19 +126,28 @@ console-issued ids into the `STORE_IDS` map there. Nothing else in the app
 should need to change: everything already runs against the adapter, and the
 in-memory fallback keeps a browser working.
 
-**The achievement layer was redesigned and rebuilt on 2026-08-23.** It is now
-**a hundred and one achievements** in a tree of eleven clusters: the conjunction
-rule is gone, nothing derives until UNITY!, triggers are declared as data rather
-than hand-written, and the panel is an accordion. `npm run check` covers it with
-50 assertions.
+**The achievement layer was redesigned, rebuilt and shaken out on a Pixel 7 on
+2026-08-23.** It is now **a hundred and one achievements** in a tree of eleven
+clusters: the conjunction rule is gone, nothing derives until UNITY!, triggers
+are declared as data rather than hand-written, and the panel is an accordion.
+The whole panel also had a WCAG AA pass — a locked row measured 1.23:1 against
+its background before it. `npm run check` covers it with 54 assertions.
 
-**One piece is missing and nothing visual has been checked on a device.** The
-decomposition view — silver prime factors, and silver line-runs from each factor
-up to the gilded node — needs partial parastichy segments in `renderer.js`.
-Everything else was verified as logic in a browser, and the render loop does not
-run in a desktop preview pane, so gilding and highlighting have been confirmed
-as behaviour and not as pixels. `ACHIEVEMENTS.md` §10 has the state of every
-file.
+**Two things are outstanding, and both are small:**
+
+- **The decomposition view is not built.** Silver prime factors, and silver
+  line-runs from each factor up to the gilded node. It needs partial parastichy
+  segments in `renderer.js` and is the one genuinely new piece of rendering in
+  the design. `ACHIEVEMENTS.md` §2 says what it should look like and why it is
+  worth doing; §10 has the state of every file.
+- **SPARTA! is free.** 300 is 2²·3·5², so its factor trigger is `{2, 3, 5}` —
+  which is the default prime selection and what Reset restores, so it awards
+  itself the moment tracking is switched on. Either the number changes or it is
+  a deliberate freebie. Dakota's call; the checker pins it either way.
+
+**Judge anything visual on a phone.** The render loop does not run in a desktop
+preview pane, and six separate bugs in this layer were invisible until the app
+was on hardware with a real ledger behind it. `ACHIEVEMENTS.md` §8 lists them.
 
 Nothing about step 4 depends on v2 — the adapter and the ledger are unchanged by
 it, and `STORE_IDS` simply grows. But **do not create achievements in the Play

@@ -5,19 +5,21 @@ from forty achievements to a hundred and one.
 
 > **Read this first.**
 >
-> **v2 is built, apart from one piece.** A hundred and one achievements in a
-> tree, no conjunction, declarative triggers, the accordion. Landed 2026-08-23.
-> `npm run check` covers it with 50 assertions and it has been exercised in a
-> browser.
+> **v2 is built and running on a Pixel 7, apart from one piece.** A hundred and
+> one achievements in a tree, no conjunction, declarative triggers, the
+> accordion. Landed 2026-08-23 and shaken out on the device the same day:
+> unlocks, the ledger, the banner, the highlight, the labels, the accordion, the
+> accessibility pass. `npm run check` covers it with 54 assertions.
 >
 > **What is NOT built: the decomposition view** — the silver prime factors and
 > the silver line-runs from each factor up to the gilded node (§2). That needs
 > partial parastichy segments in `renderer.js` and is the one genuinely new
 > piece of rendering in the design.
 >
-> **Nothing visual has been verified on a device.** The render loop does not run
-> in a desktop preview pane (§8), so gilding, the focus highlight and the labels
-> were all confirmed as logic and none of them as pixels. Judge them on a phone.
+> **Everything visual has to be judged on a phone.** The render loop does not
+> run in a desktop preview pane (§8), and six separate bugs in this layer were
+> invisible until the app was on hardware with a real ledger behind it. Do not
+> believe a browser about anything that paints.
 >
 > **`docs/achievements-v6.xlsx` is the authoritative list.** Names, clues,
 > criteria, gild sets and blurbs live there. `achievements-data.js` was built
@@ -45,7 +47,7 @@ Where this disagrees with the code, the code is right and this should be fixed.
 | `www/modules/achievements-data.js` | The number sets, the definitions, and the gilding rule. **No Three.js, no renderer** — so it can be checked headlessly |
 | `www/modules/achievements.js` | The ledger, the predicates, the UI, the toast, the sound, the gilding paint |
 | `www/platform/index.js` | The adapter. Store IDs live here and nowhere else |
-| `tools/check-achievements.mjs` | 50 assertions, in `npm run check` and CI |
+| `tools/check-achievements.mjs` | 54 assertions, in `npm run check` and CI |
 | `tools/achievements-table.mjs` | Exports the copy as TSV or JSON from the live data |
 | `docs/achievements-v6.xlsx` | **The v2 list.** Authoritative |
 
@@ -384,6 +386,30 @@ device. Also: opening the preview at the site root registers the *shipped*
 build's service worker at scope `/`, which then swallows `/www/`. Unregister it
 before concluding anything.
 
+**A hidden element can still take your taps.** `#ach-toast` is
+`pointer-events: none` until `.tappable` sets it to `auto` — and the code that
+hid the toast removed `visible` and `open` but not `tappable`. So after the
+first achievement with a blurb, an invisible box sat across the top of the
+screen for the rest of the session, swallowing taps meant for the figure. The
+symptom is maddening: the app works, except that one region of the screen does
+nothing, and only sometimes. Anything that toggles `pointer-events` needs a
+`:not(.visible)` backstop rather than trusting a class to be cleaned up.
+
+**`position: sticky` resolves against the scrollport you actually have, not the
+one you meant.** A back-to-top button set `sticky; bottom: 12px` inside the
+scrolling panel and pinned itself off-screen *above* the sheet. A plain
+`fixed` corner is wrong the other way, because the desktop panel is a 280px
+sidebar rather than the whole width. Anything anchored to the panel should be
+placed from `panel.getBoundingClientRect()`, which is one piece of code for both
+layouts.
+
+**A ceiling by count is the wrong instrument for labels.** Capping the focus
+highlight at N labels silences a set for being large even when its nodes are
+spread across the whole figure, and still lets a small set pile up in one
+corner. `modules/lens.js` had already solved this with a screen-space grid;
+the achievement labels use the same cells and the same rule. Reach for the
+lens's answer before inventing another one.
+
 **A column that is not carried across fails silently and forever.** The v2 data
 file was rebuilt from the spreadsheet by hand and the blurb column was simply
 not brought over. All eighty-eight went missing. Nothing threw, no check failed,
@@ -486,7 +512,7 @@ N=10000, at 26.7 and 34.6 fps.
 | `platform/index.js` | **done.** 101 store ids, generated from the data file |
 | `sheet.js` | **done.** Collapse-to-peek on focus, driven by an event so the seam holds |
 | `index.html` | **done.** Accordion styles |
-| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard and the gild ceiling in. 50 assertions |
+| `check-achievements.mjs` | **done.** Conjunction assertions out; trigger uniqueness, the dial guard, the gild ceiling, the blurb count, the default-state guard and the en-dash guard in. 54 assertions |
 | `renderer.js` | **NOT DONE.** Partial parastichy segments for the decomposition view |
 | `transport.js` | not needed. REST! binds to `#transport-btn` through the existing delegated `onTrusted`, so nothing had to be added |
 
@@ -513,7 +539,7 @@ spreadsheet. **Deciding nothing is the option that goes wrong.**
 npm run check
 ```
 
-Runs `tools/check.mjs` and `tools/check-achievements.mjs` — 50 assertions over
+Runs `tools/check.mjs` and `tools/check-achievements.mjs` — 54 assertions over
 the list shape, the XP budget, trigger uniqueness, the dial guard, the computed
 families, the gilding rule and the gild-set ceiling. Dependency-free,
 in CI.
