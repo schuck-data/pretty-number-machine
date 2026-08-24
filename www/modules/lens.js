@@ -432,6 +432,7 @@ const GHOST = [0.78, 0.81, 0.86];
 let sceneRef = null;
 let decompN = null;
 let decompRuns = [];           // { line, run, buf }
+let runPrimes = null;          // primes that have a run, so their base curve hides
 let decompSet = null;          // every node ON the runs, endpoints included
 let decompFactors = null;      // just the primes, for the extra lift
 // Which numbers keep their labels while a decomposition is up. Null means "all
@@ -486,13 +487,13 @@ function makeGhosts(numbers) {
       emissiveIntensity: 0.55,
       roughness: 0.35,
       metalness: 0.1,
-      // A ghost is on loan. Slightly transparent says "this is not part of the
-      // figure you chose", without making it hard to see.
-      transparent: true,
-      opacity: 0.9,
+      // OPAQUE, deliberately. Transparency would put these in the sorted
+      // see-through pass, where they stop occluding properly and start
+      // depending on draw order against the real nodes around them. A ghost
+      // must sit in the scene exactly as solidly as anything else or it is not
+      // showing you where the number IS. Silver already says it is on loan.
     });
     const mesh = new THREE.Mesh(ghostGeo, mat);
-    mesh.renderOrder = 2;
     sceneRef.add(mesh);
     ghostMeshes.push({ mesh, n });
   }
@@ -520,6 +521,14 @@ function clearDecomposition() {
     r.line.material?.dispose();
   }
   decompRuns = [];
+  // Hand back every base curve this hid. The renderer owns them and rebuilds
+  // them on a scene change, but a decomposition cleared WITHOUT a rebuild —
+  // which is the normal case, since it is a toggle — would otherwise leave
+  // them invisible with nothing left to turn them on again.
+  if (runPrimes && sceneRef) {
+    sceneRef.traverse((o) => { if (o.isLine2) o.visible = true; });
+  }
+  runPrimes = null;
 
   // Give everything back. The renderer owns these meshes and materials; this
   // module only ever borrows their appearance and must hand it back exactly.
@@ -605,20 +614,26 @@ function buildDecomposition(n) {
       linewidth: DECOMP_LINE_WIDTH,
       worldUnits: false,
       resolution: new THREE.Vector2(W, H),
-      transparent: true,
-      opacity: 0.98,
-      // Drawn over the figure rather than through it. The run is an explanation
-      // laid on top, not another object in the scene, and one that disappears
-      // behind the sphere explains nothing.
-      depthTest: false,
+      // DEPTH-TESTED, like everything else in the scene. An earlier version drew
+      // these on top of everything with depthTest off, on the theory that an
+      // explanation which disappears behind the sphere explains nothing. That
+      // was wrong: a line passing THROUGH the nodes it threads reads as a
+      // drawing laid over a photograph, and the figure stops being an object.
+      // Losing a stretch of run behind the far side is correct — it is what
+      // tells you the run HAS a far side.
+      //
+      // Opaque for the same reason. A transparent line goes into the sorted
+      // see-through pass, where occlusion starts depending on draw order
+      // against the nodes around it.
+      depthTest: true,
     });
     const line = new Line2(geo, mat);
     line.computeLineDistances();
     line.frustumCulled = false;
-    line.renderOrder = 3;
     line.userData.decompRun = true;
     sceneRef.add(line);
     decompRuns.push({ line, run, buf });
+    (runPrimes ??= new Set()).add(p);
   }
 
   // Stash EVERY node, because every node is about to be either lit or dimmed.
@@ -691,8 +706,19 @@ function paintDecomposition() {
   // The other parastichy curves step back too, or the runs are lost in a web of
   // equally bright lines. The renderer rewrites every line's colour from its
   // liveColor each frame, so multiplying here cannot compound.
+  // The other parastichy curves step back, or the runs are lost in a web of
+  // equally bright lines.
+  //
+  // A curve whose prime HAS a run is hidden outright rather than dimmed, and
+  // that is not cosmetic: the run traces the same path as the first stretch of
+  // that curve, so the two are coincident geometry and z-fight — a shimmering
+  // seam along exactly the line the player is being asked to look at. The run
+  // is that curve, drawn better, so there is nothing to lose by hiding what it
+  // replaces.
   sceneRef?.traverse((o) => {
     if (!o.isLine2 || o.userData.decompRun) return;
+    if (runPrimes && runPrimes.has(o.userData.prime)) { o.visible = false; return; }
+    o.visible = true;
     o.material?.color?.multiplyScalar(DIM);
   });
 
@@ -754,16 +780,16 @@ function buildPrimeHighlight(p) {
     const col = new THREE.Color(rgb[0], rgb[1], rgb[2]).lerp(new THREE.Color(1, 1, 1), 0.45);
     const mat = new LineMaterial({
       color: col.getHex(), linewidth: DECOMP_LINE_WIDTH, worldUnits: false,
-      resolution: new THREE.Vector2(W, H), transparent: true, opacity: 0.98,
-      depthTest: false,
+      resolution: new THREE.Vector2(W, H),
+      depthTest: true,           // see the note in buildDecomposition
     });
     const line = new Line2(geo, mat);
     line.computeLineDistances();
     line.frustumCulled = false;
-    line.renderOrder = 3;
     line.userData.decompRun = true;
     sceneRef.add(line);
     decompRuns.push({ line, run, buf });
+    (runPrimes ??= new Set()).add(p);
   }
 
   nodeStash = new Map();

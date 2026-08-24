@@ -223,6 +223,13 @@ beside the code in `modules/lens.js`:
   Three ways out: tap the same node again, close the lens, rebuild the scene.
   Deliberately not a tap on empty space, which is how an orbit drag begins.
 - **Colour drift is suspended** while a decomposition is up.
+- **Runs are depth-tested like anything else**, and the base curve for a prime
+  that has a run is HIDDEN rather than dimmed. The first is because a line
+  passing through the nodes it threads reads as a drawing laid over a
+  photograph — losing a stretch behind the far side is what tells you the run
+  has a far side. The second is because a run traces the same path as the first
+  stretch of its own curve, so leaving both visible is coincident geometry and
+  z-fights along exactly the line the player was asked to look at.
 
 The dials — `DECOMP_LINE_WIDTH`, `DECOMP_GLOW`, `LIFT_*`, `BRIGHTEN`, `DIM` —
 were tuned on a Pixel 7 at N=60 and trade against each other. **They have not
