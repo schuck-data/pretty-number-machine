@@ -560,6 +560,11 @@
   body.clear-view #corner-stack,
   body.clear-view #clear-view-btn,
   body.clear-view #panel,
+  /* The drawer button is a SIBLING of #panel, not a child, so hiding the panel
+     never hid it — it stayed on a cleared screen as the one piece of interface
+     that had not gone away. */
+  body.clear-view #panel-toggle,
+  body.clear-view #sheet-grip,
   body.clear-view #transport,
   body.clear-view #transport-readout,
   body.clear-view #lens-handle,
@@ -1598,17 +1603,31 @@
        It reads as a handle for the drawer rather than as a stray button,
        and it stays in the thumb's arc either way. Both `left` rules from
        the desktop layout have to be beaten. */
-    /* LEFT of the transport, as of 2026-08-23. It used to sit bottom-RIGHT,
-       where it rose with the sheet and collided with the corner column — which
-       is what sent those controls to the far side of the screen for a while.
-       Moving the menu here fixes it at the source and lets them come back. */
+    /* RIGHT of the transport, where a right-handed thumb finds it without
+       crossing the screen. It sat here before, moved LEFT on 2026-08-23 to
+       escape the corner column, and came back 2026-08-24 with the collision
+       solved a different way.
+
+       THE COLLISION IS REAL AND IS NOW RESOLVED BY LAYERING. With a tall
+       sheet this button rises until it reaches the corner column, and the two
+       occupy the same strip of screen. It wins: z-index 27 against the
+       column's 20, and — the part that was missing — a FULLY OPAQUE fill, so
+       what is behind it is hidden rather than showing faintly through. At 0.94
+       alpha the buttons underneath were visible through the drawer, which read
+       as a rendering fault rather than as one control in front of another.
+
+       Consequence worth knowing: while the sheet is tall enough to push this
+       button up into the column, the corner controls beneath it are covered
+       and cannot be tapped. Lower the sheet and they come back. That is the
+       accepted trade for having the drawer under the thumb. */
     #panel-toggle,
     #panel:not(.collapsed) ~ #panel-toggle {
-      right: auto; left: 12px; top: auto;
+      left: auto; right: calc(12px + env(safe-area-inset-right)); top: auto;
       transform: none;
       bottom: calc(var(--sheet-h) + 16px);
       width: 76px; height: 44px; border-radius: 22px;
-      background: rgba(12, 12, 15, 0.94);
+      /* OPAQUE. See above — this is the whole point of the move. */
+      background: rgb(12, 12, 15);
       border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.45);
       color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.95);
       box-shadow: 0 4px 18px rgba(0,0,0,0.55),
@@ -1626,28 +1645,30 @@
     #panel.collapsed ~ #panel-toggle::before { content: '\25B4'; }
 
     /* Transport shares the bottom row with the drawer button, which sits to
-       its LEFT. Both ride the sheet's top edge, so they stay on one line
-       whether the sheet is up or away. The left inset clears the 76px drawer
-       button plus a gap.
+       its RIGHT. Both ride the sheet's top edge, so they stay on one line
+       whether the sheet is up or away.
 
-       The RIGHT inset is the interesting one, and it is conditional. When the
-       sheet is up the transport rides high enough to reach the corner column,
-       and it used to run underneath it — measured on a Pixel 7, the transport
-       at 324-368 crossed the multiplication button at 332-376. So while the
-       sheet is open it stops short of that column: 12 inset + the 44 button +
-       an 8 gap.
+       The RIGHT inset clears the 76px drawer plus a gap, and it is now
+       UNCONDITIONAL — the drawer is on that side whether the sheet is up or
+       down, so the transport has to stop short of it either way. That also
+       retires the old conditional inset for the corner column: the column is
+       44 wide at a 12 inset, so it ends at 56, well inside the 100 this
+       already reserves. One rule instead of two, and the collision measured
+       on a Pixel 7 (transport 324-368 crossing the multiplication button at
+       332-376) cannot recur.
 
-       When the sheet is AWAY the transport sits at the bottom of the screen,
-       far below the column, and takes the full width. Insetting it there would
-       shorten the scrub bar to avoid a collision that cannot happen. */
+       The LEFT is the loose end now, and there is nothing on that side of the
+       bottom row to clear — the lens handle and clear view are both at the
+       top. So it takes the inset when the sheet is up and a little more width
+       when the sheet is away. */
     #transport,
     #panel.collapsed ~ #transport {
-      left: 100px; right: calc(64px + env(safe-area-inset-right));
+      left: calc(12px + env(safe-area-inset-left)); right: 100px;
       top: auto; bottom: calc(var(--sheet-h) + 16px);
       transition: bottom 0.3s ease;
     }
     #panel.collapsed ~ #transport {
-      right: 4px;
+      left: 4px;
       bottom: calc(18px + env(safe-area-inset-bottom));
     }
 
@@ -1968,7 +1989,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.11 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.12 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll
