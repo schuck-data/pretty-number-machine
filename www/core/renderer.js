@@ -733,8 +733,20 @@ export function buildScene() {
   }
 
   // === PARASTICHY CURVES ===
+  //
+  // DEV: `_gildView` is in this condition, and it is the one place core code
+  // knows the achievements module exists. The trophy room switches the lines
+  // OFF — a board webbed with parastichy curves is not what that view is for —
+  // but a gilded line has to survive it, because NEAT! gilds 89's line and the
+  // near-straight spoke IS the achievement. UNITY! lights thirty-two more.
+  //
+  // So in gild view the curves are always BUILT and modules/achievements.js
+  // decides which are visible; everywhere else `showCurves` means what it says.
+  // The alternative was a renderer hook for "build me these specific primes",
+  // which is a lot of surface for one caller, or building nothing and having no
+  // line to gild at all.
   curveLines = [];
-  if (state.showCurves) {
+  if (state.showCurves || state._gildView === true) {
     const W = threeRenderer ? threeRenderer.domElement.width : 800;
     const H = threeRenderer ? threeRenderer.domElement.height : 600;
 

@@ -27,7 +27,7 @@
 
 import * as THREE from 'three';
 import { registerModule, state, on, emit, MAX_N, prefersReducedMotion } from '../core/state.js';
-import { resolveN, update } from '../core/renderer.js';
+import { resolveN, update, buildScene } from '../core/renderer.js';
 import { interpolatedPos } from '../core/positions.js';
 import { platform } from '../platform/index.js';
 // The number sets and the gilding rule. Kept in a separate, Three-free file so
@@ -46,23 +46,6 @@ const PRIME_SET = new Set(SELECTABLE_PRIMES);
 // ============================================================
 const sel = () => [...(state.primes || [])].sort((a, b) => a - b);
 
-// DEV: SPARTA! is the one selection achievement whose target IS the default.
-// 300 is 2^2 x 3 x 5^2, so its radical is {2, 3, 5}, which is
-// DEFAULT_CONFIG.primes and what Reset restores — a bare state test awarded it
-// the moment tracking was switched on. PHI! had the identical problem (the
-// golden angle is the default angle) and was fixed by binding to the button
-// that sets it; there is no "select 2, 3 and 5" button, so SPARTA! is armed
-// instead. A trusted click on an individual prime button arms it; Reset and
-// Dazzle disarm it, because both restore or assign a selection wholesale and
-// neither is somebody choosing three primes.
-//
-// The All and None buttons are `.grid-btn`, not `.prime-btn`, so they do not
-// arm it either — but tapping None and then 2, 3 and 5 does, which is exactly
-// the gesture the clue describes.
-//
-// Decided 2026-08-23: SPARTA! is earned, not free. docs/ACHIEVEMENTS.md §12.
-let primesArmed = false;
-export const spartaArmed = () => primesArmed;
 
 function isExactly(...want) {
   const w = [...new Set(want.flat())].sort((a, b) => a - b);
@@ -191,10 +174,21 @@ const CUSTOM = {
   tau: () => nearAngle(state.divergenceAngle, Math.PI * 2),
 
   // ---- Meme ----
-  // Declares sel(2, 3, 5) in the data file so the "no two achievements share a
-  // selection" check still covers it, but the generated test is overridden here
-  // to add the arming gate. See the note beside `primesArmed`.
-  sparta: () => primesArmed && isExactly([2, 3, 5]),
+  // SPARTA! is the one selection achievement whose primes ARE the default:
+  // 300 is 2^2 x 3 x 5^2, so its radical is {2, 3, 5}, which is
+  // DEFAULT_CONFIG.primes and what Reset restores. A bare selection test
+  // awarded it the moment tracking came on.
+  //
+  // The range is the second gate, and it is the right one because 300 is the
+  // number the achievement is ABOUT. Nothing gives it away for free: the
+  // auto-range derives from the product of the selected primes, and 2 x 3 x 5
+  // is 30, so reaching 300 with exactly these three primes means somebody
+  // dialled it deliberately.
+  //
+  // It keeps its sel(2, 3, 5) declaration in the data file so the "no two
+  // achievements share a selection" check still covers it; this overrides the
+  // test the declaration would otherwise generate.
+  sparta: () => isExactly([2, 3, 5]) && resolveN() === 300,
 
   // ---- Lore ----
   rest: () => true,
@@ -741,13 +735,30 @@ function paintCurvesNow() {
   if (state._gildView !== true) return;
   const g = getGild();
   for (const c of curveRefs) {
-    if (!lineGildedByRule(c.prime, g)) continue;
+    const gilded = lineGildedByRule(c.prime, g);
+    // VISIBILITY, and it is the other half of the trophy room's "lines off".
+    // core/renderer.js builds every selected prime's curve in gild view even
+    // when showCurves is false (see the note there); this is what then hides
+    // the ones that are not gold. With the lines switched on, everything shows
+    // and the gilded ones are simply gold among them.
+    c.line.visible = gilded || state.showCurves === true;
+    if (!gilded) continue;
     c.line.material.color.setRGB(GOLD_LINE.r, GOLD_LINE.g, GOLD_LINE.b);
   }
 }
 
+// Leaving gild view hands the lines back exactly as the renderer built them.
+// Without this a line hidden by the pass above stays hidden until the next
+// scene rebuild, which is how you lose every curve on the figure by flicking
+// the gilding toggle off.
+function restoreCurveVisibility() {
+  for (const c of curveRefs) c.line.visible = true;
+}
+
 function refreshGilding() {
-  paintGilding(state._gildView === true);
+  const on = state._gildView === true;
+  paintGilding(on);
+  if (!on) restoreCurveVisibility();
 }
 
 // ============================================================
@@ -960,7 +971,12 @@ function applyTrophyRoom() {
   if (nIn) { nIn.disabled = false; nIn.value = TROPHY_N; }
   setEl('n-slider', Math.min(TROPHY_N, +($('n-slider')?.max || TROPHY_N)));
   setEl('show-all-integers', true, 'checked');
-  setEl('show-curves', true, 'checked');
+  // LINES OFF. The trophy room is about the board, and every owned prime's
+  // curve laid over a thousand gilded nodes is a web you cannot read the gold
+  // through. The gilded lines survive it — core/renderer.js builds the curves
+  // anyway in gild view and paintCurvesNow() hides the ones that are not gold —
+  // so what is left is 89's spoke, and thirty-two more once UNITY! lands.
+  setEl('show-curves', false, 'checked');
   setEl('line-width', 0);
   setEl('node-size', 0.6);
   setEl('pulse', false, 'checked');
@@ -980,7 +996,7 @@ function applyTrophyRoom() {
   // Nearly a sphere, nudged toward the disk, and held there rather than
   // morphing: the rotation is the movement in this view.
   update({
-    N: TROPHY_N, showAllIntegers: true, showCurves: true, lineWidth: 0,
+    N: TROPHY_N, showAllIntegers: true, showCurves: false, lineWidth: 0,
     nodeSize: 0.6, pulse: false, linePulse: false, colorDrift: false,
     angleDrift: false, autoRotate: true, driftSpeed: 0.15,
     dimension: 1.6, shapeDrift: false, _gildView: true,
@@ -1380,7 +1396,19 @@ export function register() {
 
   // The gilding view is a HOT key, so it never reaches buildScene(). Repainting
   // is this module's job — see the note beside _gildView in core/state.js.
-  on('stateChange', ({ key }) => { if (key === '_gildView') refreshGilding(); });
+  on('stateChange', ({ key }) => {
+    if (key !== '_gildView') return;
+    // DEV: _gildView is a HOT key, so it never reaches buildScene() — which is
+    // the whole point of it being hot, since a rebuild at N=1000 costs 312 ms
+    // on a Pixel 7 and this is a toggle you flick back and forth.
+    //
+    // One case has to break that rule. With the lines switched OFF, whether the
+    // curves exist at all depends on _gildView (see the note in renderer.js),
+    // so flicking gilding on would have no line to gild and flicking it off
+    // would leave orphaned geometry. Only then, and only then, rebuild.
+    if (state.showCurves !== true) buildScene();
+    refreshGilding();
+  });
   on('achievement:unlocked', (a) => {
     // Whatever was being inspected is no longer what the figure is about. Clear
     // it before the banner arrives, or two achievements are claiming the same
@@ -1436,14 +1464,6 @@ export function register() {
       h?.classList.add('open');
       h?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-
-    // ---- SPARTA!'s arming gate ----
-    // Bound here rather than as a DOM_BINDING because it does not award
-    // anything: it flips a flag that a `state` predicate then reads on the next
-    // sweep. The prime buttons rebuild when the grid re-tiers, so this is bound
-    // on document with capture like every other trusted listener.
-    onTrusted('.prime-btn', 'click', () => { primesArmed = true; });
-    onTrusted('#corner-reset, #dazzle-btn', 'click', () => { primesArmed = false; });
 
     for (const a of ACHIEVEMENTS) {
       if (a.kind !== 'dom' || !a.dom) continue;

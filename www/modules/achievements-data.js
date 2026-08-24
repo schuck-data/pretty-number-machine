@@ -292,7 +292,7 @@ d(45, 'Meme', 'cards',   'CARDS!',    '-hit me-',              'Select exactly 3
 d(46, 'Meme', 'jackpot', 'JACKPOT!',  '-three of a kind-',     'Select exactly 3, 7 and 37.',    [777], sel(3, 7, 37));
 d(47, 'Meme', 'heinz',   'HEINZ!',    '-varieties-',           'Select exactly 3 and 19.',       [57],  sel(3, 19));
 d(48, 'Meme', 'slurpee', 'SLURPEE!',  '-any time-',            'Select exactly 3 and 79.',       [711], sel(3, 79));
-d(49, 'Meme', 'sparta',  'SPARTA!',   '-this is-',             'Select exactly 2, 3 and 5.',     [300], sel(2, 3, 5));
+d(49, 'Meme', 'sparta',  'SPARTA!',   '-this is-',             'Select exactly 2, 3 and 5, with the range at 300.', [300], sel(2, 3, 5));
 d(50, 'Meme', 'jumbo',   'JUMBO!',    '-upper deck-',          'Select exactly 3 and 83.',       [747], sel(3, 83));
 d(51, 'Meme', 'deck',    'DECK!',     '-a full one-',          'Select exactly 2 and 13.',       [52],  sel(2, 13));
 
@@ -419,7 +419,10 @@ const BLURBS = {
   'void':
     'Turn off every prime and two numbers are left: 0 and 1. They are the only ones not built out ' +
     'of primes.',
-  'empty-set': '(empty set symbol). Not zero, nothing. Null. Zilch.',
+  // The character is U+2205 EMPTY SET, not a slashed zero and not a Scandinavian
+  // O. It is the achievement's whole joke, so it is the symbol itself rather
+  // than a description of one.
+  'empty-set': '∅. Not zero, nothing. Null. Zilch.',
   'fibonacci':
     'The Fibonacci numbers are 1, 1, 2, 3, 5, 8, 13, 21 and so on. Add the last two to get the ' +
     'next. Can be found on the spirals of a pinecone.',

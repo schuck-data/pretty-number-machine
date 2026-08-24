@@ -140,10 +140,12 @@ its background before it. `npm run check` covers it with 60 assertions.
   segments in `renderer.js` and is the one genuinely new piece of rendering in
   the design. `ACHIEVEMENTS.md` §2 says what it should look like and why it is
   worth doing; §10 has the state of every file.
-- ~~**SPARTA! is free.**~~ **Fixed 2026-08-23.** The number stays and the
-  trigger is armed instead: a trusted click on an individual prime button arms
-  it, Reset and Dazzle disarm it, so it fires only when a player has actually
-  chosen those three. `ACHIEVEMENTS.md` §12.
+- ~~**SPARTA! is free.**~~ **Fixed 2026-08-23**, verified on a Pixel 7. The
+  number stays and the RANGE is a second gate: SPARTA! needs exactly
+  `{2, 3, 5}` and the range at 300. 300 is the number the achievement is about,
+  and the auto-range for those three primes is 30, so getting there is a
+  deliberate act. An arming-flag version was tried first and failed on the
+  phone — `ACHIEVEMENTS.md` §12 records why, because the trap is general.
 
 **Judge anything visual on a phone.** The render loop does not run in a desktop
 preview pane, and six separate bugs in this layer were invisible until the app

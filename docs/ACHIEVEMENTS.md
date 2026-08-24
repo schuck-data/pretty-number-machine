@@ -600,22 +600,38 @@ A later refinement; nothing here blocks it.
 
 300 is 2²·3·5², so its radical is `{2, 3, 5}` — which is `DEFAULT_CONFIG.primes`
 and what Reset restores, so it awarded itself the moment tracking was switched
-on. **The number stays; the trigger is armed instead.** A trusted click on an
-individual prime button arms it, and Reset and Dazzle disarm it, so it fires only
-when a player has actually chosen those three.
+on. **The number stays; the range becomes a second gate.** SPARTA! now needs
+exactly `{2, 3, 5}` *and* the range at 300.
 
-PHI! had the identical problem — the golden angle is the default angle — and was
-fixed by binding to the button that sets it. There is no "select 2, 3 and 5"
-button, hence the flag. The All and None buttons are `.grid-btn` rather than
-`.prime-btn` so they do not arm it either, but None-then-2-3-5 does, which is
-exactly the gesture the clue describes.
+That is the right gate because **300 is the number the achievement is about**.
+Nothing gives it away: the auto-range derives from the product of the selected
+primes, and 2·3·5 is 30, so arriving at 300 with exactly those three primes
+means somebody dialled it on purpose. Reset restores both halves at once, so it
+cannot leak through Reset either.
+
+The criteria string grew to match: *"Select exactly 2, 3 and 5, with the range
+at 300."*
+
+**A rejected first attempt is worth recording, because it looked right.** The
+original fix was an *arming flag*: a trusted click on a prime button armed the
+predicate, Reset and Dazzle disarmed it. It failed on the phone. Tapping a prime
+button sets the flag in the document's capture phase, but the button's own
+handler — the one that actually changes `state.primes` — runs afterwards in the
+bubble phase, so there is a window in which the flag is armed and the selection
+is still the *old* one. Arm it while sitting at the default `{2, 3, 5}` and
+SPARTA! fires from a tap on an unrelated prime. Verified on a Pixel 7: it awarded
+itself on the first tap of prime 7.
+
+The general lesson, which will apply again: **a flag armed in the capture phase
+describes the state BEFORE the gesture, not after it.** Anything that gates a
+`state` predicate on a gesture has this hazard. Gating on another piece of state
+does not.
 
 It keeps its `sel(2, 3, 5)` declaration in the data file so the "no two
 achievements share a selection" check still covers it; `achievements.js`
-overrides the generated test. The checker greps for the override and both
-listeners — a poor test and a good tripwire, since all three are small
-innocuous-looking lines whose deletion silently restores a bug that took a phone
-and a real ledger to find.
+overrides the generated test. The checker greps for the override, pins that the
+auto-range for `{2,3,5}` is 30, and asserts no other achievement claims 300 as
+its dial.
 
 ---
 

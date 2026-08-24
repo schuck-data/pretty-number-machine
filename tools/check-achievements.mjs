@@ -187,17 +187,24 @@ eq('selections that equal the default selection', freeAtRest, [
 // This is a SOURCE check, not a behavioural one, and that is a limitation worth
 // naming: achievements.js imports three.js, so it cannot be loaded here — which
 // is the whole reason achievements-data.js exists as a separate file. What is
-// actually being defended is a deletion. The override and the two listeners are
-// three small, innocuous-looking lines in a 900-line file, and removing any of
-// them silently restores a bug that took a phone and a real ledger to find. A
-// grep is a poor test and a good tripwire.
+// actually being defended is a deletion: the override is one line in a
+// 900-line file, and removing it silently restores a bug that took a phone and
+// a real ledger to find. A grep is a poor test and a good tripwire.
 const SRC = readFileSync(new URL('../www/modules/achievements.js', import.meta.url), 'utf8');
-ok('SPARTA! overrides its generated test with an armed predicate',
-   /sparta:\s*\(\)\s*=>\s*primesArmed\s*&&\s*isExactly\(\[2,\s*3,\s*5\]\)/.test(SRC));
-ok("a trusted click on a prime button arms it",
-   /onTrusted\('\.prime-btn',\s*'click'.*primesArmed = true/.test(SRC));
-ok('Reset and Dazzle disarm it',
-   /onTrusted\('#corner-reset, #dazzle-btn',\s*'click'.*primesArmed = false/.test(SRC));
+ok('SPARTA! overrides its generated test with the range gate',
+   /sparta:\s*\(\)\s*=>\s*isExactly\(\[2,\s*3,\s*5\]\)\s*&&\s*resolveN\(\)\s*===\s*300/.test(SRC));
+
+// The gate only works because 300 is out of the auto-range's reach for this
+// selection. resolveN() derives a range from the product of the selected primes
+// when the player has not dialled one, and 2 x 3 x 5 is 30 — so if the derived
+// range for {2,3,5} ever became 300, SPARTA! would be free again by a different
+// route. Pinned in arithmetic rather than trusted.
+eq('the auto-range product for {2,3,5}', [2, 3, 5].reduce((a, b) => a * b, 1), 30);
+
+// And nothing else may claim 300 as its dial, or the two would fire together
+// and both their clues would stop meaning anything.
+eq('achievements whose declared dial is 300',
+   A.filter(a => a.range === 300).map(a => a.name), []);
 
 // ============================================================
 console.log('\n[console] published visibility');
