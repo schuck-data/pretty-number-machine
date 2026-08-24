@@ -4,14 +4,51 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15. **Last revised: 2026-08-23**, when the achievement
-layer was rebuilt from forty achievements to a hundred and one, verified on a
-Pixel 7, and given a WCAG AA pass. One thing is outstanding — see §1.
+**Written:** 2026-08-15. **Last revised: 2026-08-24**, at the end of a long
+session that added the ads layer, rebuilt the corner controls twice, and
+finished the decomposition view. Everything below is current as of `cb240fd`
+on `capacitor-spike`.
 
-**The web app is feature-complete; it builds and runs as an Android app; and the
-achievement layer is built, working and verified on a Pixel 7 and a Pixel 9. The
-work ahead is connecting it to Play Games Services and getting it into the
-store — see `ANDROID-BUILD.md`.**
+**The web app is feature-complete; it builds and runs as an Android app; the
+achievement layer is built and verified on a Pixel 7 and a Pixel 9; the ads
+layer is built and verified on a Pixel 7; and the decomposition view is
+finished. The work ahead is connecting to Play Games Services, choosing a
+billing plugin, and getting it into the store — see `ANDROID-BUILD.md`.**
+
+### What changed on 2026-08-24, in one place
+
+A lot landed in one sitting. If you are picking this up cold, this is the list
+of things that did not exist before it, each with the document that owns it:
+
+| Landed | Where it lives | Design record |
+|---|---|---|
+| **The ads layer** — two products, nine slides, paywall, slideshow, intrusion banner | `www/modules/ads.js`, `ads-data.js` | **`docs/ADS.md`** |
+| **The corner controls** — flex column, clear view, restore | `www/index.html` | `ADS.md` §3a |
+| **The decomposition view** — tap a node or a line under the lens | `www/modules/lens.js` | This document, §1 |
+| **Partial parastichy curves** — `buildRunShapes()` / `lerpRunShapes()` | `www/core/renderer.js` | This document, §1 |
+| **Two "this feature exists" invitations** | `achievements.js`, `ads.js`, `index.html` | This document, §1 |
+| **A note from the author** in the panel | `www/index.html` | — |
+
+**Three things were built wrong first and rebuilt.** They are written up where
+they happened, because in each case the wrong version looked right:
+
+1. **Decomposition runs as straight polylines.** `core/math.js` warns above
+   `buildParastichy` that spirals must be interpolated in POLAR space because
+   Cartesian "cuts corners across the curve". They were built in Cartesian
+   anyway and threw chords across the figure. → `renderer.js`, `buildRunShapes`
+2. **The decomposition painted silver.** Colour in this app IS the
+   factorisation, so a silver 42 had been stripped of the fact being explained.
+   → `lens.js`, the note above `DECOMP_LINE_WIDTH`
+3. **The corner column moved left to dodge a collision** and collided with
+   something else. Fixed at the source by moving the sheet's menu button
+   instead. → `ADS.md` §3a
+
+**And one debugging lesson worth more than any of them:** the event bus in
+`core/state.js` wraps every handler in `try/catch` and logs to `console.error`.
+A module that silently does nothing has probably **thrown inside an event
+handler**, and `emit()` will have returned perfectly normally. It is invisible
+from the page and one line in `adb logcat | grep Capacitor/Console`. That cost
+half an hour; it should cost you thirty seconds.
 
 **Reading order for someone picking this up cold:**
 
@@ -19,10 +56,12 @@ store — see `ANDROID-BUILD.md`.**
    be current.
 2. `ANDROID-BUILD.md` **§9** — the trap list. Every entry cost real time. Read it
    before debugging anything that looks like a build not taking effect.
-3. `ACHIEVEMENTS.md` if the work is achievement-shaped, which most of the
-   remaining work is. Its §8 is a second trap list, for that layer, and its §0
-   says which parts of that document describe built code.
-4. `ANDROID-BUILD.md` §5 for the next technical step, §6 for the Play Console
+3. `ACHIEVEMENTS.md` if the work is achievement-shaped. Its §8 is a second trap
+   list, for that layer, and its §0 says which parts describe built code.
+4. `ADS.md` if the work is ads-shaped. **Read its §1a before touching any
+   paywall copy** — the pitch withholds the joke on purpose, and an edit that
+   makes it clearer destroys the product.
+5. `ANDROID-BUILD.md` §5 for the next technical step, §6 for the Play Console
    sequence.
 
 Everything else in `docs/` is history. Appendix B says which parts of each are
@@ -113,124 +152,99 @@ and once a native shell exists Capacitor is the standard way to have one.
 
 ## 1. The next action
 
-**`ANDROID-BUILD.md` §5 step 4 — Play Games Services.** Steps 1, 2 and 3 are
-done. Step 3 landed 2026-08-20, and on 2026-08-21 the achievement layer was
-finished well past what that step called for: the trophy room, the gilding
-render, the achievements panel, the unlock toast and sound, and a headless
-checker. **`docs/ACHIEVEMENTS.md` is the design record for all of it** — read
-that before touching anything achievement-shaped.
+Nothing in the app is half-finished. Everything below needs either Dakota or the
+Play Console, and the two code tasks are both blocked on a decision rather than
+on work.
 
-Step 4 means choosing a PGS plugin (§4 lists candidates and the escape hatch),
-then filling in `getGamesPlugin()` in `www/platform/index.js` and pasting the
-console-issued ids into the `STORE_IDS` map there. Nothing else in the app
-should need to change: everything already runs against the adapter, and the
-in-memory fallback keeps a browser working.
+### The queue, in the order it unblocks
 
-**The achievement layer was redesigned, rebuilt and shaken out on a Pixel 7 on
-2026-08-23.** It is now **a hundred and one achievements** in a tree of eleven
-clusters: the conjunction rule is gone, nothing derives until UNITY!, triggers
-are declared as data rather than hand-written, and the panel is an accordion.
-The whole panel also had a WCAG AA pass — a locked row measured 1.23:1 against
-its background before it. `npm run check` covers it with 60 assertions.
+1. **Choose a PGS plugin** (`ANDROID-BUILD.md` §4 lists candidates and the
+   escape hatch), then fill in `getGamesPlugin()` in `www/platform/index.js` and
+   paste the console-issued ids into `STORE_IDS`. Nothing else should need to
+   change: everything already runs against the adapter, and the in-memory
+   fallback keeps a browser working.
+2. **Choose a billing plugin**, same shape of job. `platform/index.js` has
+   `PRODUCT_IDS` and an id-aware `billing` adapter waiting. Until then every
+   purchase honestly fails as "the store is not available right now", which is
+   what the paywall says. **A plugin must map its result onto `available`** —
+   `ADS.md` §4 explains why that field is not decoration.
+3. **Play Console**: verification state, second Admin user, merchant profile,
+   then the achievement list. **Do not create achievements until the list is
+   final** — they can be added afterwards and effectively never removed.
+   `tools/achievements-table.mjs` prints all 101 with the `initial_state`
+   column the console wants.
 
-**One thing is outstanding:**
+### Achievements need revisiting, and it is a real design task
 
-- ~~**The decomposition view is not built.**~~ **Built 2026-08-24**, and the
-  shared piece it needed exists: `renderer.js` now exports `buildRunShapes()`
-  and `lerpRunShapes()`, which produce a **partial parastichy curve** — the
-  stretch of prime p's family from p up to n. Same Catmull-Rom through polar
-  knots the real curves use, sliced to the run, and lerped across the morph.
+Flagged by Dakota 2026-08-24, deliberately deferred. The app grew three
+features the 101-item list predates — the ads layer, the decomposition view,
+and clear view — and none of them has anything to find. That is a gap rather
+than a bug, but it interacts with two things that are hard to undo:
 
-  `modules/lens.js` uses it for tap-to-decompose: tap a node with the lens open
-  and the node lifts, its primes lift, a run climbs from each prime to it, and
-  everything else steps back. **The gilded half of the design
-  (`ACHIEVEMENTS.md` §2) can now use the same two functions** rather than
-  needing rendering work of its own.
+- **UNITY! counts everything.** Its predicate is
+  `countUnlocked() >= ACHIEVEMENT_DEFS.length - 1`, so every addition raises the
+  bar for the capstone. Adding ten achievements means ten more before UNITY!
+  fires for anybody.
+- **Purchases must still grant nothing.** `ADS.md` §2 has the arithmetic: the
+  `- 1` slack is UNITY! itself, so a single paid achievement paywalls the
+  capstone permanently.
 
-  **Nothing is recoloured — things are lit or dimmed.** The first version
-  painted the decomposition silver and threw away the one thing this app is
-  for: a node's colour IS its factorisation, so a silver 42 has been stripped
-  of the fact the decomposition exists to explain. Participants keep their
-  colour and gain light; everything else keeps its colour and loses it. A prime
-  that is not selected has no colour in this figure at all — `getPrimeRGB`
-  assigns by position in the selection — so its run falls back to silver rather
-  than borrowing a hue that already means something else.
+There is deliberate headroom for this — `ACHIEVEMENTS.md` says the XP budget
+was built so later additions have somewhere to come from. Read that before
+adding anything.
 
-  **Tapping a LINE asks the other question.** A node asks "what is this made
-  of"; a parastichy curve asks "what does this prime touch", so the whole
-  family lights and every multiple with it. Same code path — the run is rebuilt
-  from p to N rather than reusing the curve on screen, because the renderer only
-  draws curves for selected primes.
+### The decomposition view — finished 2026-08-24
 
-  **A decomposition silences every other label.** The mode exists to reduce the
-  figure to one argument, and sixty labels around it put the noise straight
-  back — the dimming says "not these" while the labels keep insisting "all of
-  these". Only the terms are named: the number and its primes, or the prime
-  whose line is lit.
+Tap a node with the lens open and the figure shows what the number is made of:
+the node lifts, every prime in its factorisation lifts, a run climbs from each
+prime to it along that prime's parastichy family, and everything else steps
+back. Tap a **line** instead and the question changes to "what does this prime
+touch" — the whole family lights with every multiple.
 
-  **The decomposition outlives the tooltip.** They answer different questions:
-  the tooltip is a card of arithmetic, the decomposition is a state the figure
-  is in. So you can dismiss the card and go on turning the figure to look at
-  what it told you. Three ways out, all deliberate — tap the same node again,
-  close the lens, rebuild the scene — and notably NOT a tap on empty space,
-  because that is how an orbit drag begins.
+The rendering it needed is `buildRunShapes()` / `lerpRunShapes()` in
+`renderer.js`: a **partial parastichy curve**, built the same way the real
+curves are and lerped across the morph. **`ACHIEVEMENTS.md` §2's gilded
+decomposition is now a matter of calling those two functions with the gild
+set** — no new rendering work.
 
-  The trap, recorded because the wrong version looked plausible: a polyline
-  through the multiples cuts straight chords across the figure. `core/math.js`
-  says why above `buildParastichy` — those curves interpolate in POLAR space,
-  because Cartesian interpolation "cuts corners across the curve". It was built
-  that way first, looked wrong on a Pixel 7 at N=60, and was rebuilt.
+Five things in it are worth knowing before touching it, all of them written up
+beside the code in `modules/lens.js`:
+
+- **Runs interpolate in polar space.** A polyline through the multiples cuts
+  chords across the figure. `core/math.js` says so above `buildParastichy`.
+- **Nothing is recoloured, only lit or dimmed.** Colour here IS the
+  factorisation. Participants glow in their OWN hue; a silver glow was the
+  thing that washed them out, not the brightening.
+- **Ghosts.** A decomposition of 42 needs 7, and if 7 is not selected the
+  renderer never built a mesh for it. Missing terms are drawn by the lens in
+  plain silver and labelled. They are this module's own meshes and are disposed
+  rather than restored.
+- **It outlives the tooltip.** Dismissing the card does not clear the figure.
+  Three ways out: tap the same node again, close the lens, rebuild the scene.
+  Deliberately not a tap on empty space, which is how an orbit drag begins.
+- **Colour drift is suspended** while a decomposition is up.
+
+The dials — `DECOMP_LINE_WIDTH`, `DECOMP_GLOW`, `LIFT_*`, `BRIGHTEN`, `DIM` —
+were tuned on a Pixel 7 at N=60 and trade against each other. **They have not
+been judged at high N.** Change them as a set.
+
+### Two invitations, added 2026-08-24
+
+Both features above were invisible: a hundred and one achievements and a whole
+shop behind controls that look like every other control. Each now announces
+itself and then stops.
+
+- **The achievements switch** glows gold with a sparkle until it is switched
+  on. Continuous, which is only acceptable because it lives inside a collapsed
+  panel section and cannot interrupt anybody.
+- **The ads button** gets a single wave of gold — every 5 minutes if the
+  paywall has never been opened, every 20 once it has, never once owned. Seen
+  is persisted, not per-launch. It never fires over an open overlay or in clear
+  view.
 
 **Judge anything visual on a phone.** The render loop does not run in a desktop
-preview pane, and six separate bugs in this layer were invisible until the app
-was on hardware with a real ledger behind it. `ACHIEVEMENTS.md` §8 lists them.
-
-Nothing about step 4 depends on v2 — the adapter and the ledger are unchanged by
-it, and `STORE_IDS` simply grows. But **do not create achievements in the Play
-Console until the list is final**, because they can be added afterwards and
-effectively never removed.
-
-**Standard-or-hidden is decided (2026-08-23): the 16 Tutorial achievements
-publish Revealed, the other 85 publish Hidden.** Revealing all of them would put
-a complete walkthrough on the player's Play Games profile, outside the app.
-Hiding them is what lets hunters collaborate on the clues instead of reading the
-answers. It lives in code as `REVEALED_CLUSTERS` in `achievements-data.js` and
-prints as the `initial_state` column of `tools/achievements-table.mjs`, which is
-the console paste. `ACHIEVEMENTS.md` §12 has the reasoning.
-
-**One decision still stands before the console is told anything:** whether Play
-Console caps per-achievement XP, since v2 gives UNITY! 500 of the 2,000.
-
-**Work done after step 2, all on `capacitor-spike` and all in `www/` only.**
-The branch has moved on since the strip, and none of it is part of the numbered
-plan — it came from using the app on a phone and fixing what was wrong:
-
-- A **Constants** panel section exposing the phyllotaxis divergence angle: a
-  slider over a full turn, tap to restore the exact golden angle, and an
-  optional sweep whose floor is one turn per ~1000 minutes
-- The **morph order reordered** for a tall screen — `Spring · String · Chord ·
-  Sphere · Disk`, opening on String and climbing. **Line is deregistered**, not
-  deleted; it suits landscape and may come back for it
-- **DEV/EDU comment layers** through `www/` — see `CODE-NOTES.md`
-- The **launcher icon**, which had been shipping as Capacitor's placeholder
-- An **inertia slider** in Physics; Dazzle now runs the sweep and disables
-  physics; landscape made safe-area aware
-- A real bug fixed: sliders were **stealing scroll gestures** on touch
-
-**Settled 2026-08-20: the performance measurement.** Taken on the Pixel 7 over
-`chrome://inspect`. §5 below has the numbers. Short version: the app is pinned
-to the display's 90 Hz refresh everywhere below N=2500, and only N=10000 costs
-anything real.
-
-Everything after that is laid out in `ANDROID-BUILD.md` §5 (technical) and §6
-(Play Console).
-
-In parallel, and needing only Dakota:
-
-- The two decisions in `ANDROID-BUILD.md` §7 that are Dakota's — **billing
-  plugin** and **fate of the web copy**
-- Play Console: verification state, second Admin user, merchant profile
-- The **achievement list** — a design task with no dependencies
+preview pane, and eight separate bugs across this layer were invisible until the
+app was on hardware. `ACHIEVEMENTS.md` §8 lists the achievement-layer ones.
 
 ---
 
@@ -295,6 +309,27 @@ this list — see `ANDROID-BUILD.md` §2.
 LAN IP is not a secure context. The Cowork browser pane never runs the render
 loop, so nothing about animation or performance can be judged there.
 
+**A module that silently does nothing has thrown inside an event handler.**
+`core/state.js`'s `emit()` wraps every listener in `try/catch` and logs to
+`console.error`, so the emit returns perfectly normally and the page looks fine
+while the feature is simply absent. Invisible from DevTools' own evaluation, one
+line in `adb logcat | grep Capacitor/Console`. Cost half an hour on 2026-08-24;
+check it first, not last.
+
+**`getPrimeRGB` takes the whole SELECTION and returns a map.** There is no
+"colour of 7" — the scheme assigns by position in the selected list, so an
+unselected prime genuinely has no colour on the figure. Anything that needs one
+anyway has to fall back rather than invent (the decomposition uses silver).
+
+**Spirals interpolate in polar space.** `core/math.js` says it above
+`buildParastichy` and it has now been rediscovered the hard way: straight
+segments between multiples cut chords clean across the figure. Anything drawing
+a path along a parastichy family must use `buildRunShapes()`.
+
+**Labels need a HALO, not a drop shadow.** A shadow lights one side of each
+glyph; the moment a label lands on a pale node it vanishes. `.lens-label` in
+`index.html` carries the four-offset halo and the rest of the point-label rules.
+
 **Certificates: app-signing, not upload.** The old asset-links fingerprint trap
 returns in a new coat as the PGS Android credential's SHA-1. It comes from Play
 Console after Play App Signing is on, not from the local keystore.
@@ -358,7 +393,17 @@ Console after Play App Signing is on, not from the local keystore.
   them the first native task and gives the escape hatch
 - **The PGS publish gate** — how many achievements the console requires (design
   for ten regardless)
-- Whether bundled satirical self-ads trigger the "contains ads" declaration
+- Whether bundled satirical self-ads trigger the "contains ads" declaration.
+  The app serves no third-party advertising and makes no network request, but
+  the declaration asks about ads, not about ad networks. Answer before the
+  listing is filled in
+- **The decomposition view at high N.** Its six dials were tuned on a Pixel 7 at
+  N=60 and have never been judged above that. At N=1000 the run for prime 2 is
+  five hundred knots, and whether that reads as an explanation or as a scribble
+  is unknown
+- **The ads intrusion cadence** — 90 seconds to the first banner, then every
+  four minutes — was reasoned about, not lived with
+- **The shimmer cadences** likewise: five minutes unseen, twenty once seen
 - **Only §5 step 1 of `ANDROID-BUILD.md` has been executed** (2026-08-15). The
   rest is written from knowledge, not from having done it. The console sections
   especially: expect the UI to have moved. Step 1 needed three corrections on
@@ -390,6 +435,12 @@ build adds and removes.
 | The shapes themselves, or how they interpolate | `core/positions.js` |
 | **The morph ORDER** — which shape follows which | `core/positions.js`, the `registerShape` calls at the bottom. That block is the single source of truth: the renderer derives its dwell keyframes and travel limits from it, the transport derives the scrub range from it, and the curve interpolator reads the same list. Two things outside it must be changed by hand and are commented as such — `DEFAULT_CONFIG.dimension` (the opening shape) and Dazzle's pinned `dimension` in `panel.js` |
 | Factorisation, colour derivation, which nodes are visible | `core/math.js` |
+| Anything about the decomposition view — colours, sizes, ghosts | `modules/lens.js`, the dials above `DECOMP_LINE_WIDTH` |
+| A partial parastichy curve, for anything | `core/renderer.js` → `buildRunShapes()` / `lerpRunShapes()` |
+| Ad copy, prices, palettes | `modules/ads-data.js`. **Read `ADS.md` §1a first** |
+| How long before the ads close button works | `modules/ads.js` → `CLOSE_APPEAR_MS`, `CLOSE_ARM_MS` |
+| Label legibility on the figure | `index.html` → `.lens-label`, which carries the point-label rules in a comment |
+| The stacking order of anything | `index.html` → the run written out above `#panel`'s `z-index` |
 | The phone bottom sheet | `core/sheet.js` |
 | The play/pause/scrub bar | `core/transport.js` |
 | The update prompt or the error boundary | `core/notices.js` |
@@ -423,6 +474,8 @@ two more of these.
 | `modules/info.js` | 390 | Tap/right-click a node for its maths. Owns the tooltip |
 | `modules/lens.js` | 305 | The classroom lens: chalkboard layer, projected HTML labels, tap-for-info |
 | `modules/achievements.js` | ~800 | The ledger, predicates, panel section, toast, sound, gilding paint. See `ACHIEVEMENTS.md` |
+| `modules/ads.js` | ~430 | Entitlement, paywall, slideshow, the multiplication button, the intrusion banner, the shimmer schedule. See `ADS.md` |
+| `modules/ads-data.js` | ~250 | The two products, the palettes and every word of the slide copy. **No Three.js, no DOM** — checkable headlessly, which is the point, because copy is what rendering tests cannot judge |
 | `modules/achievements-data.js` | ~430 | The number sets, definitions and gilding rule. **No Three.js** — checkable headlessly |
 | `platform/index.js` | ~250 | The native adapter and the store-id map. Not a module; imported by achievements.js |
 
@@ -487,12 +540,26 @@ reintroduce a fixed frame step — `tools/check.mjs` fails the build if you do.
 ### Checks
 
 ```bash
-node tools/check.mjs
+npm run check
 ```
 
-Dependency-free. Verifies precache paths exist, `CACHE_VERSION` matches
-`CACHE_PREFIX`, the UI version label agrees with it, and no hardcoded frame step
-returned. Runs in CI on push and PR, alongside a parse check of every module.
+Three dependency-free checkers, all of them in CI on push and PR alongside a
+parse check of every module and a run of the achievement table exporter.
+
+| | Asserts |
+|---|---|
+| `tools/check.mjs` | Precache paths exist, `CACHE_VERSION` matches `CACHE_PREFIX`, the UI version label agrees, no hardcoded frame step, prime colours reach 4.5:1 |
+| `tools/check-achievements.mjs` | 60 assertions. The number sets, the gilding rule, no two achievements sharing a selection, nothing true at the defaults, the published Revealed/Hidden split |
+| `tools/check-ads.mjs` | 43 assertions. Every deck whole, prices agreeing with themselves, **the pitch not giving the joke away**, no development bypass that entitles without a purchase, the two shimmer cadences |
+
+Several of those are **source greps rather than behavioural tests**, and that
+is deliberate rather than lazy: `achievements.js`, `ads.js` and `lens.js` all
+import three.js and cannot be loaded headlessly, which is the whole reason the
+`-data.js` files exist separately. What the greps defend is *deletion* — a
+one-line override or guard that somebody tidies away, silently restoring a bug
+that took a phone to find. A grep is a poor test and a good tripwire, and each
+one says which it is.
+
 The precache and cache-version guards go away with the Capacitor build and are
 replaced by version-name agreement (`ANDROID-BUILD.md` §2).
 
@@ -508,6 +575,7 @@ by driving a real browser by hand, and two real bugs were found that way.
 | Document | Read it for | Status |
 |---|---|---|
 | `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. Steps 1–2 executed 2026-08-15; §9 is the trap list and is worth reading first |
+| `ADS.md` | **The ads layer.** The register the copy must hold, the two products, the reveal the paywall withholds, the entitlement rule, and the corner-controls collision history | Current, 2026-08-24 |
 | `ACHIEVEMENTS.md` | **The achievement layer.** Both designs: v1 as built, v2 as specified. The gilding rule, clue craft, the accordion, the traps, and the implementation brief | Current, 2026-08-23 |
 | `ADS.md` | **The ads layer.** The register the copy has to hold, the two products, the entitlement rule and the trap in it, and how to look at the slideshow before billing exists | Current, 2026-08-23 |
 | `CODE-NOTES.md` | The two comment layers in `www/` — `DEV:` for implementation, `EDU:` for the mathematics — and where the mathematics actually lives | Current, 2026-08-15 |
