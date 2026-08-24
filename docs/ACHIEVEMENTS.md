@@ -690,10 +690,46 @@ been a bug here twice.
 | Node size | **0.6, claimed last** | Every prime click re-runs the panel's auto-size derivation. See §8 |
 | Line width | 0 | Hairline. Gilded lines are distinguished by colour alone |
 | Gilding | on | |
+| **Physics** | **off, both toggles** | Added 2026-08-24. The room is a display case: the figure turns on its own, and a stray touch flinging nodes out of the arrangement is not what anybody came to see. Set AFTER the reset, which has just switched them back on |
+| **Camera** | **framed to fit, not fixed** | Added 2026-08-24. See below |
 
 **v2 changes what the room shows**, not how it is built: nodes gold only, with
 89's line as the sole exception, until UNITY! is earned. "Selected primes: the
 owned ones" needs restating once ownership no longer exists.
+
+### The camera has to be framed, not inherited
+
+Reset leaves the camera at `HOME_CAM_POS`, a **fixed vector** that knows nothing
+about the viewport's shape. The camera declares a VERTICAL field of view, so on
+a portrait phone the horizontal is the tighter constraint — and a fixed distance
+that suits a desktop is far too close on a phone. Measured on a Pixel 7: the
+room arrived at distance 15.6 where the fit for a 411x914 viewport is 25.3.
+**1.6x too close**, and opening the sheet made it worse rather than better,
+because the room opens the sheet as part of its own action.
+
+`applyTrophyRoom()` now calls `frameToFit()` after the reset. That keeps HOME's
+three-quarter viewing angle — only the distance changes — and arms the resize
+refit, so the sheet moving re-derives the framing instead of leaving one
+computed for a viewport that is no longer there.
+
+**This is the same bug Dazzle had**, found the same day and fixed by the same
+machinery; `HANDOFF.md`'s "seams that will bite" has the general form of it.
+Note that §9's own line about *"everyone's trophy room is then the same size,
+which is what makes two screenshots comparable"* was the intent all along — a
+fixed vector could never have delivered it across different screens.
+
+### Physics does not belong in a display case
+
+Both physics toggles go off. They are MODULE controls, generated from
+`mod.controls` rather than written into `index.html`, so they had no ids and the
+preset could set forty hand-written knobs but not these two. They now get an id
+derived from their state key, and the preset sets them by dispatching a change —
+which is what runs the module's `onChange` and updates state, and is exactly
+what Reset itself does.
+
+Safe with respect to the ledger: a dispatched event has `isTrusted` false, and
+OUCH! listens for the `physics:dragStart` bus event rather than for these
+toggles, so neither can be awarded on the way in.
 
 **Performance is measured and safe.** The trophy room at N=1000 with gilding and
 curves on sits exactly on the display refresh cap on both test devices — 90.6 fps

@@ -171,26 +171,72 @@ advert, and the one thing this feature must never accidentally become.
 
 ---
 
-## 3a. RESOLVED — the corner column and the transport
+## 3a. RESOLVED — the corner column, the transport and the drawer
 
-The controls went to the left edge for a while to escape the sheet's menu
-button, which sat bottom-right and rose with the sheet until it met the bottom
-of the column. **That moved the collision rather than ending it**: on the left,
-the transport's own scrub bar ran underneath the column instead. Measured with
-the sheet open, both products owned, the transport at 324-368 crossed the
-multiplication button at 332-376.
+**Three arrangements, and the third is the one that holds.** Worth reading in
+order, because the first two each looked like fixes and were not.
 
-Fixed at the source on 2026-08-23. **The menu button moved to the LEFT of the
-transport**, and the controls came back to the right where a thumb reaches
-them. The transport now takes a right inset *only while the sheet is open* —
-12 inset + the 44 button + an 8 gap — because that is the only time it rides
-high enough to reach the column. With the sheet away it sits at the bottom of
-the screen and takes the full width, and insetting it there would shorten the
-scrub bar to avoid a collision that cannot happen.
+**First:** the controls sat top-right, the sheet's drawer button sat
+bottom-right, and with a tall sheet the drawer rose until it met the bottom of
+the column.
 
-Verified on a Pixel 7: sheet open, transport 100..347 against a column at
-355-399, zero overlaps across all seven slots. Sheet closed, transport
-100..407, full width.
+**Second, 2026-08-23:** the controls went to the LEFT edge to escape it. **That
+moved the collision rather than ending it** — on the left, the transport's own
+scrub bar ran underneath the column instead. Measured with the sheet open and
+both products owned, the transport at 324-368 crossed the multiplication button
+at 332-376. So the drawer moved to the left of the transport, the controls came
+back to the right, and the transport took a right inset *only while the sheet
+was open*.
+
+**Third, 2026-08-24, and the one in the code now: solve it by LAYERING rather
+than by distance.** The drawer is back at the bottom RIGHT, where a right-handed
+thumb reaches it without crossing the screen. It still rises into the column
+with a tall sheet, and that is now fine: it wins on z-index — 27 against the
+column's 20 — and, the part that had been missing, it is **fully opaque**. At
+0.94 alpha the buttons underneath showed faintly through it, which reads as a
+rendering fault rather than as one control in front of another. It is
+`rgb(12, 12, 15)` with no alpha at all.
+
+Reproduced and verified on a Pixel 7 with the sheet raised: the drawer at
+294-338 covers `#ads-btn` at 280-324, the paint order at the drawer's centre is
+`panel-toggle` → `panel` → `ads-btn`, and the tap goes to the drawer.
+
+**The trade, stated so nobody treats it as a bug:** while the sheet is tall
+enough to push the drawer into the column, the control beneath it is covered and
+cannot be tapped. Lower the sheet and it comes back. That is the price of having
+the drawer under the thumb, and it was accepted knowingly.
+
+**The transport got simpler, not more complex.** Its right inset now clears the
+76px drawer *unconditionally*, which retires the old conditional inset that
+existed only to dodge the column — the column is 44 wide at a 12 inset, so it
+ends at 56, well inside the 100 the drawer already reserves. One rule where
+there were two. Measured: transport 4..311, drawer 323..399, a 12px gap.
+
+### Clear view left the stack
+
+Also 2026-08-24. `#clear-view-btn` was the last child of the column and is now
+top LEFT, directly above the lens handle. Two things made that the right home.
+
+The handle's own offset was already `12 top inset + 34 + an 8 gap` — it had been
+leaving room for a control that lived in the *other* column — so a button at the
+top inset drops into that space with the arithmetic holding at both breakpoints:
+12 + 34 + 8 = 54 fine, 12 + 44 + 8 = 64 coarse. Measured: an 8px gap, both flush
+at the same left edge.
+
+And it shares its box with `#restore-ui`, which is only ever visible while
+clear-view is hidden, so the two read as one toggle in one place rather than a
+trip across the screen. Verified with real taps: the clear button disappears and
+restore appears in exactly the same rectangle.
+
+**Safe with respect to the lens**, and this was checked rather than assumed:
+`#lens-gap` is the SECOND child of `#corner-stack` and clear-view was the LAST,
+so removing it does not shift the hole the handle drags into. That alignment is
+load-bearing — see the note on `#lens-handle` for what happens when it drifts.
+
+**And clear view now hides the drawer.** `#panel-toggle` is a SIBLING of
+`#panel` rather than a child, so hiding the panel never hid it and it stayed on
+a cleared screen as the one piece of interface that had not gone away. Verified:
+clear view leaves the restore button and nothing else.
 
 ## 3b. Motion
 

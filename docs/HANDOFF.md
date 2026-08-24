@@ -555,8 +555,14 @@ camera's DIRECTION and changes only its distance — re-running
 `setCameraTopDown()` outright would snap the azimuth back to zero, which is
 visible as a jump, and Dazzle turns auto-rotate on.
 
-**Anything else that frames from the aspect has the same problem**, and nothing
-guards against it generally.
+**The trophy room had the same bug in a different shape**, found the same day.
+It never framed from the aspect at all — it inherits `HOME_CAM_POS` from Reset,
+a fixed vector — so it arrived 1.6x too close in portrait. `frameToFit()` is the
+shared fix: it sets the distance from the aspect along whatever direction the
+camera is already looking, and arms the same refit. See `ACHIEVEMENTS.md` §9.
+
+**Anything else that frames from the aspect, or from a fixed vector, has one of
+these two problems**, and nothing guards against either generally.
 
 **`nd.mesh` is a de facto public API.** `physics.js` writes `nd.mesh.position`
 directly; `physics.js` and `info.js` both raycast against the array of node
