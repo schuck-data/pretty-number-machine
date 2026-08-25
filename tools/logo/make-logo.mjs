@@ -13,8 +13,11 @@ import {
   buildParastichy, buildLineArcs,
 } from '../../www/core/math.js';
 
-const BG = '#0c0c0f';                    // the app's background, as ensureContrast assumes
-const PRIMES = [2, 3, 5];                // red, green, blue — and every blend between
+const BG = '#0a1226';                    // navy: the app's default background
+// The mark follows the app's DEFAULT scheme, so the icon and the first launch
+// agree. Under cyberpunk that makes 2 electric cyan and 3 hot magenta.
+const SCHEME = 'cyberpunk';
+const PRIMES = [2, 3, 5];                // and every blend between
 
 const polar = n => [SPACING_2D * Math.sqrt(n), n * GOLDEN_ANGLE];
 const hex = ([r, g, b]) =>
@@ -29,7 +32,7 @@ export function buildLogo({
   background = true,
   glow = true,
 } = {}) {
-  const primeRGB = getPrimeRGB(PRIMES, 'rgb');
+  const primeRGB = getPrimeRGB(PRIMES, SCHEME);
   const vis = getVisibleNodes(N, PRIMES).filter(n => n > 1);   // 0 and 1 carry no factorisation
 
   const maxR = SPACING_2D * Math.sqrt(N);
@@ -96,7 +99,7 @@ export function buildBraid({
   N = 12, primes = [2, 3], size = 512, aspect = 1,
   background = true, vertical = false, inset = 0.84, nodeScale = 1, lineScale = 1,
 } = {}) {
-  const primeRGB = getPrimeRGB(primes, 'rgb');
+  const primeRGB = getPrimeRGB(primes, SCHEME);
   const W = size, H = Math.round(size / aspect);
   const chains = primes.map(p => ({ p, pts: buildLineArcs(p, N, 28) })).filter(c => c.pts);
 
@@ -147,7 +150,7 @@ export function buildRing({
   bulge = 1.0,          // how far the arcs swing off the ring
   nodeScale = 1, lineScale = 1, rotate = -Math.PI / 2,
 } = {}) {
-  const primeRGB = getPrimeRGB(primes, 'rgb');
+  const primeRGB = getPrimeRGB(primes, SCHEME);
   const chains = primes.map(p => ({ p, pts: buildLineArcs(p, N, 40) })).filter(c => c.pts);
   const cx = size / 2, cy = size / 2;
   const R0 = (size / 2) * ringFrac;
@@ -206,7 +209,7 @@ export function buildMark({
   dotColor = null,       // override; null keeps the colour law honest
   dotScale = 0.62,
 } = {}) {
-  const primeRGB = getPrimeRGB(primes, 'rgb');
+  const primeRGB = getPrimeRGB(primes, SCHEME);
   // Each chain is kept as a list of ARCS rather than one polyline, because the
   // weave needs individual arcs re-ordered in the paint list. Every arc carries
   // one extra point from the next one so the joins stay seamless when they are

@@ -894,8 +894,8 @@ export function initPanel() {
     grid.querySelectorAll('.prime-btn').forEach(btn => {
       btn.classList.toggle('active', [2, 3, 5].includes(+btn.dataset.prime));
     });
-    $('color-scheme').value = 'okabe-ito';
-    $('background-style').value = 'black';
+    $('color-scheme').value = 'cyberpunk';
+    $('background-style').value = 'navy';
     $('background-color').value = '#0c0c0f';
     // The three sliders are the visible control now, so Reset has to move them
     // or the panel shows one colour while state holds another.

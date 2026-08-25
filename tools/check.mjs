@@ -305,6 +305,16 @@ for (const build of BUILDS) {
       pass('app', `palette '${name}': ${r.worst.toFixed(1)} dE under every deficiency, hues at least ${h.gap.toFixed(0)}deg apart`);
   }
 
+  // The default BACKGROUND lives in the same three places for the same reason.
+  const defBg = state.match(/backgroundStyle:\s*'([^']+)'/)?.[1];
+  const bgSel = html.match(/<option value="([^"]+)"\s+selected>(?:Black|Ink|Slate|Navy|Plum|Forest|Paper|Cream|White)/);
+  const bgMarkup = bgSel ? bgSel[1] : 'black';
+  const bgReset = panelSrc.match(/\$\('background-style'\)\.value\s*=\s*'([^']+)'/)?.[1];
+  if (defBg && defBg === bgMarkup && defBg === bgReset)
+    pass('app', `default background '${defBg}' agrees across state, markup and Reset`);
+  else
+    fail('app', `default background disagrees: state='${defBg}' markup='${bgMarkup}' reset='${bgReset}'`);
+
   // Reset writes ~40 DOM values by hand and forgetting one has been a bug
   // twice. These two are the newest and therefore the likeliest to be missed.
   const panel = readFileSync(new URL('../www/core/panel.js', import.meta.url), 'utf8');

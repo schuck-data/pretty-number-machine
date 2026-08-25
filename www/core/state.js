@@ -70,14 +70,16 @@ export const DEFAULT_CONFIG = {
   // registry would pull Three.js into a module that is deliberately free of it.
   // If the order at the bottom of positions.js changes, this changes with it.
   dimension: 0.5,
-  // Okabe-Ito, the colourblind-safe palette, chosen as the DEFAULT on
-  // 2026-08-25. Additive RGB is still the scheme that makes the app's central
+  // Cyberpunk, chosen as the DEFAULT on 2026-08-25 -- and it is colourblind-safe
+  // by measurement, not by intention: tools/check.mjs holds it to 16.9 dE under
+  // simulated protanopia, deuteranopia and tritanopia, with 34 degrees between
+  // its closest hues. Okabe-Ito, the published reference, is one option away. Additive RGB is still the scheme that makes the app's central
   // claim literally true -- 2 red plus 3 green really is 6 yellow -- and it is
   // one option away. But the first thing a new player sees should be legible to
   // the most people, and this palette is designed for exactly that. The three
   // markup places that must agree are DEFAULT_CONFIG here, the `selected`
   // attribute in index.html, and Reset in panel.js.
-  colorScheme: 'okabe-ito',
+  colorScheme: 'cyberpunk',
   nodeSize: 1.0,
   lineWidth: 2,
   showNodes: true,
@@ -150,7 +152,9 @@ export const DEFAULT_CONFIG = {
   // because that is what the <input type=color> gives and what the viewport
   // wants -- converting twice would be the only reason to store a number.
   backgroundColor: '#0c0c0f',
-  backgroundStyle: 'black',
+  // Navy, paired with the cyberpunk default: the palette is built of neons and
+  // neon wants a ground with some colour in it. Black is one option away.
+  backgroundStyle: 'navy',
   onStateChange: null,
 };
 

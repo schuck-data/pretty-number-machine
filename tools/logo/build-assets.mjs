@@ -25,11 +25,22 @@
 //   braid.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { buildMark, buildBraid } from './make-logo.mjs';
+import { getPrimeRGB } from '../../www/core/math.js';
 
-const YELLOW = '#e6e600';
+// THE ACCENT IS NO LONGER A CHOICE. It used to be a yellow picked to look
+// right, with a note admitting that an unselected prime has no colour so
+// yellow was free rather than false. Under the cyberpunk default it can be
+// derived instead: ask getPrimeRGB what 7 WOULD be if it were selected
+// alongside 2 and 3, and it answers acid lime. The dot is now the app's own
+// answer to the question the dot is about.
+const SEVEN = (() => {
+  const c = getPrimeRGB([2, 3, 7], 'cyberpunk')[7];
+  return '#' + c.map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+})();
+
 export const MARK = {
   N: 12, primes: [2, 3], trim: { 2: 2, 3: 1 },
-  nodes: false, dot: { n: 7 }, dotColor: YELLOW, dotScale: 0.78,
+  nodes: false, dot: { n: 7 }, dotColor: SEVEN, dotScale: 0.78,
   over: { 2: [1] },
 };
 

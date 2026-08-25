@@ -11,5 +11,5 @@
          CSS variable above cannot be written with its leading dashes here. That
          is not a typo, and writing it "properly" fails the resource merge with
          an error that names Xerces and not this file. -->
-    <color name="ic_launcher_background">#0C0C0F</color>
+    <color name="ic_launcher_background">#0A1226</color>
 </resources>
