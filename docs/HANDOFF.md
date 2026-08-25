@@ -4,8 +4,9 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15. **Last revised: 2026-08-25**, for the **ads tray and
-the ladder**. Before that, twice on 2026-08-24 — first at the end of a long
+**Written:** 2026-08-15. **Last revised: 2026-08-25**, twice — for the **ads
+tray and the ladder**, and then again the same day for the **stuck-drag fix and
+the OOPS! recalibration**. Before that, twice on 2026-08-24 — first at the end of a long
 session that added the ads layer, rebuilt the corner controls twice and finished
 the decomposition view, and then again for the **v7 achievement revision**.
 Everything below is current as of `capacitor-spike`.
@@ -113,6 +114,29 @@ Three things worth carrying forward:
   rule lost and every operator stayed on screen. It cost a device round to find
   and `check-ads.mjs` was no help, because it greps for the text. Both rules are
   scoped through `#corner-stack` now.
+
+### And later that day: a stuck drag, and OOPS! recalibrated
+
+| Landed | Where it lives | Design record |
+|---|---|---|
+| **The lost-pointerup fix** — physics binds its release to the WINDOW now, and listens for `pointercancel` | `www/modules/physics.js` | §4 below |
+| **The settle test also requires the node to be near home** | `www/modules/physics.js` → `SETTLE_HOME_DIST` | §4 below |
+| **`_physicsTouch` and `_physicsCollision` into `HOT_KEYS`** — each was silently rebuilding the whole scene | `www/core/state.js` | §4 below |
+| **OOPS! measures displacement and asks for a proportion**, calibrated against a real deranged figure | `achievements.js`, `achievements-data.js` | **`ACHIEVEMENTS.md` §13a** |
+
+**Verified on a Pixel 7, and the method is worth stealing.** The whole loop ran
+on hardware over Chrome DevTools on the adb socket: `screencap` to a RAW file and
+diff the pixels to turn "is it twitching" into a number; hook
+`uniformMatrix4fv` on the WebGL prototype to read every object's model-view
+matrix and see WHICH things move, without touching the app; and for OOPS!, a
+temporary in-page readout to pick a threshold from a figure rather than from a
+guess. See `ACHIEVEMENTS.md` §13a.
+
+**Three of my own theories died on the way**, all of them about collision, and
+the reason they survived is the `HOT_KEYS` bug: toggling Collision silently
+rebuilt the scene, which wiped the physics state and looked exactly like a fix.
+**A control that secretly does something enormous will invalidate every
+experiment run through it.** That cost more than the bug did.
 
 **Three things were built wrong first and rebuilt.** They are written up where
 they happened, because in each case the wrong version looked right:
@@ -422,6 +446,33 @@ this list — see `ANDROID-BUILD.md` §2.
 LAN IP is not a secure context. The Cowork browser pane never runs the render
 loop, so nothing about animation or performance can be judged there.
 
+**Bind a drag's RELEASE to the window, not to the element it started on.**
+`physics.js` registered `pointerdown` on the canvas with capture — correct, a
+drag must start on the figure — but also `pointermove` and `pointerup` on the
+canvas, and no `pointercancel` at all. Release the pointer anywhere else (the
+transport bar, a corner control, the panel, off the screen edge) and
+`onPointerUp` never fires: `draggedNode` stays set for the rest of the session,
+the node is pinned off its rest position, and the figure twitches forever.
+Nothing clears it — **not even a scene rebuild**, because `build()` never
+touches `draggedNode`. `info.js` and `lens.js` both already did this correctly;
+physics was the only one of the three that did not. Diagnosed 2026-08-25 and it
+had a second symptom nobody had connected to it: `onPointerDown` sets
+`controls.enabled = false` and only `onPointerUp` restores it, **so a lost
+release also freezes the camera.**
+
+**Near-zero NET force does not mean "at rest".** It is equally true at a
+DISPLACED equilibrium, which is what every neighbour of a held node settles
+into. The settle test snapped such nodes home on force alone; their springs
+hauled them straight back out; ~4.7 teleports per frame across a 22-node
+figure. Any "has it stopped" test needs a DISTANCE as well as a force.
+
+**A control marked `hot: true` still rebuilds unless its key is in `HOT_KEYS`.**
+The flag on the control routes the change through `update()`; `update()` rebuilds
+the scene for any key it does not find in that set. `_physicsTouch` and
+`_physicsCollision` declared hot and were absent from the set, so each flick
+disposed and recreated every mesh — 312 ms at N=1000 — and silently wiped
+physics' offsets. **The two halves must agree and nothing checks that they do.**
+
 **A module that silently does nothing has thrown inside an event handler.**
 `core/state.js`'s `emit()` wraps every listener in `try/catch` and logs to
 `console.error`, so the emit returns perfectly normally and the page looks fine
@@ -580,7 +631,7 @@ www/modules/*.js` rather than trusting this table.
 | `core/math.js` | 424 | Pure functions. Primes, factorisation, colour, visibility rules. **No Three.js dependency** |
 | `core/transport.js` | 214 | The play/pause/scrub bar and its speed mapping |
 | `core/positions.js` | 358 | The shape registry and `interpolatedPos()`. Owns how shapes blend |
-| `core/state.js` | 225 | `DEFAULT_CONFIG`, the mutable `state` singleton, the event bus, the module registry, reduced-motion defaults |
+| `core/state.js` | 238 | `DEFAULT_CONFIG`, the mutable `state` singleton, the event bus, the module registry, reduced-motion defaults |
 | `core/debug-hud.js` | 122 | `?debug` overlay. Self-contained |
 | `core/sheet.js` | 131 | Phone bottom-sheet position and drag. Owns *where the sheet sits*, never what is in it |
 | `core/notices.js` | 121 | The fatal error boundary. **Imports nothing** — it must work when the rest has failed. The update prompt is GONE in the app build: no service worker, and Play announces its own updates |
@@ -591,10 +642,10 @@ two more of these.
 
 | File | Lines | Owns |
 |---|---|---|
-| `modules/physics.js` | 686 | Drag and spring simulation. The only module that **writes** node positions |
+| `modules/physics.js` | 726 | Drag and spring simulation. The only module that **writes** node positions |
 | `modules/info.js` | 424 | Tap/right-click a node for its maths. Owns the tooltip |
 | `modules/lens.js` | 828 | The classroom lens: chalkboard layer, projected HTML labels, tap-for-info, **and the decomposition view** |
-| `modules/achievements.js` | 1655 | The ledger, predicates, panel section, toast, sound, gilding paint. See `ACHIEVEMENTS.md` |
+| `modules/achievements.js` | 1699 | The ledger, predicates, panel section, toast, sound, gilding paint. See `ACHIEVEMENTS.md` |
 | `modules/ads.js` | 738 | Entitlement, paywall, slideshow, **the `+s` door and the tray**, the operator buttons and their `requires` gates, the announced tier's sheet, the intrusion banner, the shimmer schedule. See `ADS.md` |
 | `modules/ads-data.js` | 345 | The three products (two sellable, one announced), the `requires` chain, `isSellable()`, the palettes and every word of the slide copy. **No Three.js, no DOM** — checkable headlessly, which is the point, because copy is what rendering tests cannot judge |
 | `modules/achievements-data.js` | 963 | The number sets, definitions, gilding rule and reference links. **No Three.js** — checkable headlessly |
