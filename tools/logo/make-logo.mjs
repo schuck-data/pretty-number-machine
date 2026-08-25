@@ -269,28 +269,15 @@ export function buildMark({
   // on another. A braid has to alternate, and the arc is the natural unit to
   // alternate on -- it runs node to node, so the crossing always falls inside
   // it rather than at a seam.
-  // An `over` entry is either an arc INDEX (that whole arc passes over) or
-  // { arc, from, to } as fractions along it, which lets one crossing inside a
-  // single arc go over while the other goes under. That is what turns the top
-  // loop from a D -- one strand simply laid on the other -- into an S, where
-  // the strands trade places the way a braid actually does.
-  //
-  // A partially-over arc is drawn WHOLE underneath first and its slice repainted
-  // on top, so there is no seam where the two meet.
-  const entries = (p) => over[p] || [];
-  const wholeOver = (p, i) => entries(p).some(e => e === i);
-  const slices = (p, i) => entries(p).filter(e => typeof e === 'object' && e.arc === i);
-
-  for (const { p, arcs } of chains)
-    arcs.forEach((seg, i) => { if (!wholeOver(p, i)) out.push(pathFor(p, seg)); });
-  for (const { p, arcs } of chains) arcs.forEach((seg, i) => {
-    if (wholeOver(p, i)) out.push(pathFor(p, seg));
-    for (const sl of slices(p, i)) {
-      const a = Math.max(0, Math.floor((sl.from ?? 0) * (seg.length - 1)));
-      const b = Math.min(seg.length, Math.ceil((sl.to ?? 1) * (seg.length - 1)) + 1);
-      if (b - a > 1) out.push(pathFor(p, seg.slice(a, b)));
-    }
-  });
+  // THE WEAVE. Painted in two passes: everything that goes UNDER, then the arcs
+  // named in `over`, which come back on top. Drawing each chain as one polyline
+  // put one colour above the other along its whole length, which reads as one
+  // ribbon laid on another, not a braid. The arc is the natural unit to
+  // alternate on -- it runs node to node, so a crossing falls inside it rather
+  // than at a seam.
+  const isOver = (p, i) => (over[p] || []).includes(i);
+  for (const { p, arcs } of chains) arcs.forEach((seg, i) => { if (!isOver(p, i)) out.push(pathFor(p, seg)); });
+  for (const { p, arcs } of chains) arcs.forEach((seg, i) => { if (isOver(p, i)) out.push(pathFor(p, seg)); });
 
   if (nodes) {
     const r = size * 0.050 * nodeScale;

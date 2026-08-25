@@ -41,17 +41,16 @@ const SEVEN = (() => {
 export const MARK = {
   N: 12, primes: [2, 3], trim: { 2: 2, 3: 1 },
   nodes: false, dot: { n: 7 }, dotColor: SEVEN, dotScale: 0.78,
-  // The top loop read as a D: magenta lay over cyan for the whole overlap.
-  // Handing over to cyan halfway ALONG THE OVERLAP makes the strands trade
-  // places, which is an S.
+  // Red's -- now cyan's -- MIDDLE arc is painted last, so it passes over the
+  // other chain while its outer arcs pass under. Drawn as two whole polylines,
+  // one colour sat on top along its entire length, which reads as one ribbon
+  // laid on another rather than a braid.
   //
-  // The numbers matter and the first attempt got them wrong. The overlap is not
-  // half the arc -- measured, cyan's first arc runs alongside magenta's only
-  // from t=0.00 to t=0.13, a short stretch right at node 6. A slice starting at
-  // t=0.5 sat far past it, painting cyan over empty background, which is why
-  // the change was invisible. Half of the OVERLAP is t=0.065, and it runs to
-  // 0.16 so the cyan clears the far end cleanly.
-  over: { 2: [{ arc: 0, from: 0.065, to: 0.16 }, 1] },
+  // An S was tried at the top crossing on 2026-08-25 and reverted: the overlap
+  // there is only the first 13% of the arc, too short a stretch for a handover
+  // to read as anything but a nick in the line. The machinery for a partial
+  // crossing went with it; git has both if the idea comes back.
+  over: { 2: [1] },
 };
 
 // Adaptive icons draw on a 108dp canvas but only the middle 72dp is guaranteed
