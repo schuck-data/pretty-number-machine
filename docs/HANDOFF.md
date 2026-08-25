@@ -637,7 +637,8 @@ www/modules/*.js` rather than trusting this table.
 | `core/state.js` | 238 | `DEFAULT_CONFIG`, the mutable `state` singleton, the event bus, the module registry, reduced-motion defaults |
 | `core/debug-hud.js` | 122 | `?debug` overlay. Self-contained |
 | `core/sheet.js` | 131 | Phone bottom-sheet position and drag. Owns *where the sheet sits*, never what is in it |
-| `core/dropdown.js` | 154 | The dropdown the app draws itself. A native select's POPUP belongs to the OS and an `<option>` holds only text, so colour schemes and backgrounds could not SHOW their colours. Enhances a real `<select>`, which stays the source of truth |
+| `core/dropdown.js` | 154 |
+| `core/slider.js` | 130 | Sliders that do not steal a scroll. Range inputs are `pointer-events: none` and this drives them; touch needs a horizontal drag, a mouse keeps click-to-position. See §4 | The dropdown the app draws itself. A native select's POPUP belongs to the OS and an `<option>` holds only text, so colour schemes and backgrounds could not SHOW their colours. Enhances a real `<select>`, which stays the source of truth |
 | `core/notices.js` | 121 | The fatal error boundary. **Imports nothing** — it must work when the rest has failed. The update prompt is GONE in the app build: no service worker, and Play announces its own updates |
 
 **Feature modules** — dynamically imported, crash-isolated. One that throws is
@@ -721,18 +722,40 @@ half, with no error raised anywhere. Both now read `getShapes()`. Anything else
 added that interpolates between shapes must read it too, and a hardcoded `0.5`
 step is the smell to watch for.
 
-**A slider in a scrolling panel needs `touch-action: pan-y`.** Without it a range
-input claims the whole gesture the moment a finger lands on it, so scrolling the
-panel past a slider drags that slider instead — and the value teleports to
-wherever the finger was horizontally, rather than nudging. This affected every
-slider in the panel and went unnoticed for a long time because on a mouse it
-does not happen at all. It is fixed on the element type in `www/index.html`, so
-a new slider inherits the fix; a new *custom* control that handles its own
-pointer events does not, and must think about it.
+**A slider in a scrolling panel needs `touch-action: pan-y` — AND THAT IS ONLY
+HALF OF IT.** `pan-y` stops the slider capturing a vertical drag, which it does
+correctly, and it is what fixed the 209-degree false bug report below. It does
+NOT stop the other half: a range input sets its value on touch-DOWN, jumping the
+thumb to wherever the finger landed. Resting a finger on a slider to begin
+scrolling teleports the value before any direction has been expressed. That is
+the bug Dakota kept hitting long after `pan-y` was in, and it is why the fix
+looked complete and was not.
 
-Worth remembering how it surfaced: it produced a false bug report. A screenshot
-taken after an accidental drag showed the divergence angle at 209°, which looked
-exactly like a wrong default, and the wrong thing was very nearly "fixed".
+**It cannot be prevented.** Probing the live events on a Pixel 7:
+
+```
+pointerdown  cancelable=true   pointerType=touch  defaultPrevented=true
+touchstart   cancelable=false
+```
+
+`preventDefault()` on pointerdown runs and changes nothing, because the value is
+set on the touchstart path — and Chrome makes touchstart NON-CANCELABLE
+precisely because `touch-action` has already declared panning is allowed. There
+is no event left to cancel. Note also that no synthetic gesture reproduced it —
+adb swipe, CDP touch events, a scripted thumb-arc — while a real thumb hit it
+every time, so it read as absent for a long while.
+
+The fix is **`core/slider.js`**: range inputs get `pointer-events: none` and the
+module drives them. Touch requires a horizontal drag; a mouse keeps
+click-to-position. **And `pan-y` has to MOVE to the parent** — with the input out
+of the pointer path the touch lands on its container, and a container at the
+default `touch-action: auto` lets the browser claim the horizontal gesture and
+fire pointercancel ten pixels into a drag.
+
+Worth remembering how the original surfaced: it produced a false bug report. A
+screenshot taken after an accidental drag showed the divergence angle at 209°,
+which looked exactly like a wrong default, and the wrong thing was very nearly
+"fixed".
 
 **An angle change is not a rebuild.** `divergenceAngle` is in `HOT_KEYS` so it
 never reaches `buildScene()`, which would dispose and recreate every mesh in the

@@ -41,11 +41,17 @@ const SEVEN = (() => {
 export const MARK = {
   N: 12, primes: [2, 3], trim: { 2: 2, 3: 1 },
   nodes: false, dot: { n: 7 }, dotColor: SEVEN, dotScale: 0.78,
-  // The top loop used to read as a D: magenta lay over cyan for the whole
-  // overlap. Handing over to cyan halfway along its first arc makes the strands
-  // trade places, which is an S -- and an S is what a braid does. Dakota's call,
-  // at 50%.
-  over: { 2: [{ arc: 0, from: 0.5 }, 1] },
+  // The top loop read as a D: magenta lay over cyan for the whole overlap.
+  // Handing over to cyan halfway ALONG THE OVERLAP makes the strands trade
+  // places, which is an S.
+  //
+  // The numbers matter and the first attempt got them wrong. The overlap is not
+  // half the arc -- measured, cyan's first arc runs alongside magenta's only
+  // from t=0.00 to t=0.13, a short stretch right at node 6. A slice starting at
+  // t=0.5 sat far past it, painting cyan over empty background, which is why
+  // the change was invisible. Half of the OVERLAP is t=0.065, and it runs to
+  // 0.16 so the cyan clears the far end cleanly.
+  over: { 2: [{ arc: 0, from: 0.065, to: 0.16 }, 1] },
 };
 
 // Adaptive icons draw on a 108dp canvas but only the middle 72dp is guaranteed

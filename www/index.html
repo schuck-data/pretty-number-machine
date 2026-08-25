@@ -366,6 +366,13 @@
        fix: it tells the browser that vertical panning belongs to the scroll
        container, and leaves horizontal movement to the control. */
     touch-action: pan-y;
+    /* The touch never reaches this element; core/slider.js drives it. A range
+       input sets its value on touch-DOWN, so a finger resting here to begin a
+       scroll used to teleport the thumb -- and that jump cannot be prevented,
+       because Chrome makes touchstart non-cancelable once touch-action has
+       declared panning is allowed. Taking the pointer away is the only lever
+       left. Keyboard focus and tabbing are unaffected. */
+    pointer-events: none;
   }
   input[type=range]::-webkit-slider-runnable-track {
     height: 4px; background: var(--track-bg); border-radius: 2px; border: none;
@@ -2221,7 +2228,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.37 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.40 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll

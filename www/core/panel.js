@@ -6,6 +6,7 @@ import {
 import { FIRST_PRIMES, SELECTABLE_PRIMES, getPrimeRGB, GOLDEN_ANGLE, ensureContrast, relativeLuminance } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
 import { enhanceSelect, syncDropdowns } from './dropdown.js';
+import { installSliderGuard } from './slider.js';
 import {
   update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown, resetCamera,
   backgroundCSS,
@@ -517,6 +518,8 @@ function updateModuleStates() {
 // WIRE EVERYTHING
 // ============================================================
 export function initPanel() {
+  installSliderGuard();
+
   // Back to the top. A hundred and one achievements is a long way down, and the
   // prime grid a hunter wants next is at the very top.
   //
