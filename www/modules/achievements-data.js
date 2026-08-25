@@ -309,7 +309,7 @@ d(10, 'Tutorial', 'nerd',       'NERD!',        '-drag the classroom across-',  
 // which is the whole argument for the view. 42 belongs to NERD! already.
 d(11, 'Tutorial', 'decompose',  'DECOMPOSE!',   '-take one apart-',                    'Tap a number under the classroom lens to break it into its prime factors.', [30], custom('event'));
 d(12, 'Tutorial', 'ouch',       'OUCH!',        '-take hold of the Sun-',              'With physics on, drag node 0.',                         [149],  custom('event'));
-d(13, 'Tutorial', 'oops',       'OOPS!',        '-make the springs disagree-',         'With physics on, knock half the nodes well out of place at the same time.', [641], custom('sampled'));
+d(13, 'Tutorial', 'oops',       'OOPS!',        '-physics on, make it weird-',         'With physics on, knock half the nodes well out of place at the same time.', [641], custom('sampled'));
 d(14, 'Tutorial', 'night',      'NIGHT!',       '-put out the Sun-',                   'Switch off the zero node.',                             [354],  custom());
 d(15, 'Tutorial', 'void',       'VOID!',        '-take every prime away-',             'Deselect every prime.',                                 [],     custom());
 d(16, 'Tutorial', 'empty-set',  'EMPTY SET!',   '-then take away what was left-',      'Deselect every prime and switch off both 0 and 1.',     [86],   custom());
@@ -487,7 +487,7 @@ const BLURBS = {
     'Knowing the name of a thing may not tell you much about its intrinsic nature, but precise ' +
     'jargon sure helps in conversation!',
   'ouch': 'Oof, you okay? Sun hot.',
-  'oops': 'Physics allows for stuff to get weird.',
+  'oops': "It's okay. it's supposed to do that. Hopefully.",
   'night': 'Uhh, who turned out the lights?',
   'void':
     'Turn off every prime and two numbers are left: 0 and 1. They are the only ones not built out ' +

@@ -1168,9 +1168,23 @@ of the comparison, which is the one character that would invert the whole test
 and fire OOPS! on a figure at rest. Negative-tested both ways: reverting the
 proportion to a count fails one, inverting the comparison fails another.
 
-**Not yet earned on a device.** The old test could be tripped without meaning
-to; whether the new bar is reachable while still feeling like an accident is a
-judgement that needs a phone.
+**Earned on a Pixel 7 at the calibrated bar, 2026-08-25, and judged right.**
+The whole loop ran on hardware: shipped too loose, cleared by one drag, a
+readout added, a reference figure deranged by hand, the bar read off it, and
+then earned again at the new value. Three builds and about half an hour.
+
+### The clue and the blurb
+
+> `-physics on, make it weird-`
+>
+> *"It's okay. it's supposed to do that. Hopefully."*
+
+Dakota's words, 2026-08-25, replacing `-make the springs disagree-` and
+"Physics allows for stuff to get weird." The clue now names the prerequisite,
+which matters because physics has a toggle and a locked row that does not
+mention it sends a player looking in the wrong place. §4 allows this: Tutorial
+clues are nudges, and the nudge is only useful if it points at the right
+control.
 
 ---
 
