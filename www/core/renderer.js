@@ -11,7 +11,7 @@ import {
   getVisibleNodes, getPrimeRGB, nodeColor, shouldShowNode,
   isPrimeNumber, primeFactorsOf, hueToRGB, SPHERE_R, SPACING_2D,
   SAMPLES_PER_SEG, buildParastichy, buildLineArcs, catmullRom,
-  BACKGROUNDS,
+  BACKGROUNDS, mixModeFor,
 } from './math.js';
 import {
   interpolatedPos, getMaxDim, getMinDim, getShapes,
@@ -628,7 +628,9 @@ export function buildScene() {
     if (n === 0 && !state.showZero) continue;
     if (n === 1 && !state.showOne) continue;
 
-    const c = nodeColor(n, primeRGB, selectedPrimes);
+    // The mixing rule follows the scheme -- additive only for RGB, where the
+    // addition IS the claim. See the note above nodeColor().
+    const c = nodeColor(n, primeRGB, selectedPrimes, mixModeFor(state.colorScheme));
     const baseColor = new THREE.Color(c[0], c[1], c[2]);
     const factors = selectedPrimes.filter(p => n > 1 && n % p === 0);
     const allFactors = primeFactorsOf(n);

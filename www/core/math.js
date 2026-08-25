@@ -383,15 +383,85 @@ export function getPrimeRGB(selectedPrimes, colorScheme) {
 // its neighbours — the display cannot represent an arbitrary number of
 // simultaneous contributions in three channels. That is a genuine limit of the
 // visualisation, not a bug in it.
-export function nodeColor(n, primeRGB, selectedPrimes) {
+// ============================================================
+// HOW A COMPOSITE GETS ITS COLOUR
+// ============================================================
+// EDU: two rules, and which one applies is not a preference -- it follows from
+// what the palette MEANS.
+//
+// ADD is for Additive RGB, where the claim is literal: each prime owns one
+// channel of light, 2 is red and 3 is green, and 6 is yellow because red light
+// plus green light IS yellow. Sums land on the eight corners of the colour
+// cube, so every combination is a real, separate colour. Changing that rule
+// would make the app's central sentence false.
+//
+// BLEND is for every other palette, because there is no physical law saying
+// what electric cyan plus hot magenta ought to be. Adding them gives white --
+// cyan is already (0, 0.9, 1), so adding anything with red in it fills the last
+// channel -- and MOST NUMBERS ARE COMPOSITE, so the figure went pale. Measured
+// on 2026-08-25: under cyberpunk the composites 6, 10 and 15 carried chroma of
+// 16, 21 and 28, against additive RGB's 90, 107 and 46. Effectively grey.
+//
+// So the others mix PERCEPTUALLY, in OKLab, which is built so that the average
+// of two colours looks like the colour halfway between them. Cyan and magenta
+// give a vivid violet rather than white.
+//
+// EDU: the honest limit, which no mixing rule escapes. Averaging hues spread
+// around the circle cancels them, so a number with three factors from three
+// well-separated hues comes out near-neutral -- just as additive RGB sends
+// 30 = 2x3x5 to white. Compressing 2^N combinations into three dimensions
+// always costs something; both rules just spend it differently.
+const cbrt = Math.cbrt;
+function srgbToOklab([r, g, b]) {
+  // NOTE THE 255. srgbToLinear() above takes 0-255 -- it divides internally,
+  // because it was written for the contrast helpers, which work in bytes.
+  // Everything in the COLOUR path works in 0-1. Passing 0-1 straight in reads
+  // every channel as 1/255 of itself and every blend comes out near-black,
+  // which is exactly what happened the first time.
+  const R = srgbToLinear(r * 255), G = srgbToLinear(g * 255), B = srgbToLinear(b * 255);
+  const l = cbrt(0.4122214708*R + 0.5363325363*G + 0.0514459929*B);
+  const m = cbrt(0.2119034982*R + 0.6806995451*G + 0.1073969566*B);
+  const s = cbrt(0.0883024619*R + 0.2817188376*G + 0.6299787005*B);
+  return [
+    0.2104542553*l + 0.7936177850*m - 0.0040720468*s,
+    1.9779984951*l - 2.4285922050*m + 0.4505937099*s,
+    0.0259040371*l + 0.7827717662*m - 0.8086757660*s,
+  ];
+}
+function oklabToSrgb([L, A, B2]) {
+  const l = (L + 0.3963377774*A + 0.2158037573*B2) ** 3;
+  const m = (L - 0.1055613458*A - 0.0638541728*B2) ** 3;
+  const s = (L - 0.0894841775*A - 1.2914855480*B2) ** 3;
+  const lin = [
+     4.0767416621*l - 3.3077115913*m + 0.2309699292*s,
+    -1.2684380046*l + 2.6097574011*m - 0.3413193965*s,
+    -0.0041960863*l - 0.7034186147*m + 1.7076147010*s,
+  ];
+  return lin.map(v => Math.max(0, Math.min(1, linearToSrgb(v))));
+}
+const linearToSrgb = c => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.max(0, c), 1/2.4) - 0.055);
+
+// Which rule a scheme uses. Lives here so the answer is in one place; the
+// renderer asks rather than deciding.
+export function mixModeFor(colorScheme) {
+  return colorScheme === 'rgb' ? 'add' : 'blend';
+}
+
+export function nodeColor(n, primeRGB, selectedPrimes, mix = 'add') {
   if (n === 0) return [0, 0, 0];
   if (n === 1) return [0.25, 0.25, 0.25];
-  let r = 0, g = 0, b = 0, count = 0;
-  for (const p of selectedPrimes) {
-    if (n % p === 0) { r += primeRGB[p][0]; g += primeRGB[p][1]; b += primeRGB[p][2]; count++; }
+  const factors = [];
+  for (const p of selectedPrimes) if (n % p === 0) factors.push(primeRGB[p]);
+  if (factors.length === 0) return [0.25, 0.25, 0.25];
+  if (factors.length === 1) return [...factors[0]];      // nothing to mix
+  if (mix === 'add') {
+    let r = 0, g = 0, b = 0;
+    for (const c of factors) { r += c[0]; g += c[1]; b += c[2]; }
+    return [Math.min(1, r), Math.min(1, g), Math.min(1, b)];
   }
-  if (count === 0) return [0.25, 0.25, 0.25];
-  return [Math.min(1, r), Math.min(1, g), Math.min(1, b)];
+  const lab = factors.map(srgbToOklab);
+  const mean = [0, 1, 2].map(i => lab.reduce((t, c) => t + c[i], 0) / lab.length);
+  return oklabToSrgb(mean);
 }
 
 // ============================================================

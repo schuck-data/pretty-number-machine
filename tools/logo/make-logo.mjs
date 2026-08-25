@@ -10,7 +10,7 @@
 // like everything else in tools/.
 import {
   GOLDEN_ANGLE, SPACING_2D, SPHERE_R, getPrimeRGB, nodeColor, getVisibleNodes,
-  buildParastichy, buildLineArcs,
+  buildParastichy, buildLineArcs, mixModeFor,
 } from '../../www/core/math.js';
 
 const BG = '#0a1226';                    // navy: the app's default background
@@ -62,7 +62,7 @@ export function buildLogo({
 
   for (const n of vis) {
     const [x, y] = P(polar(n));
-    out.push(`<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${nodeR.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, PRIMES))}"/>`);
+    out.push(`<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${nodeR.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, PRIMES, mixModeFor(SCHEME)))}"/>`);
   }
   out.push('</svg>');
   return out.join('\n');
@@ -129,7 +129,7 @@ export function buildBraid({
   for (const n of getVisibleNodes(N, primes).filter(v => v > 1)) {
     const x = SPHERE_R * (2 * n / N - 1);
     const [px, py] = map(x, 0);
-    out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${nodeR.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, primes))}"/>`);
+    out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${nodeR.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, primes, mixModeFor(SCHEME)))}"/>`);
   }
   out.push('</svg>');
   return out.join('\n');
@@ -180,7 +180,7 @@ export function buildRing({
   const nodeR = size * 0.050 * nodeScale;
   for (const n of getVisibleNodes(N, primes).filter(v => v > 1)) {
     const [px, py] = map(SPHERE_R * (2 * n / N - 1), 0);
-    out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${nodeR.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, primes))}"/>`);
+    out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${nodeR.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, primes, mixModeFor(SCHEME)))}"/>`);
   }
   out.push('</svg>');
   return out.join('\n');
@@ -269,9 +269,28 @@ export function buildMark({
   // on another. A braid has to alternate, and the arc is the natural unit to
   // alternate on -- it runs node to node, so the crossing always falls inside
   // it rather than at a seam.
-  const isOver = (p, i) => (over[p] || []).includes(i);
-  for (const { p, arcs } of chains) arcs.forEach((seg, i) => { if (!isOver(p, i)) out.push(pathFor(p, seg)); });
-  for (const { p, arcs } of chains) arcs.forEach((seg, i) => { if (isOver(p, i)) out.push(pathFor(p, seg)); });
+  // An `over` entry is either an arc INDEX (that whole arc passes over) or
+  // { arc, from, to } as fractions along it, which lets one crossing inside a
+  // single arc go over while the other goes under. That is what turns the top
+  // loop from a D -- one strand simply laid on the other -- into an S, where
+  // the strands trade places the way a braid actually does.
+  //
+  // A partially-over arc is drawn WHOLE underneath first and its slice repainted
+  // on top, so there is no seam where the two meet.
+  const entries = (p) => over[p] || [];
+  const wholeOver = (p, i) => entries(p).some(e => e === i);
+  const slices = (p, i) => entries(p).filter(e => typeof e === 'object' && e.arc === i);
+
+  for (const { p, arcs } of chains)
+    arcs.forEach((seg, i) => { if (!wholeOver(p, i)) out.push(pathFor(p, seg)); });
+  for (const { p, arcs } of chains) arcs.forEach((seg, i) => {
+    if (wholeOver(p, i)) out.push(pathFor(p, seg));
+    for (const sl of slices(p, i)) {
+      const a = Math.max(0, Math.floor((sl.from ?? 0) * (seg.length - 1)));
+      const b = Math.min(seg.length, Math.ceil((sl.to ?? 1) * (seg.length - 1)) + 1);
+      if (b - a > 1) out.push(pathFor(p, seg.slice(a, b)));
+    }
+  });
 
   if (nodes) {
     const r = size * 0.050 * nodeScale;
@@ -279,7 +298,7 @@ export function buildMark({
       const x = SPHERE_R * (2 * n / N - 1);
       if (x < minX - 1e-6 || x > maxX + 1e-6) continue;      // only what the trim kept
       const [px, py] = map(x, 0);
-      out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${r.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, primes))}"/>`);
+      out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${r.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, primes, mixModeFor(SCHEME)))}"/>`);
     }
   }
 
@@ -289,7 +308,7 @@ export function buildMark({
   if (dot) {
     const x = SPHERE_R * (2 * dot.n / N - 1);
     const [px, py] = map(x, dot.off || 0);
-    const fill = dotColor || hex(nodeColor(dot.n, primeRGB, primes));
+    const fill = dotColor || hex(nodeColor(dot.n, primeRGB, primes, mixModeFor(SCHEME)));
     out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${(size * 0.050 * dotScale).toFixed(2)}" fill="${fill}"/>`);
   }
   if (clipCircle) out.push('</g>');

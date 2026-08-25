@@ -41,7 +41,11 @@ const SEVEN = (() => {
 export const MARK = {
   N: 12, primes: [2, 3], trim: { 2: 2, 3: 1 },
   nodes: false, dot: { n: 7 }, dotColor: SEVEN, dotScale: 0.78,
-  over: { 2: [1] },
+  // The top loop used to read as a D: magenta lay over cyan for the whole
+  // overlap. Handing over to cyan halfway along its first arc makes the strands
+  // trade places, which is an S -- and an S is what a braid does. Dakota's call,
+  // at 50%.
+  over: { 2: [{ arc: 0, from: 0.5 }, 1] },
 };
 
 // Adaptive icons draw on a 108dp canvas but only the middle 72dp is guaranteed
