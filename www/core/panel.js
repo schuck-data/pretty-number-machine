@@ -7,6 +7,7 @@ import { FIRST_PRIMES, SELECTABLE_PRIMES, getPrimeRGB, GOLDEN_ANGLE, ensureContr
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
 import {
   update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown, resetCamera,
+  backgroundCSS,
 } from './renderer.js';
 
 const $ = id => document.getElementById(id);
@@ -620,13 +621,19 @@ export function initPanel() {
   // because both keys are in HOT_KEYS. Bisected on a Pixel 7: with a direct
   // write the viewport stayed black and only a forced rebuild moved it.
   const bgRow = $('background-color-row');
-  const syncBgRow = () => { bgRow.hidden = $('background-style').value !== 'custom'; };
+  // The swatch reads backgroundCSS() rather than repeating the colour table, so
+  // a background added to BACKGROUNDS shows up here with no second edit.
+  const syncBgRow = () => {
+    bgRow.hidden = $('background-style').value !== 'custom';
+    $('background-swatch').style.backgroundColor = backgroundCSS();
+  };
   $('background-style').addEventListener('change', () => {
     update({ backgroundStyle: $('background-style').value });
     syncBgRow();
   });
   $('background-color').addEventListener('input', () => {
     update({ backgroundColor: $('background-color').value });
+    $('background-swatch').style.backgroundColor = backgroundCSS();
   });
   syncBgRow();
 
@@ -853,10 +860,11 @@ export function initPanel() {
     grid.querySelectorAll('.prime-btn').forEach(btn => {
       btn.classList.toggle('active', [2, 3, 5].includes(+btn.dataset.prime));
     });
-    $('color-scheme').value = 'rgb';
+    $('color-scheme').value = 'okabe-ito';
     $('background-style').value = 'black';
     $('background-color').value = '#0c0c0f';
     $('background-color-row').hidden = true;
+    $('background-swatch').style.backgroundColor = '#0c0c0f';
     $('auto-n').checked = true;
     $('n-input').disabled = true;
     // Clear the out-of-range slider state too, or resetting from N > 2500

@@ -204,12 +204,67 @@
   label { display: block; font-size: 0.78rem; margin: 6px 0 3px; color: var(--text-dim); font-weight: 400; }
   label span { color: var(--text); font-weight: 600; }
   select, input[type=number] {
-    width: 100%; padding: 6px 8px; background: var(--field-bg);
+    width: 100%; padding: 7px 9px; background: var(--field-bg);
     border: 1px solid var(--border); color: var(--text);
     border-radius: 6px; font-size: 12px; font-family: inherit;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, background 0.2s;
   }
+  /* The native caret is drawn by the platform and cannot be recoloured, so on a
+     dark field it renders as a dark smudge. Drawn here instead: appearance:none
+     removes the platform one and the chevron rides in as a background image,
+     which the CSP allows (img-src includes data:). Extra right padding keeps a
+     long option name from running under it. */
+  select {
+    appearance: none; -webkit-appearance: none;
+    padding-right: 26px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23bfc7d1' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+  }
+  select:hover, input[type=number]:hover { background-color: rgba(200, 220, 230, 0.07); }
   select:focus, input[type=number]:focus { outline: none; border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4); }
+
+  /* Group headings inside a dropdown. The popup itself is drawn by the OS and
+     most of it cannot be styled at all; these two properties are among the few
+     that land, and they are enough to stop the groups reading as options. */
+  select optgroup {
+    background: #15151a; color: rgba(224,221,213,0.55);
+    font-style: normal; font-weight: 600; font-size: 11px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  select optgroup option { font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+  /* A select with a colour swatch beside it. The swatch is the only way to see
+     what a named background actually IS without selecting it and looking. */
+  .field-row { display: flex; align-items: stretch; gap: 8px; }
+  .field-row select { flex: 1; }
+  /* Stretched rather than a fixed height, so it stays the same height as the
+     select it sits beside -- the mobile rules give inputs a 44px minimum and a
+     26px swatch next to a 44px field reads as a stray box.
+     The border is deliberately stronger than --border: the most common value
+     this shows is near-black on a near-black panel, and at the panel's normal
+     border weight the swatch simply disappears, which looks like a bug rather
+     than like the colour black. */
+  .swatch {
+    flex: none; width: 34px; align-self: stretch; border-radius: 6px;
+    border: 1px solid rgba(180, 200, 210, 0.32);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  }
+
+  /* The platform draws input[type=color] as a bevelled button with an inset
+     patch of colour and its own padding, which looks nothing like the rest of
+     this panel. Stripped back to a plain swatch the same size and radius as the
+     one above, so the custom row and the named row line up. */
+  input[type=color] {
+    appearance: none; -webkit-appearance: none;
+    width: 100%; height: 30px; padding: 0; cursor: pointer;
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type=color]::-webkit-color-swatch { border: none; border-radius: 5px; }
+  input[type=color]::-moz-color-swatch { border: none; border-radius: 5px; }
+  input[type=color]:hover { border-color: rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35); }
 
   input[type=range] {
     -webkit-appearance: none; appearance: none;
@@ -1866,7 +1921,7 @@
       <option value="spectrum">Spectrum (red &rarr; blue)</option>
       <option value="spectrum-rev">Spectrum (blue &rarr; red)</option>
       <optgroup label="Palettes">
-        <option value="okabe-ito">Colorblind-safe</option>
+        <option value="okabe-ito" selected>Colorblind-safe</option>
         <option value="warm">Warm</option>
         <option value="cool">Cool</option>
         <option value="pastel">Pastel</option>
@@ -1881,6 +1936,7 @@
          back to the default colour silently, which looks like the control does
          nothing rather than like a typo. `custom` is the exception and is
          deliberately absent from that table: it reads backgroundColor. -->
+    <div class="field-row">
     <select id="background-style">
       <optgroup label="Dark">
         <option value="black">Black</option>
@@ -1897,6 +1953,8 @@
       </optgroup>
       <option value="custom">Custom&hellip;</option>
     </select>
+    <span id="background-swatch" class="swatch" aria-hidden="true"></span>
+    </div>
 
     <!-- Shown only when Custom is chosen. backgroundColor is a HOT key, so this
          repaints on every input event without rebuilding the scene. -->
@@ -2064,7 +2122,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.29 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.31 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll

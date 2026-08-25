@@ -258,6 +258,22 @@ for (const build of BUILDS) {
   }
   if (!dupes) pass('app', `${Object.keys(M.PALETTES).length} palettes, none repeating a colour within itself`);
 
+  // THE DEFAULT COLOUR SCHEME LIVES IN THREE PLACES and they must agree:
+  // DEFAULT_CONFIG, the `selected` option in the markup, and Reset. Disagree
+  // and the app opens showing one scheme while `state` believes another, so the
+  // first change to any unrelated control snaps the figure to a palette the
+  // player never chose.
+  const state = readFileSync(new URL('../www/core/state.js', import.meta.url), 'utf8');
+  const defScheme = state.match(/colorScheme:\s*'([^']+)'/)?.[1];
+  const selMatch = html.match(/<option value="([^"]+)"\s+selected>/);
+  const markupDefault = selMatch ? selMatch[1] : 'rgb';
+  const panelSrc = readFileSync(new URL('../www/core/panel.js', import.meta.url), 'utf8');
+  const resetScheme = panelSrc.match(/\$\('color-scheme'\)\.value\s*=\s*'([^']+)'/)?.[1];
+  if (defScheme && defScheme === markupDefault && defScheme === resetScheme)
+    pass('app', `default colour scheme '${defScheme}' agrees across state, markup and Reset`);
+  else
+    fail('app', `default colour scheme disagrees: state='${defScheme}' markup='${markupDefault}' reset='${resetScheme}'`);
+
   // Reset writes ~40 DOM values by hand and forgetting one has been a bug
   // twice. These two are the newest and therefore the likeliest to be missed.
   const panel = readFileSync(new URL('../www/core/panel.js', import.meta.url), 'utf8');
