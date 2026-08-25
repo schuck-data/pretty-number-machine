@@ -309,7 +309,7 @@ d(10, 'Tutorial', 'nerd',       'NERD!',        '-drag the classroom across-',  
 // which is the whole argument for the view. 42 belongs to NERD! already.
 d(11, 'Tutorial', 'decompose',  'DECOMPOSE!',   '-take one apart-',                    'Tap a number under the classroom lens to break it into its prime factors.', [30], custom('event'));
 d(12, 'Tutorial', 'ouch',       'OUCH!',        '-take hold of the Sun-',              'With physics on, drag node 0.',                         [149],  custom('event'));
-d(13, 'Tutorial', 'oops',       'OOPS!',        '-make the springs disagree-',         'Get 20 or more nodes further than twice their rest distance from the Sun.', [641], custom('sampled'));
+d(13, 'Tutorial', 'oops',       'OOPS!',        '-make the springs disagree-',         'With physics on, knock half the nodes well out of place at the same time.', [641], custom('sampled'));
 d(14, 'Tutorial', 'night',      'NIGHT!',       '-put out the Sun-',                   'Switch off the zero node.',                             [354],  custom());
 d(15, 'Tutorial', 'void',       'VOID!',        '-take every prime away-',             'Deselect every prime.',                                 [],     custom());
 d(16, 'Tutorial', 'empty-set',  'EMPTY SET!',   '-then take away what was left-',      'Deselect every prime and switch off both 0 and 1.',     [86],   custom());

@@ -289,6 +289,37 @@ for (const field of ['name', 'clue', 'criteria', 'blurb', 'link', 'xp']) {
 ok('countUnlocked() ignores ledger entries with no definition',
    /function countUnlocked\(\)[\s\S]{0,400}?BY_ID\.has\(id\)/.test(SRC));
 
+// OOPS! measures DISPLACEMENT and asks for a PROPORTION. Both are the whole
+// content of the 2026-08-25 revision and both are the kind of thing a tidying
+// pass turns back into something simpler and wrong — a count reads more
+// naturally than a fraction, and |pos| is shorter than |pos - rest|.
+//
+// Source greps, like the two above, because achievements.js imports three.js
+// and cannot be loaded here. Tripwires rather than tests: they defend against
+// deletion, not against being subtly miscalculated.
+ok('OOPS! measures displacement from rest, not distance from the Sun',
+   /distanceToSquared\(_scratch\)/.test(SRC) && !/lengthSq\(\)\s*>\s*4\s*\*\s*rest2/.test(SRC));
+
+ok('OOPS! asks for a proportion of the figure, not a fixed node count',
+   /oops:\s*\(ctx\)\s*=>\s*displacedFraction\(ctx\)\s*>=\s*OOPS_FRACTION/.test(SRC));
+
+ok('...and that fraction is a fraction',
+   /const OOPS_FRACTION\s*=\s*0?\.\d+/.test(SRC));
+
+// Scaled off SPHERE_R rather than the node radius on purpose: the figure is
+// always 10 tall, while the node radius moves with N AND the node-size slider.
+// Scaling the bar with node size would make OOPS! harder exactly when fat nodes
+// make deranging the figure easier, which is backwards.
+ok('OOPS! scales its distance off the figure, not off the node size',
+   /const OOPS_DISPLACE\s*=\s*SPHERE_R\s*\*/.test(SRC));
+
+// Nothing may be displaced at the defaults, or OOPS! fires on launch. Every
+// node starts exactly at interpolatedPos(), so the count starts at zero -- this
+// pins the SIGN of the comparison, which is the one character that would
+// silently invert it.
+ok('OOPS! counts nodes ABOVE the threshold, so a tidy figure scores zero',
+   /distanceToSquared\(_scratch\)\s*>\s*min2/.test(SRC));
+
 ok('SPARTA! overrides its generated test with the range gate',
    /sparta:\s*\(\)\s*=>\s*isExactly\(\[2,\s*3,\s*5\]\)\s*&&\s*resolveN\(\)\s*===\s*300/.test(SRC));
 

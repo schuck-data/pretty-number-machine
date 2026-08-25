@@ -44,7 +44,7 @@ import {
   computeGild as gildFor, isNodeGilded as gildedByRule, isLineGilded as lineGildedByRule,
   CLUSTER_ORDER, BY_CLUSTER,
 } from './achievements-data.js';
-import { GOLDEN_ANGLE, SELECTABLE_PRIMES } from '../core/math.js';
+import { GOLDEN_ANGLE, SELECTABLE_PRIMES, SPHERE_R } from '../core/math.js';
 
 const PRIME_SET = new Set(SELECTABLE_PRIMES);
 
@@ -156,7 +156,7 @@ const CUSTOM = {
   tempted:    () => true,                // so is opening the shop
 
   ouch:       (d) => d?.n === 0,
-  oops:       (ctx) => countDisplaced(ctx) >= 20,
+  oops:       (ctx) => displacedFraction(ctx) >= OOPS_FRACTION,
   night:      () => state.showZero === false,
   void:       () => sel().length === 0,
   'empty-set': () => sel().length === 0 && state.showZero === false && state.showOne === false,
@@ -444,24 +444,55 @@ let sampleAcc = 0;
 const _scratch = new THREE.Vector3();
 const _v = new THREE.Vector3();
 
-// OOPS!. Counts nodes further than twice their rest distance from the Sun.
-// lengthSq throughout, so no square roots: comparing d^2 > 4 * r^2 is the same
-// test as d > 2r and costs two multiplications instead of two square roots.
-function countDisplaced(ctx) {
+// OOPS!. What fraction of the figure has been knocked out of place.
+//
+// REVISED 2026-08-25, and both halves of the old test were wrong in different
+// directions. It compared |pos| against 2 x |rest| — distance from the SUN,
+// not displacement from where the node belongs. A node's rest distance from
+// the origin varies hugely along the figure: at Chord the waist sits about one
+// unit out and the ends about five, so a waist node tripped on a nudge while an
+// end node had to be flung five units. It was easiest exactly where the nodes
+// are most crowded, which is the opposite of what the clue promises.
+//
+// And 20 was an ABSOLUTE COUNT. At N=30 that is 20 of 22 visible nodes, most of
+// the figure; at N=500 it is 20 of 406, which is one drag. The same number meant
+// "derange everything" and "barely try" depending on where a slider sat.
+//
+// CLUMPING WAS CONSIDERED AND REJECTED, and the measurement is worth keeping
+// because the answer is counter-intuitive. At N=500 with node size 2 the
+// PRISTINE String and Spring shapes are already 100% in contact at ~40 contacts
+// per node — they stack every node on a single line 0.02 apart with a radius of
+// 0.27. Collision then blows them apart, so a thoroughly mangled figure has
+// FEWER contacts (1.66 per node, measured on a Pixel 7) than a tidy Chord (6.1).
+// Any "how tangled is this" test built on proximity reads backwards.
+//
+// The threshold is a fraction of SPHERE_R rather than of the node radius,
+// because the figure is always 10 tall while the node radius moves with both N
+// and the node-size slider — and scaling the bar with node size would make the
+// achievement HARDER exactly when fat nodes make deranging easier.
+const OOPS_DISPLACE = SPHERE_R * 0.1;   // a tenth of the figure's height...
+const OOPS_FRACTION = 0.5;              // ...and half the nodes must be past it
+
+function displacedFraction(ctx) {
   const nodes = ctx?.nodes;
   if (!nodes || !nodes.length) return 0;
   const N = ctx.N, dim = ctx.dim;
-  let count = 0;
+  const min2 = OOPS_DISPLACE * OOPS_DISPLACE;      // squared, so no square roots
+  // nodes.length is an upper bound on `eligible`, so passing the fraction of
+  // THAT already passes it for whatever `eligible` turns out to be. Lets a
+  // plainly-qualifying figure stop the scan early at high N.
+  const enough = OOPS_FRACTION * nodes.length;
+  let count = 0, eligible = 0;
   for (const nd of nodes) {
     const mesh = nd.mesh;
-    if (!mesh) continue;
+    // The Sun and the Earth sit out. Physics does not move them, so counting
+    // them would only ever dilute the fraction.
+    if (!mesh || nd.isSun || nd.isEarth) continue;
+    eligible++;
     interpolatedPos(nd.n, N, dim, _scratch);
-    const rest2 = _scratch.lengthSq();
-    if (rest2 < 1e-6) continue;                    // the Sun, and anything at the origin
-    if (mesh.position.lengthSq() > 4 * rest2) count++;
-    if (count >= 20) return count;                 // nothing above the threshold matters
+    if (mesh.position.distanceToSquared(_scratch) > min2 && ++count >= enough) return 1;
   }
-  return count;
+  return eligible ? count / eligible : 0;
 }
 
 

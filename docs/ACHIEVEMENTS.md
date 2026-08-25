@@ -798,11 +798,12 @@ Nothing imports it and nothing should.
 npm run check
 ```
 
-Runs `tools/check.mjs` and `tools/check-achievements.mjs` — **108 assertions**
+Runs `tools/check.mjs` and `tools/check-achievements.mjs` — **113 assertions**
 over the list shape, the XP budget, trigger uniqueness, the dial guard, the
 computed families, the gilding rule, the gild-set ceiling, the ledger's merge
-contract, and from v7 the payoff rule, the reference links and the
-content-rating denylist. Dependency-free, in CI.
+contract, from v7 the payoff rule, the reference links and the content-rating
+denylist, and from 2026-08-25 the five that hold OOPS! to a displacement and a
+proportion (§13a). Dependency-free, in CI.
 
 **This is the only place the count is written**, and that is deliberate: it had
 been repeated in four documents and went stale three times in two days. Anywhere
@@ -1069,6 +1070,69 @@ Machinery is fine where it *is* the subject: FIRST! explains gilding because tha
 is what FIRST! is for, PI! describes the figure collapsing because that is the
 achievement, and GALLERY! describes the trophy room because it is about the
 trophy room.
+
+---
+
+## 13a. OOPS! re-measured — 2026-08-25
+
+Flagged by Dakota after making the figure genuinely strange on a Pixel 7 and
+finding OOPS! had unlocked long before. **It stays in Tutorial and stays
+Revealed** — the split is still 18/83 — but what it asks for changed.
+
+### What was wrong, twice over
+
+**It measured the wrong distance.** The test compared `|pos|` against
+`2 × |rest|` — how far a node is from the SUN, against how far it started from
+the Sun. That is not displacement. A node's rest distance from the origin varies
+enormously along the figure: at Chord the waist sits about one unit out and the
+ends about five, so a waist node tripped on a nudge while an end node had to be
+thrown five units. **The test was easiest exactly where the nodes are most
+crowded**, which is the opposite of what "make the springs disagree" promises.
+It now measures `|pos − rest|`, which is the thing the clue describes.
+
+**And 20 was an absolute count.** At N=30 that is 20 of 22 visible nodes — most
+of the figure, and a real feat. At N=500 it is 20 of 406 — one drag. The same
+number meant "derange everything" and "barely try" depending on where a
+slider happened to sit. It is now a **proportion: half the figure**.
+
+The bar is `SPHERE_R * 0.1`, a tenth of the figure's height. Scaled off the
+figure rather than the node radius on purpose — the figure is always 10 tall,
+while the node radius moves with both N and the node-size slider, and scaling
+the bar with node size would make OOPS! *harder* exactly when fat nodes make
+deranging easier.
+
+### Clumping was considered and rejected, and the reason is worth keeping
+
+The obvious reading of a mangled figure is "the nodes are in knots", so the
+first proposal was to count contacts. **Measured on the device, that reads
+backwards.** At N=500 with node size 2:
+
+| | touching another node | mean contacts each |
+|---|---|---|
+| pristine String / Spring | **100%** | ~40 |
+| pristine Chord | 99.8% | 6.1 |
+| the mangled figure | 73.8% | **1.66** |
+
+String and Spring stack every node on one line, 0.02 apart, at a radius of 0.27
+— impossibly interpenetrated before anyone touches anything. Collision then
+blows them apart. **A thoroughly deranged figure has FEWER contacts than a tidy
+one**, so any "how tangled is this" test built on proximity rewards sitting
+still. Recorded here because the intuition is strong and wrong, and somebody
+will have it again.
+
+### What holds it
+
+Five assertions in `check-achievements.mjs`, all source greps, because
+`achievements.js` imports three.js and cannot be loaded headlessly. They defend
+the two decisions a tidying pass would undo — a count reads more naturally than
+a fraction, and `|pos|` is shorter to write than `|pos − rest|` — plus the sign
+of the comparison, which is the one character that would invert the whole test
+and fire OOPS! on a figure at rest. Negative-tested both ways: reverting the
+proportion to a count fails one, inverting the comparison fails another.
+
+**Not yet earned on a device.** The old test could be tripped without meaning
+to; whether the new bar is reachable while still feeling like an accident is a
+judgement that needs a phone.
 
 ---
 
