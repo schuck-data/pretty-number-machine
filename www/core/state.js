@@ -200,6 +200,19 @@ export const HOT_KEYS = new Set([
   // value only ever reaches OrbitControls.dampingFactor — no geometry depends
   // on it — so a rebuild would be pure waste even if it were affordable.
   '_physicsInertia',
+  // Physics' Touch and Collision toggles. Both declare `hot: true` on the
+  // control, which routes them through update() — but update() rebuilds the
+  // scene for any key it does not find in THIS set, so declaring hot on the
+  // control and omitting it here meant every flick of either checkbox
+  // disposed and recreated every mesh in the scene. 312 ms at N=1000, on a
+  // toggle you are meant to flick back and forth.
+  //
+  // Worse than the cost: it silently wiped physics' offsets and velocities,
+  // so toggling Collision appeared to "fix" a stuck drag. It fixed nothing;
+  // it rebuilt the scene. That sent a real diagnosis down a blind alley on
+  // 2026-08-25. Neither toggle needs any geometry rebuilt — each sets one
+  // module-local boolean in physics.js and nothing else reads it.
+  '_physicsTouch', '_physicsCollision',
   // The achievements module's gilding view. Same unusual company and the same
   // reasoning as _physicsInertia above: it changes only node COLOUR, no
   // geometry depends on it, and modules/achievements.js repaints the affected

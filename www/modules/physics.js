@@ -43,6 +43,10 @@ const SPRING_STIFFNESS = 0.06;
 const DAMPING = 0.92;
 const ANCHOR_STIFFNESS = 0.015;
 const MAX_FORCE = 0.5;
+// How near home a node must already be before the settle test teleports it the
+// rest of the way. A fiftieth of a node radius, so the snap is never visible.
+// See the settling note in animate() for why a distance test is needed at all.
+const SETTLE_HOME_DIST = 0.004;
 const DRAG_MAX_N = 1000;
 
 // === MODULE STATE ===
@@ -471,10 +475,31 @@ const mod = {
     _onMove = onPointerMove;
     _onUp = onPointerUp;
 
-    // Capture phase so we fire before OrbitControls (which listens in bubble phase)
+    // Capture phase so we fire before OrbitControls (which listens in bubble phase).
+    // DOWN belongs to the canvas — a drag must START on the figure.
     rendererEl.addEventListener('pointerdown', _onDown, { capture: true });
-    rendererEl.addEventListener('pointermove', _onMove);
-    rendererEl.addEventListener('pointerup', _onUp);
+
+    // MOVE and UP belong to the WINDOW, and this is not tidiness. Bound to
+    // rendererEl they only fire while the pointer is still over the canvas, so
+    // releasing anywhere else — the transport bar, a corner control, the panel,
+    // off the edge of the screen — never reached onPointerUp and `draggedNode`
+    // stayed set FOREVER. The node is then pinned off its rest position for the
+    // life of the session, its neighbours are held at a displaced equilibrium,
+    // and the figure twitches endlessly. Nothing clears it but a reload, and a
+    // scene rebuild does not (build() does not touch draggedNode).
+    //
+    // info.js and lens.js both already bind their release to the window; physics
+    // was the only one of the three that did not. Diagnosed 2026-08-25 off a
+    // device capture: 15 of 22 nodes moving, 7 at rest, which a model of this
+    // exact figure reproduces only when the drag is left stuck.
+    //
+    // pointercancel matters as much as pointerup. The browser fires it INSTEAD
+    // of pointerup when it takes the gesture over — a scroll, a system edge
+    // swipe, the sheet grabbing the pointer — and there was no listener for it
+    // at all, so every cancelled drag leaked a stuck node.
+    window.addEventListener('pointermove', _onMove);
+    window.addEventListener('pointerup', _onUp);
+    window.addEventListener('pointercancel', _onUp);
   },
 
   build(ctx) {
@@ -600,10 +625,25 @@ const mod = {
       // Apply: rest + offset
       nd.mesh.position.set(rest.x + off.x, rest.y + off.y, rest.z + off.z);
 
+      // SETTLING. A node goes home when it has stopped moving AND is nearly
+      // home already. The second half is not redundant, and leaving it out was
+      // the amplifier that turned one stuck node into a figure-wide seizure.
+      //
+      // Near-zero NET force does not mean "at rest". It is equally true at a
+      // DISPLACED equilibrium, where the anchor spring and the springs to the
+      // neighbours cancel each other — precisely the state every neighbour of a
+      // held node settles into. Snapping on force alone teleports such a node
+      // home; its springs haul it straight back out; it balances again and is
+      // teleported again. Measured at roughly 4.7 teleports per frame across a
+      // 22-node figure with a single node held off-rest.
+      //
+      // Holding position instead is also the better behaviour on its own terms:
+      // a node balanced between its neighbours IS somewhere legitimate, and
+      // there is no reason to yank it home.
       const vMag = vel.length();
       if (vMag > 0.0005 || fMag > 0.0005) {
         anyMoving = true;
-      } else {
+      } else if (offDist <= SETTLE_HOME_DIST) {
         off.set(0, 0, 0);
         vel.set(0, 0, 0);
         nd.mesh.position.copy(rest);
