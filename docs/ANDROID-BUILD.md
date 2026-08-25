@@ -207,7 +207,11 @@ than it sounds. Do not let a stale plugin block the build.
 
 ### Billing behaviour to implement
 
-- One non-consumable product, `$0.99` tier
+- **Two** non-consumable products — `ads_addition` at `$0.99` and
+  `ads_multiplication` at `$4.95`. A third tier, `ads-exponential`, is announced
+  in the app and **has no Play product id and must never acquire one**
+  (`ADS.md` §1b). Every billing call takes a product id; `platform/index.js`
+  holds the map
 - On every launch: query purchases → entitlement. This is restore; there is no
   other restore
 - Acknowledge purchases (unacknowledged ones refund after three days — plugins
@@ -313,9 +317,15 @@ appear to `adb`. Cost fifteen minutes to work out, 2026-08-15.
 4. **PGS.** Choose/evaluate the plugin. Wire unlock, load, saved games. Verify on
    device: sign-in happens, an unlock appears in the Play Games app, uninstall →
    reinstall restores the ledger from the snapshot
-5. **Billing.** Choose the plugin. Wire purchase, restore, entitlement, fake ads,
-   purchase achievement. Verify with a licence tester: buy, restore after
-   reinstall, refund path
+5. **Billing.** Choose the plugin. Wire purchase, restore, entitlement, fake ads.
+   **No purchase achievement** — decided 2026-08-23, and it is arithmetic rather
+   than principle: UNITY! needs all-but-one and that slack is UNITY! itself, so a
+   single paid achievement paywalls the capstone permanently (`ADS.md` §2).
+   The plugin **must map its result onto `available`** — the paywall says "the
+   store is not available right now" and that has to stay true rather than
+   becoming a silent failure. Verify with a licence tester: buy both tiers,
+   check the ladder reveals one rung per purchase, restore after reinstall,
+   refund path
 6. **Assets and release build.** Icons/splash for the shell. Upload keystore
    generated locally, kept out of the repo, backed up. Play App Signing on. Build
    the AAB
@@ -329,9 +339,9 @@ Steps marked ⚠ can only be done by Dakota.
 |---|---|---|
 | 1 | ⚠ Finish org account: identity verification, phone, **second Admin user** (only recovery path) | started; check the console for its current state |
 | 2 | Create the app: **Game → Educational**, package `com.schuckdata.pnm`, free | 1 |
-| 3 | **Play Games Services**: create the game project; Cloud project + OAuth consent screen; Android credential with the **app-signing** SHA-1 (from Play Console, not the upload key); define achievements (names, descriptions, icons, XP); enable Saved Games; add tester accounts; publish the PGS configuration | 2, §5 step 6 for the SHA-1 |
+| 3 | **Play Games Services**: create the game project; Cloud project + OAuth consent screen; Android credential with the **app-signing** SHA-1 (from Play Console, not the upload key); define all **101** achievements — `node tools/achievements-table.mjs` prints them with the `initial_state` column, **18 Revealed / 83 Hidden**, and the split is near-permanent once told; enable Saved Games; add tester accounts; publish the PGS configuration | 2, §5 step 6 for the SHA-1 |
 | 4 | ⚠ Merchant/payments profile, tax interview, payout account | 1 |
-| 5 | Create the in-app product, `$0.99` | 4 |
+| 5 | Create **two** in-app products, both **non-consumable**: `ads_addition` `$0.99` and `ads_multiplication` `$4.95`. Ids are author-chosen and **permanent at first upload**; they must match `PRODUCT_IDS` in `www/platform/index.js` exactly. **Do not create one for `^`** | 4 |
 | 6 | Add licence-tester Gmail accounts | 2 |
 | 7 | Listing: feature graphic 1024×500 (does not exist), ≥2 phone screenshots, description | — |
 | 8 | Data Safety: now declares Play Games identifiers (user IDs) shared with Google Play services; payments are Play-processed; no other collection | §4 |

@@ -4,10 +4,11 @@
 things stand. `ANDROID-BUILD.md` is the plan for the work ahead; the other
 documents are history, and Appendix B says which parts of each are still true.
 
-**Written:** 2026-08-15. **Last revised: 2026-08-24**, twice — first at the end
-of a long session that added the ads layer, rebuilt the corner controls twice
-and finished the decomposition view, and then again for the **v7 achievement
-revision**. Everything below is current as of `capacitor-spike`.
+**Written:** 2026-08-15. **Last revised: 2026-08-25**, for the **ads tray and
+the ladder**. Before that, twice on 2026-08-24 — first at the end of a long
+session that added the ads layer, rebuilt the corner controls twice and finished
+the decomposition view, and then again for the **v7 achievement revision**.
+Everything below is current as of `capacitor-spike`.
 
 **The web app is feature-complete; it builds and runs as an Android app; the
 achievement layer is built and verified on a Pixel 7 and a Pixel 9; the ads
@@ -82,6 +83,36 @@ Two things worth carrying forward from that work:
 - **`achievements-data.js` is now the single source of truth.** The
   two-sources problem in `ACHIEVEMENTS.md` §10 is settled: `achievements-v6.xlsx`
   is history and the v7 spreadsheet is a record, not an input.
+
+### And then, the next day: the ads tray and the ladder (2026-08-25)
+
+The corner stack had grown to three permanent ads buttons, which is three
+buttons' worth of figure you cannot see. It is a tray behind one door now, and
+the shop grew a third tier that exists only as a promise.
+
+| Landed | Where it lives | Design record |
+|---|---|---|
+| **The `+s` door and the tray** — one control on screen; the operators live behind it | `www/index.html`, `modules/ads.js` | **`ADS.md` §1b** |
+| **The ladder** — own nothing, see `+`; own `+`, see `×`; own `×`, see `^`. One rung per purchase | `modules/ads-data.js` → `requires` | `ADS.md` §1b |
+| **A third product, `ads-exponential` — announced, not sellable.** No price, no store id, no deck; its sheet says *Coming soon* | `modules/ads-data.js`, `ads.js` | `ADS.md` §1b |
+| **`isSellable()`** — the sellable/announced split, which `check-ads.mjs` now asserts both halves of | `modules/ads-data.js` | `ADS.md` §1b |
+
+Three things worth carrying forward:
+
+- **The chain is data.** Both button gates used to hardcode a product name;
+  they read `requires` now, and `check-ads.mjs` asserts the *shape* — exactly
+  one root, everything else gated on the one before it — rather than the three
+  specific links. That is what catches a fourth product bolted on as a second
+  root, or into a cycle where its button could never appear at all.
+- **The failure to guard against is shipping `^` as buyable** — a Buy button
+  with no transaction behind it, one line of well-meant tidying away. The
+  checker asserts no price, no store id, no deck, no `data-buy`, and `openFor`
+  routing it away from the paywall.
+- **A grep proves a CSS rule was written, not that it wins.** `#corner-stack
+  button` is (0,1,0,1) and a bare `#ads-btn` is (0,1,0,0), so the tray-hiding
+  rule lost and every operator stayed on screen. It cost a device round to find
+  and `check-ads.mjs` was no help, because it greps for the text. Both rules are
+  scoped through `#corner-stack` now.
 
 **Three things were built wrong first and rebuilt.** They are written up where
 they happened, because in each case the wrong version looked right:
@@ -228,6 +259,26 @@ on work.
    `tools/achievements-table.mjs` prints all 101 with the `initial_state`
    column the console wants.
 
+### One open defect: the shimmer invites a hidden button
+
+Found 2026-08-25 while reading, **not yet fixed and not yet seen on a device.**
+`shimmerOnce()` in `ads.js` animates `#ads-btn`, which was the corner's ads
+control when the shimmer was written. The tray made `#ads-btn` the *addition
+product* button and put it behind the `+s` door, where `index.html` gives it
+`display: none` unless `body.ads-tray-open`. So the invitation now fires on an
+element the player cannot see, except in the one state — tray already open —
+where they have plainly found the shop and need no invitation.
+
+The fix is almost certainly one line, retargeting the shimmer to `#ads-menu-btn`,
+the door. Two things to decide with it: whether the schedule should also stop
+while the tray is open (a shimmering door the player is already looking through
+is noise), and whether owning `ads-addition` is still the right stop condition
+now that owning it reveals a *second* thing to buy.
+
+`check-ads.mjs` did not catch this — it asserts the two cadence constants, not
+what they animate. It is the same shape of miss as the CSS specificity bug in
+§1b: **a grep proves the code was written, not that it reaches the screen.**
+
 ### Achievements need revisiting, and it is a real design task
 
 Flagged by Dakota 2026-08-24, deliberately deferred. The app grew three
@@ -314,8 +365,9 @@ app was on hardware. `ACHIEVEMENTS.md` §8 lists the achievement-layer ones.
 | Decision | Value | Notes |
 |---|---|---|
 | Package name | `com.schuckdata.pnm` | Becomes permanent at first upload to Play. Chosen; not yet locked |
-| Distribution model | **Free**, with **two non-consumable** in-app products | Revised 2026-08-23 from a single $0.99 unlock. An app ever offered free can never become paid. Free is the deliberate choice, so the one-way door is irrelevant — but it is a door |
-| The products | **$0.99 addition ads, $4.95 multiplication ads.** Advertising AS the product: you pay to be shown commercials for mathematical operators. Neither grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever. `docs/ADS.md` |
+| Distribution model | **Free**, with **two sellable non-consumable** in-app products, and a third announced but not sold | Revised 2026-08-23 from a single $0.99 unlock. An app ever offered free can never become paid. Free is the deliberate choice, so the one-way door is irrelevant — but it is a door |
+| The products | **$0.99 addition ads, $4.95 multiplication ads**, plus **`^` announced and never sold**. Advertising AS the product: you pay to be shown commercials for mathematical operators. None grants an achievement | The satire is the point. No ad SDK, no network, no consent framework, ever. Two store ids go in the console, not three — `^` has none. `docs/ADS.md` §1b |
+| The shop's shape | **A ladder behind one door.** `+s` opens a tray; each tier is the key to the next | Revised 2026-08-25 from three permanent corner buttons. The chain is data (`requires`), not code |
 | Purchases and achievements | **Purchases grant nothing.** All 101 stay earnable by playing | Arithmetic, not principle: UNITY! needs all-but-one, and that slack is UNITY! itself, so any paid achievement paywalls the capstone |
 | Achievements | Local ledger is the source of truth; PGS is the public record and cross-device copy | Works offline and signed out. See `ANDROID-BUILD.md` §3 |
 | Achievement visibility | **Tutorial (16) publishes Revealed; the other 85 publish Hidden** | Decided 2026-08-23. Hidden criteria are what let hunters collaborate on the clues rather than read the answers. Near-permanent once the console is told. `ACHIEVEMENTS.md` §12 |
@@ -499,6 +551,8 @@ build adds and removes.
 | Anything about the decomposition view — colours, sizes, ghosts | `modules/lens.js`, the dials above `DECOMP_LINE_WIDTH` |
 | A partial parastichy curve, for anything | `core/renderer.js` → `buildRunShapes()` / `lerpRunShapes()` |
 | Ad copy, prices, palettes | `modules/ads-data.js`. **Read `ADS.md` §1a first** |
+| Which ads button appears when, or adding a fourth tier | `modules/ads-data.js` → `order` and `requires`. The chain is data; `ads.js` reads it. **`ADS.md` §1b** |
+| The tray opening, closing, or what dismisses it | `modules/ads.js` → `TRAY_OPEN`, `trayIsOpen()`. Show/hide is CSS in `index.html`, scoped through `#corner-stack` because specificity bit once |
 | How long before the ads close button works | `modules/ads.js` → `CLOSE_APPEAR_MS`, `CLOSE_ARM_MS` |
 | Label legibility on the figure | `index.html` → `.lens-label`, which carries the point-label rules in a comment |
 | The stacking order of anything | `index.html` → the run written out above `#panel`'s `z-index` |
@@ -511,19 +565,25 @@ build adds and removes.
 
 ### Files
 
+**Line counts are `www/`**, the living codebase. They were `v1/`'s until
+2026-08-25 and had drifted far enough to mislead — `renderer.js` is 1789 lines
+here and 1310 there, and `notices.js` is SMALLER because the app build dropped
+the update prompt. If a count looks wrong, run `wc -l www/core/*.js
+www/modules/*.js` rather than trusting this table.
+
 **Core** — always loaded, no crash isolation.
 
 | File | Lines | Owns |
 |---|---|---|
-| `core/renderer.js` | 1310 | Three.js scene construction, the animation loop, camera, disposal, context-loss recovery. The big one |
-| `core/panel.js` | 843 | The side panel: control construction, wiring, Reset, Dazzle. Coupled to the markup by `id` |
-| `core/math.js` | 217 | Pure functions. Primes, factorisation, colour, visibility rules. **No Three.js dependency** |
+| `core/renderer.js` | 1789 | Three.js scene construction, the animation loop, camera, disposal, context-loss recovery. The big one |
+| `core/panel.js` | 1125 | The side panel: control construction, wiring, Reset, Dazzle. Coupled to the markup by `id` |
+| `core/math.js` | 424 | Pure functions. Primes, factorisation, colour, visibility rules. **No Three.js dependency** |
 | `core/transport.js` | 214 | The play/pause/scrub bar and its speed mapping |
-| `core/positions.js` | 202 | The shape registry and `interpolatedPos()`. Owns how shapes blend |
-| `core/state.js` | 144 | `DEFAULT_CONFIG`, the mutable `state` singleton, the event bus, the module registry, reduced-motion defaults |
+| `core/positions.js` | 358 | The shape registry and `interpolatedPos()`. Owns how shapes blend |
+| `core/state.js` | 225 | `DEFAULT_CONFIG`, the mutable `state` singleton, the event bus, the module registry, reduced-motion defaults |
 | `core/debug-hud.js` | 122 | `?debug` overlay. Self-contained |
-| `core/sheet.js` | 106 | Phone bottom-sheet position and drag. Owns *where the sheet sits*, never what is in it |
-| `core/notices.js` | 266 | Update prompt and fatal error boundary. **Imports nothing** — it must work when the rest has failed |
+| `core/sheet.js` | 131 | Phone bottom-sheet position and drag. Owns *where the sheet sits*, never what is in it |
+| `core/notices.js` | 121 | The fatal error boundary. **Imports nothing** — it must work when the rest has failed. The update prompt is GONE in the app build: no service worker, and Play announces its own updates |
 
 **Feature modules** — dynamically imported, crash-isolated. One that throws is
 disabled and the app carries on. The achievements and fake-ads modules will be
@@ -531,14 +591,15 @@ two more of these.
 
 | File | Lines | Owns |
 |---|---|---|
-| `modules/physics.js` | 580 | Drag and spring simulation. The only module that **writes** node positions |
-| `modules/info.js` | 390 | Tap/right-click a node for its maths. Owns the tooltip |
-| `modules/lens.js` | 305 | The classroom lens: chalkboard layer, projected HTML labels, tap-for-info |
-| `modules/achievements.js` | ~800 | The ledger, predicates, panel section, toast, sound, gilding paint. See `ACHIEVEMENTS.md` |
-| `modules/ads.js` | ~430 | Entitlement, paywall, slideshow, the multiplication button, the intrusion banner, the shimmer schedule. See `ADS.md` |
-| `modules/ads-data.js` | ~250 | The two products, the palettes and every word of the slide copy. **No Three.js, no DOM** — checkable headlessly, which is the point, because copy is what rendering tests cannot judge |
-| `modules/achievements-data.js` | ~430 | The number sets, definitions and gilding rule. **No Three.js** — checkable headlessly |
-| `platform/index.js` | ~250 | The native adapter and the store-id map. Not a module; imported by achievements.js |
+| `modules/physics.js` | 686 | Drag and spring simulation. The only module that **writes** node positions |
+| `modules/info.js` | 424 | Tap/right-click a node for its maths. Owns the tooltip |
+| `modules/lens.js` | 828 | The classroom lens: chalkboard layer, projected HTML labels, tap-for-info, **and the decomposition view** |
+| `modules/achievements.js` | 1655 | The ledger, predicates, panel section, toast, sound, gilding paint. See `ACHIEVEMENTS.md` |
+| `modules/ads.js` | 738 | Entitlement, paywall, slideshow, **the `+s` door and the tray**, the operator buttons and their `requires` gates, the announced tier's sheet, the intrusion banner, the shimmer schedule. See `ADS.md` |
+| `modules/ads-data.js` | 345 | The three products (two sellable, one announced), the `requires` chain, `isSellable()`, the palettes and every word of the slide copy. **No Three.js, no DOM** — checkable headlessly, which is the point, because copy is what rendering tests cannot judge |
+| `modules/achievements-data.js` | 963 | The number sets, definitions, gilding rule and reference links. **No Three.js** — checkable headlessly |
+| `modules/achievements-ledger.js` | 120 | The ledger and its merge contract, lifted out on 2026-08-24 **so it can be tested at all** — it is the only part of the achievement layer that loads headlessly |
+| `platform/index.js` | 326 | The native adapter and the store-id map. Not a module; imported by achievements.js |
 
 A module is an object with any of `init(ctx)`, `beforeBuild(ctx)`, `build(ctx)`,
 `animate(ctx)`, `destroy()`, plus `enabled` and an optional `controls` array
@@ -643,7 +704,7 @@ parse check of every module and a run of the achievement table exporter.
 |---|---|
 | `tools/check.mjs` | Precache paths exist, `CACHE_VERSION` matches `CACHE_PREFIX`, the UI version label agrees, no hardcoded frame step, prime colours reach 4.5:1 |
 | `tools/check-achievements.mjs` | The number sets, the gilding and payoff rules, the ledger's merge contract, no two achievements declaring the same selection, nothing true at the defaults, the published Revealed/Hidden split, and the reference links including a content-rating denylist. Count lives in `ACHIEVEMENTS.md` §11, in one place only |
-| `tools/check-ads.mjs` | Every deck whole, prices agreeing with themselves, **the pitch not giving the joke away**, no development bypass that entitles without a purchase, the two shimmer cadences |
+| `tools/check-ads.mjs` | Every deck whole, prices agreeing with themselves, **the pitch not giving the joke away**, no development bypass that entitles without a purchase, the two shimmer cadences, the ladder's shape (one root, no cycles) and the announced tier staying unsellable |
 
 Several of those are **source greps rather than behavioural tests**, and that
 is deliberate rather than lazy: `achievements.js`, `ads.js` and `lens.js` all
@@ -668,7 +729,7 @@ by driving a real browser by hand, and two real bugs were found that way.
 | Document | Read it for | Status |
 |---|---|---|
 | `ANDROID-BUILD.md` | **The plan.** Repo changes, web-side design, native plugins, build and console sequences, open decisions | Current. §5 steps 1–3 done; **4 (PGS) and 5 (billing) not started**. §9 is the trap list and is worth reading first |
-| `ADS.md` | **The ads layer.** The register the copy must hold, the two products, the reveal the paywall withholds, the entitlement rule, and the corner-controls collision history | Current, 2026-08-24 |
+| `ADS.md` | **The ads layer.** The register the copy must hold, the products, the reveal the paywall withholds, the entitlement rule, the corner-controls collision history, and **§1b for the door, the tray, the ladder and the announced tier** | Current, 2026-08-25 |
 | `ACHIEVEMENTS.md` | **The achievement layer.** The gilding rule, the payoff rule (§2a), clue craft, the accordion, what an earned row shows (§13), the traps (§8), and what is still open (§14) | Current, 2026-08-24. Describes **v7 as built** |
 | `CODE-NOTES.md` | The two comment layers in `www/` — `DEV:` for implementation, `EDU:` for the mathematics — and where the mathematics actually lives | Current, 2026-08-15 |
 | `achievements-v6.xlsx` | The v2 list, as it stood before v7 | **History.** `achievements-data.js` is authoritative now — see `ACHIEVEMENTS.md` §10. For the current list, run `tools/achievements-table.mjs` |
