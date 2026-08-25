@@ -601,6 +601,9 @@ build adds and removes.
 | Factorisation, colour derivation, which nodes are visible | `core/math.js` |
 | Anything about the decomposition view — colours, sizes, ghosts | `modules/lens.js`, the dials above `DECOMP_LINE_WIDTH` |
 | A partial parastichy curve, for anything | `core/renderer.js` → `buildRunShapes()` / `lerpRunShapes()` |
+| A colour palette, or a background | `core/math.js` → `PALETTES` and `BACKGROUNDS`. They live in the one module that imports nothing so `tools/check.mjs` can load them headlessly and measure them |
+| Whether a palette may claim to be colourblind-safe | `core/math.js` → `SAFE_PALETTES`, held to ≥10 dE by `tools/cvd.mjs`, which simulates protanopia, deuteranopia and tritanopia. okabe-ito sits at 10.9, cyberpunk at 13.8 |
+| How a dropdown looks, or what its options preview | `core/dropdown.js` |
 | Ad copy, prices, palettes | `modules/ads-data.js`. **Read `ADS.md` §1a first** |
 | Which ads button appears when, or adding a fourth tier | `modules/ads-data.js` → `order` and `requires`. The chain is data; `ads.js` reads it. **`ADS.md` §1b** |
 | The tray opening, closing, or what dismisses it | `modules/ads.js` → `TRAY_OPEN`, `trayIsOpen()`. Show/hide is CSS in `index.html`, scoped through `#corner-stack` because specificity bit once |
@@ -634,6 +637,7 @@ www/modules/*.js` rather than trusting this table.
 | `core/state.js` | 238 | `DEFAULT_CONFIG`, the mutable `state` singleton, the event bus, the module registry, reduced-motion defaults |
 | `core/debug-hud.js` | 122 | `?debug` overlay. Self-contained |
 | `core/sheet.js` | 131 | Phone bottom-sheet position and drag. Owns *where the sheet sits*, never what is in it |
+| `core/dropdown.js` | 154 | The dropdown the app draws itself. A native select's POPUP belongs to the OS and an `<option>` holds only text, so colour schemes and backgrounds could not SHOW their colours. Enhances a real `<select>`, which stays the source of truth |
 | `core/notices.js` | 121 | The fatal error boundary. **Imports nothing** — it must work when the rest has failed. The update prompt is GONE in the app build: no service worker, and Play announces its own updates |
 
 **Feature modules** — dynamically imported, crash-isolated. One that throws is

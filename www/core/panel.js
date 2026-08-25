@@ -5,6 +5,7 @@ import {
 } from './state.js';
 import { FIRST_PRIMES, SELECTABLE_PRIMES, getPrimeRGB, GOLDEN_ANGLE, ensureContrast, relativeLuminance } from './math.js';
 import { getShapes, getMaxDim, getMinDim } from './positions.js';
+import { enhanceSelect, syncDropdowns } from './dropdown.js';
 import {
   update, resolveN, getInfo, buildScene, resetMorph, setCameraTopDown, resetCamera,
   backgroundCSS,
@@ -621,21 +622,22 @@ export function initPanel() {
   // because both keys are in HOT_KEYS. Bisected on a Pixel 7: with a direct
   // write the viewport stayed black and only a forced rebuild moved it.
   const bgRow = $('background-color-row');
-  // The swatch reads backgroundCSS() rather than repeating the colour table, so
-  // a background added to BACKGROUNDS shows up here with no second edit.
-  const syncBgRow = () => {
-    bgRow.hidden = $('background-style').value !== 'custom';
-    $('background-swatch').style.backgroundColor = backgroundCSS();
-  };
+  const syncBgRow = () => { bgRow.hidden = $('background-style').value !== 'custom'; };
   $('background-style').addEventListener('change', () => {
     update({ backgroundStyle: $('background-style').value });
     syncBgRow();
   });
   $('background-color').addEventListener('input', () => {
     update({ backgroundColor: $('background-color').value });
-    $('background-swatch').style.backgroundColor = backgroundCSS();
+    syncDropdowns();          // the Custom row's chip shows the chosen colour
   });
   syncBgRow();
+
+  // Draw both colour dropdowns ourselves. Done LAST, so every native listener
+  // above is already registered: choosing an option dispatches the real
+  // `change` event and everything above runs exactly as it would have.
+  enhanceSelect($('color-scheme'), 'scheme');
+  enhanceSelect($('background-style'), 'background', () => $('background-color').value);
 
   // Line width slider (hot — no rebuild needed)
   $('line-width').addEventListener('input', () => {
@@ -864,7 +866,10 @@ export function initPanel() {
     $('background-style').value = 'black';
     $('background-color').value = '#0c0c0f';
     $('background-color-row').hidden = true;
-    $('background-swatch').style.backgroundColor = '#0c0c0f';
+    // Reset assigns to .value directly and dispatches nothing, so the drawn
+    // faces would keep showing the old choice. Same class of bug as the one
+    // the trap list already records: "Reset does not reset everything".
+    syncDropdowns();
     $('auto-n').checked = true;
     $('n-input').disabled = true;
     // Clear the out-of-range slider state too, or resetting from N > 2500

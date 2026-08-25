@@ -274,6 +274,22 @@ for (const build of BUILDS) {
   else
     fail('app', `default colour scheme disagrees: state='${defScheme}' markup='${markupDefault}' reset='${resetScheme}'`);
 
+  // A palette that CLAIMS to be colourblind-safe is held to a measurement.
+  // tools/cvd.mjs simulates protanopia, deuteranopia and tritanopia and scores
+  // by the CLOSEST pair, which is what a player actually has to tell apart.
+  // The floor is 10 dE: okabe-ito, the published reference, sits at 10.9.
+  const CVD = await import(new URL('./cvd.mjs', import.meta.url));
+  const SAFE_FLOOR = 10;
+  for (const name of M.SAFE_PALETTES) {
+    const pal = M.PALETTES[name];
+    if (!pal) { fail('app', `SAFE_PALETTES names '${name}' but PALETTES has no such entry`); continue; }
+    const r = CVD.worstPairwise(pal.map(col => col.map(v => Math.round(v * 255))));
+    if (r.worst < SAFE_FLOOR)
+      fail('app', `palette '${name}' claims colourblind-safe but its closest pair is ${r.worst.toFixed(1)} dE (${r.where}), under the ${SAFE_FLOOR} floor`);
+    else
+      pass('app', `palette '${name}' stays ${r.worst.toFixed(1)} dE apart under every simulated deficiency`);
+  }
+
   // Reset writes ~40 DOM values by hand and forgetting one has been a bug
   // twice. These two are the newest and therefore the likeliest to be missed.
   const panel = readFileSync(new URL('../www/core/panel.js', import.meta.url), 'utf8');

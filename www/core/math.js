@@ -237,8 +237,14 @@ const OKABE_ITO = [
   [0.000, 0.447, 0.698],  // blue
   [0.835, 0.369, 0.000],  // vermillion
   [0.800, 0.475, 0.655],  // reddish purple
-  [0.600, 0.600, 0.600],  // grey, standing in for the omitted black
 ];
+// SEVEN, not eight. Black is omitted because this app draws on a dark ground,
+// and the grey that stood in for it was measured on 2026-08-25 and dropped: it
+// collided with reddish purple under deuteranopia at 5.7 dE, halving the
+// palette's worst pair from 10.9. A brute-force search over the whole RGB cube
+// for a better eighth entry found nothing above 10.9 either -- the seven
+// authentic colours are already using the space. So the palette cycles at seven
+// rather than carrying a filler that makes it worse.
 
 const WARM = [
   [1.00, 0.15, 0.10], [1.00, 0.55, 0.00], [1.00, 0.84, 0.00], [0.85, 0.20, 0.40],
@@ -252,10 +258,21 @@ const COOL = [
   [0.60, 0.70, 1.00],
 ];
 
+// Rebuilt 2026-08-25: the first attempt was not actually pastel. Its entries sat
+// around L* 70 with full saturation in a channel -- vivid light colours, which
+// is a different thing. These are generated at HSL S=0.58 L=0.80 on nine spread
+// hues, which puts every one at L* 78-90.
+//
+// PASTEL IS A MOOD, NOT A SAFE PALETTE, and the arithmetic says so: pale colours
+// sit close together, so its worst pairwise separation under simulated
+// colour-vision deficiency is about 1 dE against okabe-ito's 11. That is not a
+// defect to fix -- desaturating IS the request -- but it is why the checker
+// holds only the palettes that CLAIM safety to a threshold, and why a player
+// who needs to tell nine primes apart wants a different one.
 const PASTEL = [
-  [1.00, 0.65, 0.68], [0.70, 0.90, 0.72], [0.68, 0.78, 1.00], [1.00, 0.92, 0.65],
-  [0.88, 0.72, 1.00], [0.65, 0.94, 0.94], [1.00, 0.80, 0.62], [0.80, 0.88, 0.75],
-  [0.92, 0.75, 0.82],
+  [0.916, 0.684, 0.703], [0.916, 0.808, 0.684], [0.916, 0.908, 0.684],
+  [0.684, 0.916, 0.684], [0.684, 0.877, 0.916], [0.684, 0.754, 0.916],
+  [0.819, 0.684, 0.916], [0.916, 0.684, 0.858], [0.916, 0.742, 0.684],
 ];
 
 const NEON = [
@@ -264,10 +281,36 @@ const NEON = [
   [1.00, 0.00, 0.90],
 ];
 
+// CYBERPUNK, and colourblind-safe -- which are not natural allies, so this one
+// was SELECTED BY MEASUREMENT rather than by eye. tools/cvd.mjs simulates
+// protanopia, deuteranopia and tritanopia (Vienot-Brettel-Mollon) and scores a
+// palette by its CLOSEST pair, because the closest pair is what a player
+// actually has to tell apart. A maximin search over a pool of neon candidates
+// picked these, with electric cyan and hot magenta PINNED -- left free, the
+// search dropped cyan entirely and the result stopped looking like the brief.
+//
+// Worst pairwise separation 13.8 dE across all three deficiencies, against
+// okabe-ito's 11.0. The checker holds it there.
+const CYBERPUNK = [
+  [0.000, 0.898, 1.000],  // electric cyan
+  [1.000, 0.000, 0.784],  // hot magenta
+  [0.745, 1.000, 0.000],  // acid lime
+  [0.667, 0.431, 1.000],  // ultraviolet
+  [0.471, 0.235, 0.863],  // deep violet
+  [1.000, 0.824, 0.471],  // sodium
+  [0.902, 0.118, 0.235],  // blood red
+  [1.000, 0.549, 0.863],  // bubblegum
+];
+
 // Every named palette, by the value its <select> option carries.
 export const PALETTES = {
-  'okabe-ito': OKABE_ITO, warm: WARM, cool: COOL, pastel: PASTEL, neon: NEON,
+  'okabe-ito': OKABE_ITO, cyberpunk: CYBERPUNK,
+  warm: WARM, cool: COOL, pastel: PASTEL, neon: NEON,
 };
+
+// The palettes that claim to stay distinguishable under colour-vision
+// deficiency, and are held to it by tools/check.mjs. Everything else is a mood.
+export const SAFE_PALETTES = ['okabe-ito', 'cyberpunk'];
 
 // The scene backgrounds, as [r,g,b] 0-255 so contrastRatio() can take them
 // directly. 'custom' is not here: it reads state.backgroundColor instead.
