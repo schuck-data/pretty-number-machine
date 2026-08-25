@@ -208,6 +208,81 @@ export function ensureContrast(rgb, bg = [12, 12, 15], target = 4.5) {
   return out;
 }
 
+// ============================================================
+// PALETTES AND BACKGROUNDS
+// ============================================================
+// DEV: kept HERE, in the one module that imports nothing, so the checker can
+// load them headlessly and test every scheme against every background. A
+// palette living in index.html or renderer.js could not be checked at all.
+//
+// EDU: a caution that applies to every palette below, and is a property of the
+// scheme rather than a flaw in any one of them. nodeColor() ADDS the colours of
+// a number's prime factors together and clamps. That is exact and beautiful for
+// additive RGB -- 2 red plus 3 green really is 6 yellow -- but any palette
+// blends toward white as more primes are selected, because adding more light is
+// the only thing addition can do. Palettes with several bright colours go pale
+// faster than dark ones. Selecting fewer primes is the cure.
+//
+// Ordering matters: index 0 goes to the FIRST selected prime, so the earliest
+// entries should be the most distinguishable from one another.
+
+// Okabe-Ito, the standard qualitative palette designed to stay distinguishable
+// under the common colour-vision deficiencies. Black is deliberately omitted --
+// this app draws on a dark ground, so it would be a hole rather than a colour.
+const OKABE_ITO = [
+  [0.902, 0.624, 0.000],  // orange
+  [0.337, 0.706, 0.914],  // sky blue
+  [0.000, 0.620, 0.451],  // bluish green
+  [0.941, 0.894, 0.259],  // yellow
+  [0.000, 0.447, 0.698],  // blue
+  [0.835, 0.369, 0.000],  // vermillion
+  [0.800, 0.475, 0.655],  // reddish purple
+  [0.600, 0.600, 0.600],  // grey, standing in for the omitted black
+];
+
+const WARM = [
+  [1.00, 0.15, 0.10], [1.00, 0.55, 0.00], [1.00, 0.84, 0.00], [0.85, 0.20, 0.40],
+  [1.00, 0.40, 0.25], [0.95, 0.70, 0.20], [0.75, 0.10, 0.20], [1.00, 0.30, 0.60],
+  [0.90, 0.60, 0.40],
+];
+
+const COOL = [
+  [0.20, 0.55, 1.00], [0.00, 0.85, 0.80], [0.45, 0.35, 0.95], [0.10, 0.75, 0.55],
+  [0.35, 0.85, 1.00], [0.55, 0.45, 0.85], [0.00, 0.60, 0.75], [0.30, 0.95, 0.70],
+  [0.60, 0.70, 1.00],
+];
+
+const PASTEL = [
+  [1.00, 0.65, 0.68], [0.70, 0.90, 0.72], [0.68, 0.78, 1.00], [1.00, 0.92, 0.65],
+  [0.88, 0.72, 1.00], [0.65, 0.94, 0.94], [1.00, 0.80, 0.62], [0.80, 0.88, 0.75],
+  [0.92, 0.75, 0.82],
+];
+
+const NEON = [
+  [1.00, 0.00, 0.45], [0.00, 1.00, 0.45], [0.00, 0.75, 1.00], [1.00, 0.95, 0.00],
+  [0.85, 0.00, 1.00], [0.00, 1.00, 0.90], [1.00, 0.45, 0.00], [0.55, 1.00, 0.00],
+  [1.00, 0.00, 0.90],
+];
+
+// Every named palette, by the value its <select> option carries.
+export const PALETTES = {
+  'okabe-ito': OKABE_ITO, warm: WARM, cool: COOL, pastel: PASTEL, neon: NEON,
+};
+
+// The scene backgrounds, as [r,g,b] 0-255 so contrastRatio() can take them
+// directly. 'custom' is not here: it reads state.backgroundColor instead.
+export const BACKGROUNDS = {
+  black:  [12, 12, 15],
+  ink:    [0, 0, 0],          // true black, for OLED
+  slate:  [32, 36, 42],
+  navy:   [10, 18, 38],
+  plum:   [28, 16, 32],
+  forest: [12, 26, 20],
+  paper:  [245, 245, 240],
+  cream:  [246, 238, 220],
+  white:  [255, 255, 255],
+};
+
 export function getPrimeRGB(selectedPrimes, colorScheme) {
   const colors = {};
   if (colorScheme === 'none') {
@@ -221,6 +296,9 @@ export function getPrimeRGB(selectedPrimes, colorScheme) {
       const c = channels[i % channels.length];
       colors[p] = [c[0] * 0.9, c[1] * 0.9, c[2] * 0.9];
     });
+  } else if (PALETTES[colorScheme]) {
+    const pal = PALETTES[colorScheme];
+    selectedPrimes.forEach((p, i) => { colors[p] = [...pal[i % pal.length]]; });
   } else if (colorScheme === 'spectrum' || colorScheme === 'spectrum-rev') {
     const rev = colorScheme === 'spectrum-rev';
     selectedPrimes.forEach((p, i) => {

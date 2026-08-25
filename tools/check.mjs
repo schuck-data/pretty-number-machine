@@ -214,6 +214,59 @@ for (const build of BUILDS) {
   }
 }
 
+// --- the colour controls and the code behind them must agree ------------
+// Both selects carry VALUES that the code looks up: background-style keys into
+// BACKGROUNDS, and the palette group keys into PALETTES. A value present in one
+// and missing from the other fails SILENTLY -- getPrimeRGB falls through to the
+// hue wheel and backgroundCSS() falls back to the default colour, so the
+// control appears to do nothing rather than to be broken. Added 2026-08-25 with
+// the expanded palettes, because that failure is indistinguishable from a typo.
+{
+  const M = await import(new URL('../www/core/math.js', import.meta.url));
+  const html = readFileSync(new URL('../www/index.html', import.meta.url), 'utf8');
+  const optionsOf = (id) => {
+    const sel = html.split(`id="${id}"`)[1];
+    if (!sel) return null;
+    const body = sel.slice(0, sel.indexOf('</select>'));
+    return [...body.matchAll(/<option value="([^"]+)"/g)].map(m => m[1]);
+  };
+
+  const bgOpts = optionsOf('background-style');
+  if (!bgOpts) fail('app', 'background-style select not found in index.html');
+  else {
+    const missing = bgOpts.filter(v => v !== 'custom' && !M.BACKGROUNDS[v]);
+    if (missing.length) fail('app', `background options with no BACKGROUNDS entry: ${missing.join(', ')}`);
+    else pass('app', `all ${bgOpts.length} background options resolve (${bgOpts.length - 1} named + custom)`);
+    if (!bgOpts.includes('custom')) fail('app', 'the custom background option went missing');
+  }
+
+  const csOpts = optionsOf('color-scheme');
+  const builtin = ['rgb', 'spectrum', 'spectrum-rev', 'none'];
+  if (!csOpts) fail('app', 'color-scheme select not found in index.html');
+  else {
+    const missing = csOpts.filter(v => !builtin.includes(v) && !M.PALETTES[v]);
+    if (missing.length) fail('app', `colour schemes with no PALETTES entry: ${missing.join(', ')}`);
+    else pass('app', `all ${csOpts.length} colour schemes resolve`);
+  }
+
+  // Every palette must actually differ from the next one along, or two options
+  // silently do the same thing.
+  let dupes = 0;
+  for (const [name, pal] of Object.entries(M.PALETTES)) {
+    const seen = new Set(pal.map(c => c.join(',')));
+    if (seen.size !== pal.length) { fail('app', `palette '${name}' repeats a colour`); dupes++; }
+  }
+  if (!dupes) pass('app', `${Object.keys(M.PALETTES).length} palettes, none repeating a colour within itself`);
+
+  // Reset writes ~40 DOM values by hand and forgetting one has been a bug
+  // twice. These two are the newest and therefore the likeliest to be missed.
+  const panel = readFileSync(new URL('../www/core/panel.js', import.meta.url), 'utf8');
+  const resets = /\$\('background-color'\)\.value\s*=/.test(panel)
+              && /\$\('background-style'\)\.value\s*=/.test(panel);
+  resets ? pass('app', 'Reset restores both background controls')
+         : fail('app', 'Reset does not restore the background controls');
+}
+
 // --- contrast: every prime button must be readable ----------------------
 // Section 508 adopts WCAG AA, so text needs 4.5:1. The prime grid derives its
 // colours from the palette, and blue is the one that fails on its own — it

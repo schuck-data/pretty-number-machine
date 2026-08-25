@@ -37,6 +37,7 @@ function scheduleRebuild() {
     state.N = $('auto-n').checked ? null : Math.max(1, +$('n-input').value || 1);
     state.colorScheme = $('color-scheme').value;
     state.backgroundStyle = $('background-style').value;
+    state.backgroundColor = $('background-color').value;
     state.nodeSize = +$('node-size').value;
     state.showNodes = $('show-nodes').checked;
     state.showAllIntegers = $('show-all-integers').checked;
@@ -597,13 +598,37 @@ export function initPanel() {
 
   // Toggles that trigger rebuild
   for (const id of [
-    'color-scheme', 'background-style',
+    'color-scheme',
     'show-nodes', 'show-all-integers', 'show-zero', 'show-one',
     'show-curves',
     'prime-glow', 'zero-glow', 'pulse',
   ]) {
     $(id).addEventListener('change', () => { updateN(); scheduleRebuild(); });
   }
+
+  // BACKGROUND IS HOT. It is a CSS property on #viewport and no geometry
+  // depends on it, so these sync state and stop -- renderer.js notices within a
+  // frame. Rebuilding here would dispose every mesh in the scene to repaint one
+  // rectangle, and on the colour picker it would do so on every pixel of a drag.
+  //
+  // GO THROUGH update(), like every other hot control in this file. The
+  // assignments that copy this panel into `state` live inside
+  // scheduleRebuild(), so a control that does not rebuild is never copied --
+  // but writing `state.x =` here directly did NOT reach the renderer either,
+  // and update() is what the working hot controls (line width, rotation, drift)
+  // all use. It sets the value, emits stateChange, and skips buildScene()
+  // because both keys are in HOT_KEYS. Bisected on a Pixel 7: with a direct
+  // write the viewport stayed black and only a forced rebuild moved it.
+  const bgRow = $('background-color-row');
+  const syncBgRow = () => { bgRow.hidden = $('background-style').value !== 'custom'; };
+  $('background-style').addEventListener('change', () => {
+    update({ backgroundStyle: $('background-style').value });
+    syncBgRow();
+  });
+  $('background-color').addEventListener('input', () => {
+    update({ backgroundColor: $('background-color').value });
+  });
+  syncBgRow();
 
   // Line width slider (hot — no rebuild needed)
   $('line-width').addEventListener('input', () => {
@@ -830,6 +855,8 @@ export function initPanel() {
     });
     $('color-scheme').value = 'rgb';
     $('background-style').value = 'black';
+    $('background-color').value = '#0c0c0f';
+    $('background-color-row').hidden = true;
     $('auto-n').checked = true;
     $('n-input').disabled = true;
     // Clear the out-of-range slider state too, or resetting from N > 2500

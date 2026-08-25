@@ -1865,14 +1865,45 @@
       <option value="rgb">Additive RGB</option>
       <option value="spectrum">Spectrum (red &rarr; blue)</option>
       <option value="spectrum-rev">Spectrum (blue &rarr; red)</option>
+      <optgroup label="Palettes">
+        <option value="okabe-ito">Colorblind-safe</option>
+        <option value="warm">Warm</option>
+        <option value="cool">Cool</option>
+        <option value="pastel">Pastel</option>
+        <option value="neon">Neon</option>
+      </optgroup>
       <option value="none">Colorless</option>
     </select>
 
     <label>Background</label>
+    <!-- The values are keys of BACKGROUNDS in core/math.js, and check.mjs
+         asserts the two agree. A background named here and missing there falls
+         back to the default colour silently, which looks like the control does
+         nothing rather than like a typo. `custom` is the exception and is
+         deliberately absent from that table: it reads backgroundColor. -->
     <select id="background-style">
-      <option value="black">Black</option>
-      <option value="white">White</option>
+      <optgroup label="Dark">
+        <option value="black">Black</option>
+        <option value="ink">Ink (true black)</option>
+        <option value="slate">Slate</option>
+        <option value="navy">Navy</option>
+        <option value="plum">Plum</option>
+        <option value="forest">Forest</option>
+      </optgroup>
+      <optgroup label="Light">
+        <option value="paper">Paper</option>
+        <option value="cream">Cream</option>
+        <option value="white">White</option>
+      </optgroup>
+      <option value="custom">Custom&hellip;</option>
     </select>
+
+    <!-- Shown only when Custom is chosen. backgroundColor is a HOT key, so this
+         repaints on every input event without rebuilding the scene. -->
+    <div id="background-color-row" class="control-row" hidden>
+      <div class="control-label">Custom color</div>
+      <div class="control-line"><input type="color" id="background-color" value="#0c0c0f"></div>
+    </div>
   </div>
 
   <h2 class="section-header">Effects</h2>
@@ -2033,7 +2064,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.24 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.29 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll

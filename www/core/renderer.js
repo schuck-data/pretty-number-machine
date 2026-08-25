@@ -5,12 +5,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
-import { state, emit, getModules, HOT_KEYS, DEFAULT_CONFIG } from './state.js';
+import { state, emit, on, getModules, HOT_KEYS, DEFAULT_CONFIG } from './state.js';
 import { initDebugHud, sampleDebugHud } from './debug-hud.js';
 import {
   getVisibleNodes, getPrimeRGB, nodeColor, shouldShowNode,
   isPrimeNumber, primeFactorsOf, hueToRGB, SPHERE_R, SPACING_2D,
   SAMPLES_PER_SEG, buildParastichy, buildLineArcs, catmullRom,
+  BACKGROUNDS,
 } from './math.js';
 import {
   interpolatedPos, getMaxDim, getMinDim, getShapes,
@@ -585,11 +586,14 @@ export function buildScene() {
   // transparent one. Non-lens areas look identical because #viewport carries
   // the same colour the scene used to clear to.
   const scene = new THREE.Scene();
-  const bgColor = new THREE.Color(
-    state.backgroundStyle === 'white' ? 0xf5f5f0 : state.sceneBackground
-  );
   scene.background = null;
-  if (viewport) viewport.style.backgroundColor = `#${bgColor.getHexString()}`;
+  applyBackground();
+  // The scene clears to nothing and #viewport carries the colour, but the
+  // distance fade still has to know what it is fading TOWARD or far nodes
+  // dissolve into the wrong colour. Derived from the same helper the viewport
+  // uses, so the two cannot disagree -- they did briefly, and buildScene threw
+  // `bgColor is not defined` straight into the error boundary.
+  const bgColor = new THREE.Color(backgroundCSS());
   threeScene = scene;
 
   // Restore camera
@@ -1013,6 +1017,7 @@ export function buildScene() {
     // invalidation this can raise. Reversing the two would put every angle
     // change one frame late — invisible at 60fps and maddening to debug at 12.
     stepDivergence(dt);
+    watchBackground();
 
     threeControls.autoRotate = state.autoRotate && !state.paused;
     threeControls.autoRotateSpeed = state.driftSpeed * 0.8;
@@ -1754,6 +1759,46 @@ export function resetMorph() {
   initialDwellPending = false;
   morphActive = true;
   lastDim = -1;          // force a position recompute on the next frame
+}
+
+// ============================================================
+// BACKGROUND
+// ============================================================
+// The scene clears to nothing and #viewport carries the colour instead (see the
+// note above buildScene), so changing the background is a CSS write and touches
+// no geometry at all. That is what lets backgroundStyle and backgroundColor sit
+// in HOT_KEYS: routing them through buildScene() would dispose and recreate
+// every mesh in the scene to change one CSS property -- 312 ms at N=1000 by
+// measurement -- and a colour PICKER fires on every pixel of a drag, so cold
+// would have made it unusable rather than merely wasteful.
+//
+// Watched per frame rather than driven by an event, for the reason given above
+// HOT_KEYS: panel.js writes state directly and emits nothing, so polling is the
+// only signal that cannot be forgotten by a future writer. Two string compares.
+export function backgroundCSS() {
+  if (state.backgroundStyle === 'custom') return state.backgroundColor || '#0c0c0f';
+  const bg = BACKGROUNDS[state.backgroundStyle];
+  if (!bg) return '#' + new THREE.Color(state.sceneBackground).getHexString();
+  return '#' + bg.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function applyBackground() {
+  if (viewport) viewport.style.backgroundColor = backgroundCSS();
+}
+
+// Event-driven for anything that goes through update(), which is every control
+// that should. The per-frame watch below stays as a backstop for state written
+// directly -- panel.js does that in scheduleRebuild() and emits nothing.
+on('stateChange', ({ key }) => {
+  if (key === 'backgroundStyle' || key === 'backgroundColor') applyBackground();
+});
+
+let lastBgStyle = null, lastBgColor = null;
+function watchBackground() {
+  if (state.backgroundStyle === lastBgStyle && state.backgroundColor === lastBgColor) return;
+  lastBgStyle = state.backgroundStyle;
+  lastBgColor = state.backgroundColor;
+  applyBackground();
 }
 
 // Put the camera back where it starts.

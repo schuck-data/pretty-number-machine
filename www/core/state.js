@@ -139,6 +139,10 @@ export const DEFAULT_CONFIG = {
   autoRotate: true,
   driftSpeed: 0.3,
   sceneBackground: 0x0c0c0f,
+  // Only read when backgroundStyle === 'custom'. Kept as a CSS hex string
+  // because that is what the <input type=color> gives and what the viewport
+  // wants -- converting twice would be the only reason to store a number.
+  backgroundColor: '#0c0c0f',
   backgroundStyle: 'black',
   onStateChange: null,
 };
@@ -231,6 +235,11 @@ export const HOT_KEYS = new Set([
   // about the geometry changes, so rebuilding the scene on it would be an
   // expensive no-op.
   'paused',
+  // The scene background. It is a CSS property on #viewport -- the scene itself
+  // clears to nothing -- so no geometry depends on either of these. renderer.js
+  // watches them per frame and repaints. Cold, a colour PICKER would have run
+  // buildScene() on every pixel of a drag.
+  'backgroundStyle', 'backgroundColor',
 ]);
 
 // `paused` and `lensOpen` are runtime flags rather than saved config: both are
