@@ -236,6 +236,34 @@
 
   /* A select with a colour swatch beside it. The swatch is the only way to see
      what a named background actually IS without selecting it and looking. */
+  /* The custom-background picker. Each slider's TRACK is painted with what it
+     controls -- the hue rail is a spectrum, the saturation rail runs grey to
+     full colour at the current hue, the lightness rail black to colour to
+     white -- so the control shows its own effect before you move it. Repainted
+     from JS whenever any of the three changes. */
+  .hsl-head { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; }
+  .hsl-title { flex: 1; font-size: 0.78rem; color: var(--text-dim); }
+  .hsl-preview {
+    width: 28px; height: 20px; border-radius: 5px;
+    border: 1px solid rgba(180, 200, 210, 0.32);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
+  }
+  .hsl-hex {
+    font-size: 0.72rem; letter-spacing: 0.04em;
+    color: rgba(224, 221, 213, 0.6); font-variant-numeric: tabular-nums;
+    min-width: 62px; text-align: right;
+  }
+  .hsl-slider::-webkit-slider-runnable-track {
+    height: 8px; border-radius: 4px;
+    background-image: var(--rail);
+    border: 1px solid rgba(0, 0, 0, 0.45);
+  }
+  .hsl-slider::-moz-range-track {
+    height: 8px; border-radius: 4px; background-image: var(--rail);
+    border: 1px solid rgba(0, 0, 0, 0.45);
+  }
+  .hsl-slider::-webkit-slider-thumb { margin-top: -7px; }
+
   /* ============================================================
      THE DROPDOWN THIS APP DRAWS ITSELF   (see core/dropdown.js)
      ============================================================
@@ -2004,9 +2032,31 @@
 
     <!-- Shown only when Custom is chosen. backgroundColor is a HOT key, so this
          repaints on every input event without rebuilding the scene. -->
-    <div id="background-color-row" class="control-row" hidden>
-      <div class="control-label">Custom color</div>
-      <div class="control-line"><input type="color" id="background-color" value="#0c0c0f"></div>
+    <!-- The native colour input opens ANOTHER operating-system dialog, the same
+         problem as the select popup, and gives no control over how the colour
+         is reached. Three sliders instead: hue, saturation, lightness, each
+         with a track that previews what moving it will do. #background-color
+         stays as the value holder -- hidden, but still the thing panel.js reads
+         and Reset writes, so nothing downstream changed. -->
+    <div id="background-color-row" hidden>
+      <input type="color" id="background-color" value="#0c0c0f" class="dd-native" aria-hidden="true" tabindex="-1">
+      <div class="hsl-head">
+        <span class="hsl-title">Custom color</span>
+        <span id="bg-preview" class="hsl-preview"></span>
+        <span id="bg-hex" class="hsl-hex">#0C0C0F</span>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Hue <span class="value" id="bg-h-val">0&deg;</span></div>
+        <div class="control-line"><input type="range" id="bg-h" class="hsl-slider" min="0" max="360" step="1" value="240"></div>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Saturation <span class="value" id="bg-s-val">0%</span></div>
+        <div class="control-line"><input type="range" id="bg-s" class="hsl-slider" min="0" max="100" step="1" value="11"></div>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Lightness <span class="value" id="bg-l-val">5%</span></div>
+        <div class="control-line"><input type="range" id="bg-l" class="hsl-slider" min="0" max="100" step="1" value="5"></div>
+      </div>
     </div>
   </div>
 
@@ -2168,7 +2218,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.33 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.34 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll

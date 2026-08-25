@@ -1,6 +1,6 @@
 {
   "name": "pretty-number-machine",
-  "version": "1.0.0-dev.33",
+  "version": "1.0.0-dev.34",
   "private": true,
   "description": "An interactive visualisation of prime factorisation, where a number's colour is its factorisation.",
   "license": "SEE LICENSE IN LICENSE",

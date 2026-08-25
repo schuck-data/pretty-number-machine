@@ -289,17 +289,26 @@ const NEON = [
 // picked these, with electric cyan and hot magenta PINNED -- left free, the
 // search dropped cyan entirely and the result stopped looking like the brief.
 //
-// Worst pairwise separation 13.8 dE across all three deficiencies, against
-// okabe-ito's 11.0. The checker holds it there.
+// REVISED after Dakota spotted two purples that read as one colour. They did,
+// and the metric had a blind spot worth recording: CIE76 dE counts a LIGHTNESS
+// difference as separation, so ultraviolet and deep violet scored 20 dE apart
+// while sitting at the SAME hue angle, 309 degrees. That is honest for "can you
+// tell these apart" and wrong for "are these different colours" -- and in this
+// app colour carries identity, so two shades of one hue are one colour wearing
+// two hats. Hot magenta and bubblegum were a second such pair, 1 degree apart.
+//
+// The search now also requires a minimum HUE separation. Eight neon hues will
+// not fit 360 degrees at 30 degrees apart -- the search proves it impossible --
+// so this is six, which buys 16.9 dE and a 34 degree minimum gap. Six clearly
+// different colours beat eight where two of them read as one, and it cycles at
+// six much as okabe-ito cycles at seven.
 const CYBERPUNK = [
   [0.000, 0.898, 1.000],  // electric cyan
   [1.000, 0.000, 0.784],  // hot magenta
   [0.745, 1.000, 0.000],  // acid lime
-  [0.667, 0.431, 1.000],  // ultraviolet
-  [0.471, 0.235, 0.863],  // deep violet
+  [0.000, 0.549, 1.000],  // laser blue
   [1.000, 0.824, 0.471],  // sodium
-  [0.902, 0.118, 0.235],  // blood red
-  [1.000, 0.549, 0.863],  // bubblegum
+  [1.000, 0.157, 0.314],  // neon red
 ];
 
 // Every named palette, by the value its <select> option carries.

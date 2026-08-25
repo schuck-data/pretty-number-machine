@@ -52,3 +52,16 @@ export function worstPairwise(palette255, kinds = ['normal','protan','deutan','t
   }
   return { worst, where };
 }
+
+// Smallest HUE separation in the palette, in degrees. dE alone is not enough:
+// two shades of one hue are far apart in dE and read as one colour.
+export function minHueGap(palette255) {
+  const hue = c => { const [, a, b] = toLab(c); return (Math.atan2(b, a) * 180 / Math.PI + 360) % 360; };
+  let m = 360, where = null;
+  for (let i = 0; i < palette255.length; i++) for (let j = i + 1; j < palette255.length; j++) {
+    let d = Math.abs(hue(palette255[i]) - hue(palette255[j]));
+    if (d > 180) d = 360 - d;
+    if (d < m) { m = d; where = `${i}/${j}`; }
+  }
+  return { gap: m, where };
+}

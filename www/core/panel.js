@@ -627,10 +627,42 @@ export function initPanel() {
     update({ backgroundStyle: $('background-style').value });
     syncBgRow();
   });
-  $('background-color').addEventListener('input', () => {
-    update({ backgroundColor: $('background-color').value });
-    syncDropdowns();          // the Custom row's chip shows the chosen colour
-  });
+  // ---- the custom background, as hue / saturation / lightness ----
+  // #background-color is still the value, so update(), Reset and the checker
+  // are all unchanged; these three just drive it. Every rail is repainted on
+  // every move, which is what makes the sliders show their own effect.
+  const hsl2hex = (h, sPc, lPc) => {
+    const sat = sPc / 100, li = lPc / 100;
+    const a = sat * Math.min(li, 1 - li);
+    const f = (n) => {
+      const k = (n + h / 30) % 12;
+      return Math.round((li - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255);
+    };
+    return '#' + [f(0), f(8), f(4)].map(v => v.toString(16).padStart(2, '0')).join('');
+  };
+  const applyHSL = () => {
+    const h = +$('bg-h').value, sat = +$('bg-s').value, li = +$('bg-l').value;
+    const hexv = hsl2hex(h, sat, li);
+    $('bg-h-val').textContent = h + '°';
+    $('bg-s-val').textContent = sat + '%';
+    $('bg-l-val').textContent = li + '%';
+    $('bg-preview').style.backgroundColor = hexv;
+    $('bg-hex').textContent = hexv.toUpperCase();
+    // Rails. Hue is a fixed spectrum; the other two are drawn AT the current
+    // hue, so they answer "what would moving this do" rather than "what does
+    // saturation mean in the abstract".
+    $('bg-h').style.setProperty('--rail',
+      'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)');
+    $('bg-s').style.setProperty('--rail',
+      `linear-gradient(to right, ${hsl2hex(h, 0, li)}, ${hsl2hex(h, 100, li)})`);
+    $('bg-l').style.setProperty('--rail',
+      `linear-gradient(to right, #000, ${hsl2hex(h, sat, 50)}, #fff)`);
+    $('background-color').value = hexv;
+    update({ backgroundColor: hexv });
+    syncDropdowns();          // the Custom row's chip follows the sliders
+  };
+  for (const id of ['bg-h', 'bg-s', 'bg-l']) $(id).addEventListener('input', applyHSL);
+  applyHSL();
   syncBgRow();
 
   // Draw both colour dropdowns ourselves. Done LAST, so every native listener
@@ -865,6 +897,10 @@ export function initPanel() {
     $('color-scheme').value = 'okabe-ito';
     $('background-style').value = 'black';
     $('background-color').value = '#0c0c0f';
+    // The three sliders are the visible control now, so Reset has to move them
+    // or the panel shows one colour while state holds another.
+    $('bg-h').value = 240; $('bg-s').value = 11; $('bg-l').value = 5;
+    applyHSL();          // ...and repaint the preview, the hex and the rails
     $('background-color-row').hidden = true;
     // Reset assigns to .value directly and dispatches nothing, so the drawn
     // faces would keep showing the old choice. Same class of bug as the one

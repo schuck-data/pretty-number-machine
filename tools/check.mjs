@@ -280,14 +280,29 @@ for (const build of BUILDS) {
   // The floor is 10 dE: okabe-ito, the published reference, sits at 10.9.
   const CVD = await import(new URL('./cvd.mjs', import.meta.url));
   const SAFE_FLOOR = 10;
+  // Hue matters separately from dE: two shades of ONE hue score far apart on dE
+  // and still read as one colour, which is exactly how two purples shipped in
+  // cyberpunk at a 0 degree gap.
+  //
+  // Set at 12, deliberately BELOW okabe-ito's own tightest pair. Its sky blue
+  // and blue sit 15 degrees apart and are told apart by lightness instead --
+  // that is a researched, published palette and the checker's job is not to
+  // second-guess it. The floor exists to catch DUPLICATE hues, not to legislate
+  // palette design. Our own cyberpunk is held to a real 30 degrees by the
+  // search that produced it, and lands at 34.
+  const HUE_FLOOR = 12;
   for (const name of M.SAFE_PALETTES) {
     const pal = M.PALETTES[name];
     if (!pal) { fail('app', `SAFE_PALETTES names '${name}' but PALETTES has no such entry`); continue; }
-    const r = CVD.worstPairwise(pal.map(col => col.map(v => Math.round(v * 255))));
+    const px = pal.map(col => col.map(v => Math.round(v * 255)));
+    const r = CVD.worstPairwise(px);
+    const h = CVD.minHueGap(px);
     if (r.worst < SAFE_FLOOR)
       fail('app', `palette '${name}' claims colourblind-safe but its closest pair is ${r.worst.toFixed(1)} dE (${r.where}), under the ${SAFE_FLOOR} floor`);
+    else if (h.gap < HUE_FLOOR)
+      fail('app', `palette '${name}' has two entries only ${h.gap.toFixed(0)}deg apart in hue (${h.where}) — they will read as one colour`);
     else
-      pass('app', `palette '${name}' stays ${r.worst.toFixed(1)} dE apart under every simulated deficiency`);
+      pass('app', `palette '${name}': ${r.worst.toFixed(1)} dE under every deficiency, hues at least ${h.gap.toFixed(0)}deg apart`);
   }
 
   // Reset writes ~40 DOM values by hand and forgetting one has been a bug
