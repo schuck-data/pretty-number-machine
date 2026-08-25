@@ -41,10 +41,15 @@
 // breaking character — which is the correct place to put that gag, because a
 // player who has just paid $4.99 is already thinking it.
 //
-// `order` is the sequence they unlock in: multiplication's button does not
-// exist until addition is owned. That is a merchandising joke as much as a UI
-// one, and it means the corner stack grows by one button rather than starting
-// with two doors the player cannot open.
+// `order` is the sequence they unlock in, and `requires` is the chain that
+// enforces it: multiplication's button does not exist until addition is owned,
+// and exponential's does not exist until multiplication is. That is a
+// merchandising joke as much as a UI one — the shop is a LADDER, not a menu —
+// and it means the tray grows by exactly one button per purchase rather than
+// opening onto doors the player cannot use.
+//
+// The chain is DATA. Nothing hardcodes which product gates which; ads.js reads
+// `requires`, so adding a fourth tier is one entry here.
 export const PRODUCTS = [
   {
     id: 'ads-addition',
@@ -96,7 +101,10 @@ export const PRODUCTS = [
     announced: true,
     pitch: 'Raise your Ads to the power of your Ads. Coming soon.',
     button: 'ads-exp-btn',
-    requires: 'ads-addition',
+    // ONE RUNG AT A TIME. Not addition — multiplication. Each tier is the key
+    // to the next, so the shop is a ladder rather than a menu, and the tray
+    // grows by exactly one button per purchase.
+    requires: 'ads-multiplication',
   },
 ];
 

@@ -79,6 +79,67 @@ a well-meaning later edit would make *clearer*.
 
 ---
 
+## 1b. The ladder, and the door
+
+**`+s` is the only ads control normally on screen.** Add, adds, ads — the label
+is the pun and the pun is the brand. §1 asks that the product be the SYMBOL and
+that nothing ever wink; a shop that spells its own name out of an operator does
+both at once, and never has to explain itself.
+
+It is set as **text, not drawn**, unlike every other icon in that column. Those
+are SVG paths because a typed operator is unreliable in a system UI font — but
+this is a wordmark rather than an operator, and drawing it would make it a logo.
+Same reasoning as `.ads-glyph`: the joke depends on the actual characters.
+
+**Everything else lives behind it.** Three permanent buttons in the corner is
+three buttons' worth of figure you cannot see, and the figure is the product.
+Tapping `+s` opens the tray; anything landing outside it closes it again —
+written as *outside*, not as a list of things that should, because a list is
+what goes stale the next time a control is added. The sheet moving and the
+figure auto-rotating are deliberately not triggers: those are not the player
+doing something.
+
+**Every button does exactly one job.** `+s` opens and closes. Each operator
+opens its own thing. An earlier shape had `+` as both door and product, which
+meant a control that changed meaning by state and a first tap that did nothing
+visible — the pun is what made the better version available.
+
+### One rung at a time
+
+| Own | The tray offers |
+|---|---|
+| nothing | `+` |
+| `+` | `+` `×` |
+| `+` and `×` | `+` `×` `^` |
+
+Each tier is the key to the next. The shop is a **ladder, not a menu**: it grows
+by exactly one button per purchase and never shows a door the player cannot use.
+
+**The chain is data.** `requires` on each product is the whole of it, and
+`ads.js` reads that rather than naming products, so a fourth tier is one entry
+in the catalogue. `check-ads.mjs` asserts the shape rather than the three
+specific links — exactly one root, everything else gated on the one before it —
+which catches a new product bolted on as a second root, or into a cycle where
+its button could never appear at all.
+
+### `^` is announced, not sold
+
+`ads-exponential` has no price, no Play product id and no slide deck, because
+there is nothing to buy and so nothing to show. A tier that exists only as a
+promise is the most megacorp thing in the shop and it costs nothing to ship —
+and it does real work, because it makes the two you *can* buy read as a product
+line rather than as two jokes.
+
+Its sheet is the paywall's own furniture with the buy button replaced by an
+inert **Coming soon**. A third kind of sheet would have been a third thing to
+keep in register for no gain.
+
+**The failure to guard is shipping it as buyable** — a Buy button with no
+transaction behind it, in a released app, one line of well-meant tidying away.
+`check-ads.mjs` now separates *sellable* from *announced* and asserts both
+halves: no price, no store id, no deck, no `data-buy` in that sheet, and
+`openFor` routing it away from the paywall.
+
 ## 2. What the money buys
 
 | Product | Price | Deck | Unlocks |

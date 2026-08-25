@@ -165,7 +165,10 @@ function watchForDismissal() {
 }
 
 function ensureMulButton() {
-  if (!isOwned('ads-addition')) {
+  // Gate read from the product, not written here — see the ladder note in
+  // ads-data.js. Hardcoding it in two places is how the chain and the buttons
+  // would come to disagree.
+  if (MUL.requires && !isOwned(MUL.requires)) {
     document.getElementById(MUL.button)?.remove();
     return;
   }
@@ -191,11 +194,12 @@ function ensureMulButton() {
   after.insertAdjacentElement('afterend', btn);
 }
 
-// The announced tier. Same gate as multiplication — it appears once addition is
-// owned — because a shop that advertises a third product to somebody who has
-// bought nothing is pushing rather than merchandising.
+// The announced tier, one rung further up: it appears once MULTIPLICATION is
+// owned. A shop that advertises its third product to somebody who has bought
+// nothing is pushing rather than merchandising — and a tier you cannot buy is
+// the last thing to wave at a player who has not bought the ones you can.
 function ensureExpButton() {
-  if (!isOwned('ads-addition')) {
+  if (EXP.requires && !isOwned(EXP.requires)) {
     document.getElementById(EXP.button)?.remove();
     return;
   }

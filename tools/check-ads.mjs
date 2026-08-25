@@ -62,6 +62,21 @@ eq('announced products carrying a slide deck', D.announcedProductsWithSlides(), 
 eq('multiplication requires addition',
    D.PRODUCT_BY_ID.get('ads-multiplication').requires, 'ads-addition');
 eq('addition requires nothing', D.PRODUCT_BY_ID.get('ads-addition').requires, null);
+eq('exponential requires multiplication',
+   D.PRODUCT_BY_ID.get('ads-exponential').requires, 'ads-multiplication');
+
+// THE LADDER, asserted as a SHAPE rather than as the three lines above, so it
+// keeps holding when a fourth tier arrives. Each product is gated on the one
+// before it in `order`, and exactly one is the root.
+//
+// What this catches that a list would not: a new product bolted on as a second
+// root (so it appears before anything is bought), or into a cycle (so its
+// button can never appear at all, which looks like nothing rather than a bug).
+const chain = [...D.PRODUCTS].sort((a, b) => a.order - b.order);
+eq('exactly one product requires nothing',
+   chain.filter(p => !p.requires).map(p => p.id), ['ads-addition']);
+eq('every other product requires the one before it',
+   chain.slice(1).filter((p, i) => p.requires !== chain[i].id).map(p => p.id), []);
 
 // The 5x price gap is deliberate and one slide is ABOUT it. If the prices ever
 // change, that slide stops making sense — so the ratio is pinned, not the
@@ -187,6 +202,14 @@ for (const p of D.PRODUCTS) {
 // greps for the shapes such a thing takes.
 const BYPASS = /(DEV_UNLOCK|FORCE_OWNED|__unlock|owned\.add\((?!p\.id))/;
 ok('no development bypass that entitles without a purchase', !BYPASS.test(ADS));
+
+// The gates must READ the chain, never restate it. Two hardcoded product names
+// in ads.js is how the buttons and the data would come to disagree — and the
+// symptom would be a tier appearing a purchase too early, which nobody
+// complains about.
+ok('the button gates read `requires` rather than naming a product',
+   /MUL\.requires && !isOwned\(MUL\.requires\)/.test(ADS)
+   && /EXP\.requires && !isOwned\(EXP\.requires\)/.test(ADS));
 
 // THE ANNOUNCED TIER MUST NOT BECOME BUYABLE. `ads-exponential` has no
 // transaction behind it, so a Buy button on it would be a broken purchase flow
