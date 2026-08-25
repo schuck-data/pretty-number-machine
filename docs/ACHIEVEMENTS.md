@@ -1095,11 +1095,49 @@ of the figure, and a real feat. At N=500 it is 20 of 406 — one drag. The same
 number meant "derange everything" and "barely try" depending on where a
 slider happened to sit. It is now a **proportion: half the figure**.
 
-The bar is `SPHERE_R * 0.1`, a tenth of the figure's height. Scaled off the
-figure rather than the node radius on purpose — the figure is always 10 tall,
-while the node radius moves with both N and the node-size slider, and scaling
-the bar with node size would make OOPS! *harder* exactly when fat nodes make
-deranging easier.
+The bar is `SPHERE_R * 0.5` — **2.5 world units, a quarter of the figure's
+height**. Scaled off the figure rather than the node radius on purpose: the
+figure is always 10 tall, while the node radius moves with both N and the
+node-size slider, and scaling the bar with node size would make OOPS! *harder*
+exactly when fat nodes make deranging easier.
+
+### The bar was calibrated, after the first guess failed
+
+It shipped at `SPHERE_R * 0.1` and Dakota cleared it **by dragging one node**.
+Two things were wrong. 0.5 world units is two and a half node radii at N=30, and
+a single drag carries a node's whole spring neighbourhood past it — so half the
+figure qualifies from one gesture. And **`SPHERE_R` is the figure's HALF-height**,
+so `* 0.1` is a twentieth of the figure, not the tenth this document and the
+code comment both claimed. The number was wrong and its description was wrong in
+the same direction, which is how it survived review.
+
+The replacement was measured rather than guessed again. A temporary readout
+published the displaced fraction at seven candidate bars, and Dakota deranged a
+figure to the standard he wanted it to take:
+
+> **Reference figure** — N=500, node size 1.9, collision on, 396 nodes.
+> Mean displacement **2.97**, worst **4.53**.
+>
+> | bar | world units | share of the figure past it |
+> |---|---|---|
+> | `SPHERE_R * 0.3` | 1.5 | 100% |
+> | **`SPHERE_R * 0.5`** | **2.5** | **84%** |
+> | `SPHERE_R * 0.7` | 3.5 | 14% |
+
+Dakota's standard was "90% as distorted as it is right now". Scaling that
+figure's displacements to 0.9 puts its median at ~2.65, which keeps about 64% of
+nodes past 2.5 — still a pass. At 0.8 it falls to ~30% and fails. So the bar
+sits where a figure roughly 85–90% as deranged as the reference still earns it.
+
+The readout was deleted once the number was settled; it is a two-minute patch to
+put back if the bar needs moving again.
+
+**Known and accepted: this is easier at high N.** Many nodes packed at large node
+size let collision do the deranging for you, where at N=30 you must drag it all
+by hand. That is a real asymmetry, but it is an honest one — a figure with half
+its nodes 2.5 units out of place IS deranged at any N. The previous version's
+scale-dependence was an artifact of counting nodes; this one is a property of the
+figure.
 
 ### Clumping was considered and rejected, and the reason is worth keeping
 

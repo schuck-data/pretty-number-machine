@@ -470,7 +470,20 @@ const _v = new THREE.Vector3();
 // because the figure is always 10 tall while the node radius moves with both N
 // and the node-size slider — and scaling the bar with node size would make the
 // achievement HARDER exactly when fat nodes make deranging easier.
-const OOPS_DISPLACE = SPHERE_R * 0.1;   // a tenth of the figure's height...
+//
+// CALIBRATED 2026-08-25 against a figure Dakota deranged on a Pixel 7 and
+// judged to be about the right standard. The first attempt shipped at
+// SPHERE_R * 0.1 and he cleared it by dragging one node — 0.5 world units is
+// two and a half node radii at N=30, and a single drag carries the whole spring
+// neighbourhood past it. Note SPHERE_R is the figure's HALF-height, so that was
+// a twentieth of the figure, not the tenth its comment claimed.
+//
+// The reference figure (N=500, node size 1.9, collision on, 396 nodes) measured
+// mean displacement 2.97, worst 4.53, with 84% of nodes past 2.5 units and 14%
+// past 3.5. The bar is set at 2.5 so that a figure about 90% as deranged as
+// that one still passes: scaled to 0.9 its median lands at ~2.65, keeping ~64%
+// of nodes past the bar; at 0.8 it falls to ~30% and fails.
+const OOPS_DISPLACE = SPHERE_R * 0.5;   // a QUARTER of the figure's height...
 const OOPS_FRACTION = 0.5;              // ...and half the nodes must be past it
 
 function displacedFraction(ctx) {
