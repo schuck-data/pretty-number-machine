@@ -72,7 +72,19 @@ export function enhanceSelect(sel, kind, getCustomColor = () => '#0c0c0f') {
     label.className = 'dd-label';
     label.textContent = opt.textContent;
     row.append(label);
-    row.addEventListener('click', () => { choose(opt.value); });
+    // A row is a click target inside a SCROLLING panel, so a scroll that
+    // happens to begin on one would otherwise land as a selection when the
+    // finger lifts. Only a gesture that stayed put counts as a tap. This is
+    // the same hazard `touch-action: pan-y` handles for the sliders, but a
+    // slider is dragged and a row is tapped, so it needs the other remedy.
+    let downAt = null;
+    row.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
+    row.addEventListener('pointerup', (e) => {
+      if (!downAt) return;
+      const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]);
+      downAt = null;
+      if (moved <= 10) choose(opt.value);      // 10px: a tap, not a scroll
+    });
     return row;
   };
   function swatchStrip(value) {
