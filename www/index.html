@@ -519,6 +519,50 @@
   #achievements-btn svg { width: 17px; height: 17px; }
   #dazzle-btn svg { width: 18px; height: 18px; }
   #ads-btn svg { width: 19px; height: 19px; }
+  #ads-exp-btn svg { width: 18px; height: 18px; }
+
+  /* ==========================================================
+     THE ADS TRAY
+     The operator buttons live behind `+s` and are not on screen
+     until it is tapped. Three permanent buttons in this column
+     is three buttons' worth of figure you cannot see, and the
+     figure is the product.
+     ========================================================== */
+  /* `+s` is set as text, so it opts out of the SVG sizing above and needs its
+     own metrics. Slightly tighter tracking than default because `+` and `s`
+     are very different shapes and the default gap reads as two characters
+     rather than one word. */
+  #ads-menu-btn {
+    font: inherit; font-size: 15px; font-weight: 500;
+    letter-spacing: -0.02em; line-height: 1;
+    /* The `+` sits high in the em box and the `s` sits on the baseline, so
+       centring the BOX leaves the pair looking like it is falling over. A hair
+       of optical correction, measured by eye on the device. */
+    padding-bottom: 1px;
+  }
+  #ads-menu-btn[aria-expanded="true"] {
+    color: rgba(233, 200, 100, 0.95);
+    border-color: rgba(212, 175, 55, 0.5);
+  }
+  /* Closed is the default state, so it is the one written without a class —
+     anything that fails to load leaves the buttons hidden rather than leaving
+     three strays on the figure. */
+  /* SPECIFICITY MATTERS HERE and cost a device round to find. `#corner-stack
+     button` above is (0,1,0,1) and a bare `#ads-btn` is (0,1,0,0), so the bare
+     id LOSES and every operator stayed on screen. Both rules are scoped through
+     #corner-stack so they outrank it: (0,2,0,0) to hide, (0,2,1,1) to show.
+
+     Worth knowing that check-ads.mjs did not catch this — it greps for the CSS
+     text, so it proved the rule was WRITTEN, not that it wins. */
+  #corner-stack #ads-btn,
+  #corner-stack #ads-mul-btn,
+  #corner-stack #ads-exp-btn { display: none; }
+  body.ads-tray-open #corner-stack #ads-btn,
+  body.ads-tray-open #corner-stack #ads-mul-btn,
+  body.ads-tray-open #corner-stack #ads-exp-btn { display: flex; }
+  /* The announced tier is quieter than the two you can buy. It is an
+     advertisement for an advertisement and should not out-shout the shop. */
+  #ads-exp-btn { opacity: 0.65; }
 
   /* The lens handle's parking space. Not a button, takes no pointer events,
      and exists only to hold a hole open in the column. */
@@ -1989,7 +2033,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.15 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.16 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll
@@ -2065,12 +2109,29 @@
     </svg>
   </button>
 
+  <!-- THE DOOR. `+s` — add, adds, ads. The label is the pun and the pun is the
+       brand: §1 of docs/ADS.md asks that the product be the SYMBOL and that
+       nothing ever wink, and a shop that spells its own name out of an operator
+       does both at once.
+
+       SET AS TEXT, not drawn. Every other icon in this column is an SVG path
+       because a typed operator is unreliable in a system UI font — but this is
+       a WORDMARK rather than an operator, and drawing it would make it a logo.
+       ADS.md says the same thing about .ads-glyph: the joke depends on these
+       being the actual characters.
+
+       It opens and closes the tray and does nothing else. The operator buttons
+       behind it each do exactly one thing. That separation is the whole design;
+       see THE TRAY in modules/ads.js. -->
+  <button id="ads-menu-btn" type="button" title="Ads" aria-label="Ads"
+          aria-expanded="false" aria-controls="ads-btn">+s</button>
+
   <!-- ADS. A plus sign, which is both the icon and the product: what is for
        sale behind it is advertising for the addition operator. modules/ads.js
        owns everything past the tap; this is only the door. The multiplication
-       button is created by that module and inserted after this one, because it
-       does not exist until the first product is owned. -->
-  <button id="ads-btn" type="button" title="Ads" aria-label="Ads">
+       and exponential buttons are created by that module and inserted after
+       this one, because neither exists until the first product is owned. -->
+  <button id="ads-btn" type="button" title="Ads" aria-label="Addition ads">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
          stroke-linecap="round" aria-hidden="true">
       <path d="M12 5v14"/>

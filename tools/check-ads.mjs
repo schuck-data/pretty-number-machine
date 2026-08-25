@@ -30,7 +30,31 @@ const D = await import(new URL('../www/modules/ads-data.js', import.meta.url));
 
 // ============================================================
 console.log('\n[products] the shop');
-eq('product ids', D.PRODUCTS.map(p => p.id), ['ads-addition', 'ads-multiplication']);
+eq('product ids', D.PRODUCTS.map(p => p.id),
+   ['ads-addition', 'ads-multiplication', 'ads-exponential']);
+
+// SELLABLE vs ANNOUNCED. `ads-exponential` is a product tier that exists only
+// as a promise: no price, no Play product id, no deck. That is deliberate and
+// it is the most megacorp thing in the shop — but it is also exactly the shape
+// of a half-finished product, so every difference is asserted rather than left
+// to be noticed.
+//
+// The failure this guards against is shipping the announced tier as BUYABLE.
+// A Buy button on something with no transaction behind it is a broken purchase
+// flow in a released app, and it would be one line of tidying away.
+eq('sellable products', D.SELLABLE.map(p => p.id), ['ads-addition', 'ads-multiplication']);
+eq('announced products', D.PRODUCTS.filter(p => !D.isSellable(p)).map(p => p.id),
+   ['ads-exponential']);
+
+for (const p of D.PRODUCTS.filter(p => !D.isSellable(p))) {
+  ok(`${p.id} names no price`, !p.price && !p.priceMicros);
+  ok(`${p.id} still has a button and a pitch`, !!p.button && !!p.pitch);
+}
+// Content written for something nobody can reach is the other way this goes
+// wrong, and it is quieter: a deck that never renders.
+eq('announced products carrying a slide deck', D.announcedProductsWithSlides(), []);
+// The source-level half — no Play id, no Buy button — is in [wiring] below,
+// where the file has already read platform/index.js and ads.js.
 
 // The unlock chain is the merchandising joke: the multiplication button does
 // not exist until addition is owned. If `requires` ever came loose, the second
@@ -51,8 +75,10 @@ eq('multiplication costs five times addition',
    micros['ads-multiplication'] / micros['ads-addition'], 5);
 
 // A price string that disagrees with the micros is the kind of thing that
-// reaches a store listing and becomes a refund.
-for (const p of D.PRODUCTS) {
+// reaches a store listing and becomes a refund. SELLABLE only — an announced
+// tier has neither a price nor micros, and asserting that it did is precisely
+// how the announced tier would quietly acquire one.
+for (const p of D.SELLABLE) {
   ok(`${p.id}: "${p.price}" matches ${p.priceMicros} micros`,
      Number(p.price.replace(/[^0-9.]/g, '')) * 1e6 === p.priceMicros);
 }
@@ -141,10 +167,17 @@ const ADS = readFileSync(new URL('../www/modules/ads.js', import.meta.url), 'utf
 const PLAT = readFileSync(new URL('../www/platform/index.js', import.meta.url), 'utf8');
 const HTML = readFileSync(new URL('../www/index.html', import.meta.url), 'utf8');
 
-// Every product needs a store id or it cannot be sold, and every product needs
-// a button or it cannot be reached.
-for (const p of D.PRODUCTS) {
+// Every SELLABLE product needs a store id, or it cannot be sold.
+for (const p of D.SELLABLE) {
   ok(`${p.id} has a Play product id`, PLAT.includes(`'${p.id}':`));
+}
+// EVERY product needs a button, announced included — being reachable is the
+// entire point of announcing one.
+//
+// The pitch check further down also stays over every product, and deliberately:
+// a tier nobody can buy still SHOWS its pitch, so it can give the reveal away
+// exactly as easily as a sellable one can.
+for (const p of D.PRODUCTS) {
   ok(`${p.id}'s button "${p.button}" exists`,
      HTML.includes(`id="${p.button}"`) || ADS.includes(`btn.id = MUL.button`));
 }
@@ -154,6 +187,33 @@ for (const p of D.PRODUCTS) {
 // greps for the shapes such a thing takes.
 const BYPASS = /(DEV_UNLOCK|FORCE_OWNED|__unlock|owned\.add\((?!p\.id))/;
 ok('no development bypass that entitles without a purchase', !BYPASS.test(ADS));
+
+// THE ANNOUNCED TIER MUST NOT BECOME BUYABLE. `ads-exponential` has no
+// transaction behind it, so a Buy button on it would be a broken purchase flow
+// in a released app — and it is one line of well-meant tidying away.
+for (const p of D.PRODUCTS.filter(p => !D.isSellable(p))) {
+  ok(`${p.id} has no Play product id`, !PLAT.includes(`'${p.id}':`));
+}
+ok('the coming-soon sheet offers no transaction',
+   /data-kind="soon"/.test(ADS)
+   && !/data-kind="soon"[\s\S]{0,600}?data-buy/.test(ADS));
+ok('...and openFor routes an announced product to it rather than to a paywall',
+   /if \(!isSellable\(p\)\)[\s\S]{0,200}?comingSoonHTML/.test(ADS));
+
+// THE TRAY. Every operator button is a tray member, so the CSS that hides them
+// behind `+s` reaches all of them — a button that misses the class is one that
+// sits on the figure permanently, which is the thing the tray exists to stop.
+ok('the door exists in the markup', /id="ads-menu-btn"/.test(HTML));
+ok('...and is labelled with the pun, set as text', />\+s</.test(HTML));
+// SCOPED THROUGH #corner-stack, and that is the assertion. A bare `#ads-btn`
+// is (0,1,0,0) and loses to `#corner-stack button` at (0,1,0,1), so the tray
+// never hid anything — found on the device, not here, because a grep proves the
+// rule was written rather than that it wins.
+ok('the hide rule outranks #corner-stack button',
+   /#corner-stack #ads-btn,\s*#corner-stack #ads-mul-btn,\s*#corner-stack #ads-exp-btn \{ display: none; \}/.test(HTML));
+ok('...and the show rule outranks the hide rule',
+   /body\.ads-tray-open #corner-stack #ads-exp-btn \{ display: flex; \}/.test(HTML));
+ok('the door does not hide itself', !/#ads-menu-btn[^{]*\{[^}]*display:\s*none/.test(HTML));
 
 // THE OTHER ONE THAT MATTERS, and it cost a device run to find. An empty
 // entitlement list from a store that does not exist must not be mistaken for a

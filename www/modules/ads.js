@@ -39,7 +39,7 @@
 import { registerModule, state, on, emit } from '../core/state.js';
 import { update } from '../core/renderer.js';
 import { platform } from '../platform/index.js';
-import { PRODUCTS, PRODUCT_BY_ID, PALETTES, slidesFor } from './ads-data.js';
+import { PRODUCTS, PRODUCT_BY_ID, PALETTES, slidesFor, isSellable } from './ads-data.js';
 
 const STORE_KEY = 'pnm-entitlements-v1';
 
@@ -111,6 +111,58 @@ async function reconcile() {
 // first one — and it keeps the corner stack from opening with two controls the
 // player cannot do anything with.
 const MUL = PRODUCTS.find(p => p.id === 'ads-multiplication');
+const EXP = PRODUCTS.find(p => p.id === 'ads-exponential');
+
+// ============================================================
+// THE TRAY
+// ============================================================
+// `+s` is the door and it is the only ads control normally on screen. The
+// operator buttons — +, x, ^ — live behind it and appear when it is tapped.
+//
+// WHY: three permanent buttons in the corner column is three buttons' worth of
+// figure you cannot see, and the figure is the product. One door costs one.
+//
+// The pun is the point of the label. `+` is add; `+s` is adds; adds is ads. It
+// is also exactly the register §1 asks for — the product is the SYMBOL, and a
+// brand that spells its own name out of an operator never has to wink.
+//
+// EVERY BUTTON DOES ONE JOB. `+s` opens and closes and nothing else; each
+// operator opens its own thing. Nothing changes meaning depending on state,
+// which was the flaw in doing this with `+` as both door and product.
+const TRAY_OPEN = 'ads-tray-open';
+
+function trayIsOpen() {
+  return document.body.classList.contains(TRAY_OPEN);
+}
+
+export function closeTray() {
+  document.body.classList.remove(TRAY_OPEN);
+  document.getElementById('ads-menu-btn')?.setAttribute('aria-expanded', 'false');
+}
+
+function toggleTray() {
+  const open = !trayIsOpen();
+  document.body.classList.toggle(TRAY_OPEN, open);
+  document.getElementById('ads-menu-btn')?.setAttribute('aria-expanded', String(open));
+}
+
+// ANYTHING ELSE CLOSES IT. Rather than enumerating the things that should —
+// which is the list that goes stale the next time a control is added — this
+// closes on any pointer that lands outside the tray. Tapping the figure, another
+// corner control, the panel, the transport: all of them are "something else".
+//
+// Capture phase so it runs before the thing that was tapped, and it never
+// swallows the event — the tap still does whatever it was going to do.
+//
+// The sheet moving and the figure auto-rotating are deliberately NOT triggers.
+// Those are not the player doing something.
+function watchForDismissal() {
+  document.addEventListener('pointerdown', (e) => {
+    if (!trayIsOpen()) return;
+    if (e.target.closest?.('#ads-menu-btn, .ads-tray-member')) return;
+    closeTray();
+  }, { capture: true });
+}
 
 function ensureMulButton() {
   if (!isOwned('ads-addition')) {
@@ -135,6 +187,35 @@ function ensureMulButton() {
       <path d="M7 7l10 10"/><path d="M17 7L7 17"/>
     </svg>`;
   btn.addEventListener('click', () => openFor(MUL.id));
+  btn.classList.add('ads-tray-member');
+  after.insertAdjacentElement('afterend', btn);
+}
+
+// The announced tier. Same gate as multiplication — it appears once addition is
+// owned — because a shop that advertises a third product to somebody who has
+// bought nothing is pushing rather than merchandising.
+function ensureExpButton() {
+  if (!isOwned('ads-addition')) {
+    document.getElementById(EXP.button)?.remove();
+    return;
+  }
+  if (document.getElementById(EXP.button)) return;
+  const after = document.getElementById(MUL.button);
+  if (!after) return;                       // sits after x, which builds first
+
+  const btn = document.createElement('button');
+  btn.id = EXP.button;
+  btn.type = 'button';
+  btn.title = 'More ads';
+  btn.setAttribute('aria-label', 'Exponential ads');
+  // A caret, drawn for the same reason as the cross above: a typed ^ is a
+  // modifier character and renders inconsistently in a system UI font.
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M6 15l6-7 6 7"/>
+    </svg>`;
+  btn.classList.add('ads-tray-member');
+  btn.addEventListener('click', () => openFor(EXP.id));
   after.insertAdjacentElement('afterend', btn);
 }
 
@@ -143,6 +224,8 @@ function ensureMulButton() {
 // something behind a door rather than a paywall.
 function paintButtons() {
   ensureMulButton();
+  ensureExpButton();
+  document.getElementById('ads-btn')?.classList.add('ads-tray-member');
   for (const p of PRODUCTS) {
     const el = document.getElementById(p.button);
     if (el) el.classList.toggle('owned', isOwned(p.id));
@@ -481,11 +564,43 @@ function openShow(productId) {
   emit('ads:opened', { id: productId });
 }
 
-// The door. Owned goes to the slideshow, unowned to the paywall.
+// An announced product's sheet. Deliberately the same furniture as the paywall
+// — eyebrow, title, pitch, a button, small print — because the joke is that it
+// looks like a real offer right up until you read the button. A third KIND of
+// sheet would have been a third thing to keep in register for no gain.
+//
+// The button is inert and says so. It is not disabled-and-silent: a dead
+// control with no explanation is the thing §1's small print rule exists to
+// avoid, so the fine line does the work.
+function comingSoonHTML(p) {
+  return `
+    <div class="ads-sheet" data-kind="soon">
+      <button class="ads-close" type="button" data-close aria-label="Close">&times;</button>
+      <p class="ads-eyebrow">AN OFFER</p>
+      <h2 class="ads-title">${esc(p.name)}</h2>
+      <p class="ads-pitch">${esc(p.pitch)}</p>
+      <button class="ads-buy" type="button" disabled aria-disabled="true">
+        Coming soon
+      </button>
+      <p class="ads-fine">Not Yet Available. Pricing To Be Determined. No Waiting List.
+        The Pretty Number Machine Dev Team Thanks You For Your Patience.</p>
+    </div>`;
+}
+
+// The door. Owned goes to the slideshow, unowned to the paywall, and announced
+// to neither — there is no transaction behind it to reach.
 function openFor(productId) {
   const p = PRODUCT_BY_ID.get(productId);
   if (!p) return;
   if (p.requires && !isOwned(p.requires)) return;   // its button should not exist
+  // Tidy on the way out. Whatever you came back to, the figure has the corner
+  // to itself again.
+  closeTray();
+  if (!isSellable(p)) {
+    closeArmed = true;                              // a shop you cannot leave is not a joke
+    openOverlay(comingSoonHTML(p));
+    return;
+  }
   isOwned(productId) ? openShow(productId) : openPaywall(p);
 }
 
@@ -588,6 +703,13 @@ const mod = {
 
   init() {
     document.getElementById('ads-btn')?.addEventListener('click', () => openFor('ads-addition'));
+    // `+s` — the door. See THE TRAY above for why this is a separate control
+    // rather than `+` doing two jobs.
+    document.getElementById('ads-menu-btn')?.addEventListener('click', toggleTray);
+    watchForDismissal();
+    // Clear view hides everything; a tray left open behind it would come back
+    // with the interface, which is not what "clear" promised.
+    on('clearView', ({ on: clearing }) => { if (clearing) closeTray(); });
     reconcile();
     on('stateChange', ({ key }) => { if (key === 'adsIntrude') scheduleIntrusion(); });
     // Clear view means the figure alone. An advert is an interface.

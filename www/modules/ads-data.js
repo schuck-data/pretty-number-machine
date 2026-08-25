@@ -77,7 +77,35 @@ export const PRODUCTS = [
     button: 'ads-mul-btn',
     requires: 'ads-addition',
   },
+  {
+    // ANNOUNCED, NOT SELLABLE. There is no price, no Play product id and no
+    // slide deck, because there is nothing to buy and therefore nothing to
+    // show. `announced` is what every other part of the system reads to tell
+    // the difference — see isSellable() below.
+    //
+    // A product tier that exists only as a promise is the most megacorp thing
+    // in the whole shop, and it costs nothing to ship. It also does real work:
+    // it says the operator range is a RANGE, which makes the two you can
+    // actually buy read as a product line rather than as two jokes.
+    //
+    // Same restraint as the other pitches. Before: your advertisements will be
+    // raised to a power. There is no after, yet.
+    id: 'ads-exponential',
+    order: 3,
+    name: 'Exponential Ads',
+    announced: true,
+    pitch: 'Raise your Ads to the power of your Ads. Coming soon.',
+    button: 'ads-exp-btn',
+    requires: 'ads-addition',
+  },
 ];
+
+// SELLABLE vs ANNOUNCED, and the distinction is load-bearing. A sellable
+// product needs a price, a Play product id and a deck to show after the
+// purchase; an announced one needs none of those and must never acquire a Buy
+// button by accident. tools/check-ads.mjs asserts both halves.
+export const isSellable = (p) => !p.announced;
+export const SELLABLE = PRODUCTS.filter(isSellable);
 
 export const PRODUCT_BY_ID = new Map(PRODUCTS.map(p => [p.id, p]));
 
@@ -280,10 +308,20 @@ export function slidesFor(productId) {
   return SLIDES.filter(s => s.product === productId);
 }
 
-// Every product must have a deck, or its button opens onto nothing. Cheap to
-// check and impossible to notice by eye once the list is long.
+// Every SELLABLE product must have a deck, or its button opens onto nothing
+// after somebody has paid. Cheap to check and impossible to notice by eye once
+// the list is long.
+//
+// Announced products are exempt by definition: there is no purchase, so there
+// is no after to show. An announced product WITH a deck would be the real
+// mistake — content written for something nobody can reach — and
+// check-ads.mjs asserts that separately.
 export function productsWithoutSlides() {
-  return PRODUCTS.filter(p => slidesFor(p.id).length === 0).map(p => p.id);
+  return PRODUCTS.filter(isSellable).filter(p => slidesFor(p.id).length === 0).map(p => p.id);
+}
+
+export function announcedProductsWithSlides() {
+  return PRODUCTS.filter(p => !isSellable(p)).filter(p => slidesFor(p.id).length > 0).map(p => p.id);
 }
 
 // A slide whose palette does not exist renders with no colours at all and looks
