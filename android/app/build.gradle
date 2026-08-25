@@ -14,7 +14,7 @@ android {
         // fails the build if the three ever drift apart. That guard replaces the
         // CACHE_VERSION discipline the web builds needed (ANDROID-BUILD.md §2).
         versionCode 1
-        versionName "1.0.0-dev.21"
+        versionName "1.0.0-dev.24"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
