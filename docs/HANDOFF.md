@@ -499,56 +499,83 @@ bug and the fix in one reading.
 **Not yet seen on a device.** The cadence is five minutes, so confirming it on
 hardware means leaving the app open and idle.
 
-### STILL OPEN: a touched node leaves the figure wrong, and four fixes have failed
+### STILL OPEN: a touched node stops away from home — and the settle test cannot fix it
 
-**Reported 2026-08-25 as node 24, again on 08-26 as node 18 and node 20. NOT
-FIXED. Four attempts, all reverted. `www/modules/physics.js` is byte-identical
-to the `1.0.0` in review — assume nothing here has been solved.**
+**`www/modules/physics.js` is byte-identical to the `1.0.0` in review. Nothing
+here is solved.** But the problem is now characterised precisely, which it was
+not before, and three remedies are ruled out by measurement rather than by
+argument.
 
-**THE SYMPTOM.** Touch or drag a node; afterwards the figure is wrong. Seen as a
-node sitting well off the parastichy curve that should pass through it, with the
-curve cusping short of it. Dakota's original description is still the best lead
-and has not been reproduced under measurement: *opening the edu lens snaps the
-node back but leaves the p-line in collapse mode.*
+#### THE INVARIANT, agreed with Dakota 2026-08-26
 
-**WHAT IS RULED OUT, by measurement on a Pixel 7 rather than by argument:**
+**If the figure is quiet, it is home. Nothing else is allowed to be still.**
 
-| Ruled out | How |
+Motion may continue forever — that is the OOPS! dance, and it is a FEATURE:
+with every prime selected the nodes crowd enough for collision to fire, home
+becomes unreachable, the return effort never completes, and the effort is the
+engine. A limit cycle, not an equilibrium. **Do not "fix" that.** The bug is the
+opposite state: stopped, and not at home.
+
+#### REPRODUCING IT — the detail that hid this all day
+
+**IT ONLY HAPPENS WHILE PAUSED.** When the morph runs, the renderer rewrites
+every node position each frame that `dim` changes (`core/renderer.js`, the
+`if (dim !== lastDim)` block), which overwrites anything physics got wrong. Hit
+play and the figure corrects itself; pause and physics is the only writer.
+
+Every scripted reproduction ran with the transport playing and therefore
+converged cleanly, which is why four fixes measured "fixed" while Dakota kept
+seeing broken. **Set `state.paused = true` before dragging, or you are testing
+nothing.**
+
+#### WHAT IS ACTUALLY WRONG
+
+Measured on a Pixel 7, paused, dragging node 20, reading physics' own flags:
+
+| | |
 |---|---|
-| Main-figure physics failing to converge | Relaxation curve after a scripted drag: max offset 1.96 at 0.5 s, 0.19 at 2 s, **0.000 at 7 s and still 0.000 at 30 s** |
-| The `deformCurves()` upload path | Line deviation from rest reaches exactly 0 without any of the three "fixes" made to it |
-| The lens drawing stale geometry | `buildRunShapes()` builds from `flatPolar` / `chordPolar` / `buildParastichy` — pure mathematics, never live node positions |
-| A regression in the settle test | Dakota confirmed the **live `v1` on schuckdata.com has the same bug**, and `v1`'s force loop is byte-identical to this one |
-| `DEFAULT_CONFIG.dimension` drifting from v1's hardcoded `0.5` | Both are `0.5` |
+| `physicsActive` | **true** — the tick is running |
+| `draggedNode` | **null** — the release landed |
+| node 20 offset at 2 s | 0.296 |
+| node 20 offset at 8 s | **0.303 — not decaying** |
 
-**THE FOUR FAILED ATTEMPTS, and why each failed, because the pattern is the
-lesson:**
+At an offset of 0.30 the anchor force is about 0.0072, **fourteen times** the
+`0.0005` that counts as "not moving". So this is not a weak-force problem. **The
+neighbours' springs are cancelling the anchor**: net force falls under the quiet
+threshold while the displacement is large, and the node is declared at rest
+where it stands.
 
-1. **`1e11503`** — three real-looking faults in `deformCurves()`. All plausible,
-   none causal. It made the lines track faithfully, so they started drawing the
-   real node positions instead of a stale snapshot: "possibly worse".
-2. **`c9a5bd3`** — creep-home when nothing is held. Scaling the offset each
-   frame while zeroing velocity fights the integrator; the whole figure crawled.
-   "Much much worse."
-3. **`535206b`** — restored `v1`'s unconditional snap, on the theory that
-   `44b65cd` had regressed it. Measured clean on a scripted drag (0 frame jumps
-   over 0.05 in 210 frames) and then **flailed endlessly under a real finger** —
-   the exact teleport thrash `44b65cd` documented. A scripted `PointerEvent`
-   drag does not reproduce what a hand does.
-4. The premise under 3 was false anyway: `v1` has the bug.
+**Which means the settle test cannot work as designed.** A local force-and-
+velocity check cannot distinguish "at rest at home" from "at rest, displaced,
+held there by its own neighbours". `44b65cd` describes exactly this displaced
+equilibrium and is right about it. What it did not follow through is that no
+threshold on force can tell the two apart, because at equilibrium both are zero.
+Enforcing the invariant needs a test on the OFFSET, or a global one — not a
+local force test.
 
-**THE STANDING INSTRUCTION, from Dakota, and it was right both times:** diff
-against the frozen builds before theorising, and **revert a fix that does not
-work before trying the next one** rather than stacking them. Four theories were
-built from first principles here and every one of them cost a device round.
+#### THREE REMEDIES, ALL RULED OUT BY MEASUREMENT
 
-**THE HARNESS IS THE ONE THING WORTH KEEPING** — see §4. It gives a live REPL
-into the app on the device and it is how everything above was ruled out. What it
-has NOT yet done is capture the broken state itself: every scripted reproduction
-converges cleanly, so the trigger involves something a synthetic `PointerEvent`
-does not do. **The next step is to catch it in the act** — debug build on the
-device, Dakota reproduces by hand, and the scene is read while it is visibly
-wrong. Do that before writing another line of physics.
+| Attempt | Result |
+|---|---|
+| Snap home whenever motion stops (`v1`'s rule) | Teleports a node inside a coupled network; the springs haul it straight back out. Endless flailing under a real finger. Note a scripted `PointerEvent` drag does NOT reproduce this — it looked clean at 0 frame-jumps over 210 frames |
+| A constant restoring force toward home | A bang-bang controller: overshoots home, flips sign, chatters. Measured a sustained 0.15 oscillation that never settled, with the worst node wandering around the figure |
+| Deriving the snap radius from the quiet threshold (`QUIET / ANCHOR_STIFFNESS` ≈ 0.033) | Closes the weak-anchor band, but not this: node 20 sits at 0.30, far outside any sane snap radius |
+
+Two earlier attempts on the CURVES (`deformCurves` upload paths) were also
+reverted; the curves were never the problem and faithfully follow the nodes.
+
+#### WHERE TO START NEXT
+
+Not with another threshold. The invariant is about offsets, so test offsets:
+a node may only be marked at rest when its offset is zero, and something must
+guarantee that offsets reach zero when home is reachable. The obstacle is doing
+that without teleporting (thrash) and without a fixed-magnitude push (chatter) —
+a decay applied only to nodes that would OTHERWISE be declared quiet is the
+untried shape, and it must be measured while **paused**.
+
+`tools/cdp.mjs` plus a temporary `window.__pnmPhys` hook exposing
+`physicsActive` / `draggedNode` / `offsets` is what made any of this legible.
+See §4.
 
 ### ~~A third open defect~~ FIXED: the collapsed panel ate taps
 
