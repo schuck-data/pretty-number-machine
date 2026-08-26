@@ -329,9 +329,9 @@ adopting: it bundles `com.android.billingclient:billing:9.0.0`.
 launch blocker — achievements run locally); the production release itself; and
 the contrast pass. The three defects are now all addressed: the panel-taps one
 was fixed the same night in `dev.43`, the shimmer the next morning in `dev.44`,
-and the touched-node one — node 24 — was diagnosed and fixed on 2026-08-26
-(stale spring rest lengths; see its section below), A/B-verified on the
-Pixel 7 and installed as `1.0.2`, **awaiting only Dakota's finger**.
+and the touched-node one — node 24 — was diagnosed, fixed and **closed** on
+2026-08-26 (stale spring rest lengths; see its section below): A/B-verified on
+the Pixel 7, installed as `1.0.2`, and confirmed by Dakota's finger.
 
 ## 0. Where things actually are
 
@@ -503,15 +503,15 @@ bug and the fix in one reading.
 **Not yet seen on a device.** The cadence is five minutes, so confirming it on
 hardware means leaving the app open and idle.
 
-### ~~STILL OPEN~~ DIAGNOSED AND FIXED: a touched node ends up away from home
+### ~~STILL OPEN~~ FIXED AND CLOSED: a touched node ends up away from home
 
-**FIXED 2026-08-26, later the same day — see the dated subsection at the end of
-this section. `www/modules/physics.js` now differs from the `1.0.0` in review
-by exactly this fix, and the fix is A/B-verified ON THE PIXEL 7** (in device
-Chrome — details in the subsection) **and installed as `1.0.2` (versionCode 7).
-The last word is still a finger:** scripted pointers have measured clean before
-while a hand flailed (attempt 3 below), so Dakota poking the installed app is
-the close-out. Eight patch attempts earlier that day were all reverted; the
+**FIXED 2026-08-26 — see the dated subsection at the end of this section —
+and CONFIRMED BY DAKOTA'S FINGER on the installed `1.0.2` the same day.**
+The full chain held: cause diagnosed in the code, reproduced and A/B-verified
+on the Pixel 7 (pre-fix fails, fixed passes), shipped to the device as `1.0.2`
+(versionCode 7), and then a hand — the one instrument scripted pointers cannot
+substitute for (attempt 3 below) — found the first touched node finally
+staying home. Eight patch attempts earlier that day were all reverted; the
 record of them below is kept because none of them touched the actual cause and
 knowing that is worth something.
 
@@ -663,8 +663,8 @@ web code and only the asset hash caught it.**
 
 **Two honest caveats.** (1) The A/B ran in device Chrome, not the Capacitor
 WebView, and with scripted pointers, not a hand — same engine, same file, but
-attempt 3 taught that a hand is the only final word, so Dakota's finger on the
-installed `1.0.2` closes this. (2) The observation table above records "spring
+attempt 3 taught that a hand is the only final word. **Dakota's finger closed
+it on the installed `1.0.2`, 2026-08-26.** (2) The observation table above records "spring
 rest-length error 0.0000" for the node-24 session, which this mechanism would
 not predict for the dragged node's own two entries; that measurement cannot be
 reconstructed now (it may have run after a refresh, or read the refreshed
