@@ -47,11 +47,6 @@ const MAX_FORCE = 0.5;
 // rest of the way. A fiftieth of a node radius, so the snap is never visible.
 // See the settling note in animate() for why a distance test is needed at all.
 const SETTLE_HOME_DIST = 0.004;
-// How fast a node creeps home once NOTHING is being held. Multiplied into the
-// offset each frame, so 0.88 takes a 0.13 displacement under SETTLE_HOME_DIST
-// in about thirty frames -- half a second, and continuous rather than a jump.
-// See the settle block for why this exists at all.
-const RELAX_HOME = 0.88;
 const DRAG_MAX_N = 1000;
 
 // === MODULE STATE ===
@@ -72,11 +67,6 @@ const _camDir = new THREE.Vector3();
 
 let draggedNode = null;       // node data object being dragged
 let physicsActive = false;
-// Frames still owed to the CURVES after the nodes have stopped. The deformation
-// pass runs inside the physics tick, and the tick returns early once nothing is
-// moving -- so without this the last frame anybody draws is a DEFORMED one and
-// the lines stay bent after the nodes have gone home. See deformCurves().
-let curveFlushFrames = 0;
 let touchEnabled = true;      // toggle from module controls
 let collisionEnabled = true;  // toggle from module controls
 
@@ -337,14 +327,9 @@ function deformCurves(dim) {
 
       const hasMag = Math.abs(dAx) + Math.abs(dAy) + Math.abs(dAz) +
                      Math.abs(dBx) + Math.abs(dBy) + Math.abs(dBz);
-      // DO NOT SKIP A KNOT AT REST. This used to `continue` when the
-      // displacement was negligible, as an optimisation -- but skipping means
-      // NOT WRITING, and the array then keeps whatever this point held while the
-      // node was displaced. The curve could therefore never return to rest: the
-      // frames that would have straightened it are exactly the frames that
-      // declined to touch it. Write every point every pass; `anyDeformed` is
-      // now only about whether an UPLOAD is needed.
-      if (hasMag >= 0.001) anyDeformed = true;
+      if (hasMag < 0.001) continue;
+
+      anyDeformed = true;
       const w = tInSeg;
       const si = i * 3, ei = (i + 1) * 3, bi = i * 6;
 
@@ -376,12 +361,7 @@ function deformCurves(dim) {
       arr[bi + 5] = lerpBuf[ei + 2] + dAz2 * (1 - w2) + dBz2 * w2;
     }
 
-    // Upload if it is deformed NOW or was deformed LAST TIME. The transition
-    // to rest is the one that matters and it is the one a plain `if
-    // (anyDeformed)` misses: the array is correct, and never reaches the GPU,
-    // so the line stays visibly bent around a node that has gone home.
-    if (anyDeformed || obj.userData.physWasDeformed) attr.data.needsUpdate = true;
-    obj.userData.physWasDeformed = anyDeformed;
+    if (anyDeformed) attr.data.needsUpdate = true;
   });
 }
 
@@ -399,10 +379,6 @@ function resetPhysics() {
   }
   draggedNode = null;
   physicsActive = false;
-  // The offsets are zero now, but the CURVES have not been told. Opening the
-  // lens calls this, which is how a node could snap home while its parastichy
-  // line stayed collapsed around where the node used to be.
-  curveFlushFrames = 2;
   const controls = getControls();
   if (controls) controls.enabled = true;
 }
@@ -553,16 +529,7 @@ const mod = {
     }
     lensSuppressed = false;
 
-    if (!draggedNode && !physicsActive) {
-      // Still owed a straightening pass. Without this the tick stops before the
-      // curves are told the nodes went home -- and after resetPhysics(), which
-      // is what opening the lens calls, that is guaranteed.
-      if (curveFlushFrames > 0) {
-        curveFlushFrames--;
-        if (curveState?.showCurves) deformCurves(ctx.dim);
-      }
-      return;
-    }
+    if (!draggedNode && !physicsActive) return;
 
     const dim = ctx.dim;
     const N = ctx.N;
@@ -676,35 +643,10 @@ const mod = {
       const vMag = vel.length();
       if (vMag > 0.0005 || fMag > 0.0005) {
         anyMoving = true;
-      } else if (offDist <= SETTLE_HOME_DIST) {
+      } else if (offDist <= SETTLE_HOME_DIST || !draggedNode) {
         off.set(0, 0, 0);
         vel.set(0, 0, 0);
         nd.mesh.position.copy(rest);
-      } else if (!draggedNode) {
-        // NOT MOVING, NOT HOME, AND NOTHING IS HELD. Measured on a Pixel 7 on
-        // 2026-08-26: after a drag and release the figure froze with eight
-        // nodes still 0.05 to 0.13 off station, permanently. This branch is
-        // where they were stranded -- the first test said "not moving", the
-        // second said "not near enough to snap", and there was no third, so
-        // `anyMoving` stayed false, `physicsActive` went false, the tick
-        // early-returned, and nothing ever touched them again.
-        //
-        // The note above is right that a displaced equilibrium is real: the
-        // anchor spring and the springs to the neighbours genuinely cancel, and
-        // teleporting out of it caused the 4.7-teleports-per-frame thrash. But
-        // that equilibrium is legitimate BECAUSE A NODE IS BEING HELD. Once
-        // nothing is held there is nothing legitimising it, and the rest
-        // configuration should be the only attractor.
-        //
-        // So: creep, do not teleport. Scaling the offset is continuous, so the
-        // node cannot be yanked home and hauled back out -- which is the exact
-        // failure teleporting produced. It also keeps `anyMoving` true, which
-        // is what stops the tick shutting down before the figure is actually
-        // at rest.
-        off.multiplyScalar(RELAX_HOME);
-        vel.set(0, 0, 0);
-        nd.mesh.position.set(rest.x + off.x, rest.y + off.y, rest.z + off.z);
-        anyMoving = true;
       }
     }
 
@@ -756,11 +698,7 @@ const mod = {
       deformCurves(dim);
     }
 
-    // Going idle owes the curves a pass, because the tick is about to stop
-    // running them.
-    const wasActive = physicsActive;
     physicsActive = anyMoving || !!draggedNode;
-    if (wasActive && !physicsActive) curveFlushFrames = 2;
   },
 
   destroy() {

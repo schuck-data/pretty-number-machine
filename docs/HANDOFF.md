@@ -499,90 +499,76 @@ bug and the fix in one reading.
 **Not yet seen on a device.** The cadence is five minutes, so confirming it on
 hardware means leaving the app open and idle.
 
-### ~~A second open defect~~ DIAGNOSED: the parastichy line never returns home
+### ~~A second open defect~~ FIXED: nodes never came home after a drag
 
-First seen 2026-08-25 as "node 24 sticks in chord shape". Seen again
-2026-08-26 as node **18**, and that sighting is the one that cracked it: the
-node snapped home when the lens opened and **the parastichy line stayed
-collapsed around where the node used to be.** A screengrab off the Pixel 7 over
-`adb exec-out screencap` shows the 2-chain making a tight cusp between 16 and 20
-while node 18 sits well to its left, untouched by the arc that is supposed to
-pass through it.
+**One line, and it was a REGRESSION introduced on 2026-08-25 by `44b65cd`.**
+Reported as node 24 sticking, then node 18, then "much much worse" after two
+attempted fixes that were both wrong and are both reverted.
 
-**IT WAS NEVER A PHYSICS BUG.** The nodes were always going home correctly. The
-LINE was not, and it is three separate faults in `deformCurves()` and its
-caller, each of them independently sufficient — which is why single fixes kept
-appearing to do nothing and why three earlier theories died.
-
-| `modules/physics.js` | The fault |
-|---|---|
-| `if (hasMag < 0.001) continue;` | A knot at rest was SKIPPED as an optimisation. Skipping means not writing, so the array kept whatever that point held while the node was displaced. The frames that would have straightened the curve are exactly the frames that declined to touch it |
-| `if (anyDeformed) attr.data.needsUpdate = true;` | The upload only happened WHILE deformed. The transition to rest is the one that matters and it is the one this misses: the array becomes correct and never reaches the GPU |
-| `if (!draggedNode && !physicsActive) return;` | Once physics idles the tick returns early, so there are no further frames in which to fix anything |
-
-And `resetPhysics()` zeroed the offsets and set `physicsActive = false` without
-flushing the curves — **which is precisely what opening the lens calls.** Hence
-the exact symptom: node home, line stranded.
-
-**This also answers why it appeared after the settle work of 2026-08-25.** A
-node that teleports home under `SETTLE_HOME_DIST` goes from displaced to zero in
-ONE frame. There is no gradual approach left to disguise a missing upload, so a
-latent bug became a visible one. The settle change did not cause it; it removed
-the thing that was hiding it.
-
-**The fix**, all in `physics.js`: write every point every pass; upload if
-deformed now OR last pass, latched per object in `userData.physWasDeformed`;
-and a `curveFlushFrames` counter so the idle path and `resetPhysics()` still owe
-the curves a straightening pass after the tick would otherwise have stopped.
-
-**AND THAT DIAGNOSIS WAS INCOMPLETE. The curve faults above are real and the
-fix for them is kept — but they were not what made the figure look broken.**
-Shipped as a fix, tested on the Pixel 7, and Dakota reported it "still
-happening, possibly worse". Correctly: with the curves now tracking faithfully,
-they render the real node positions instead of a stale snapshot, and the real
-node positions were wrong.
-
-**THE ACTUAL CAUSE: nodes freeze in a displaced equilibrium and nothing ever
-moves them again.** The settle block ran two tests and had no third:
+**The regression.** `44b65cd` fixed a genuine bug — a lost `pointerup` pinned a
+node forever — and in the same commit tightened the settle test. It changed:
 
 ```
-if (vMag > 0.0005 || fMag > 0.0005)  anyMoving = true;
-else if (offDist <= SETTLE_HOME_DIST) snap home;
-// and otherwise: nothing at all
+} else {                                  // snap home whenever motion stopped
 ```
 
-A node that has stopped moving but is NOT near home falls through both. It is
-not counted as moving, so `anyMoving` stays false; `physicsActive` goes false;
-the tick early-returns; and the offset is frozen for the life of the session.
+into:
 
-The long note above that branch is right that a displaced equilibrium is real —
-the anchor spring and the neighbour springs genuinely cancel, and teleporting
-out of it caused the 4.7-teleports-per-frame thrash it describes. What it missed
-is that such an equilibrium is legitimate **because a node is being held**. Once
-nothing is held, nothing legitimises it, and the rest configuration should be
-the only attractor.
+```
+} else if (offDist <= SETTLE_HOME_DIST) { // snap ONLY if already nearly home
+```
 
-**The fix** is a third branch, taken only when `!draggedNode`: scale the offset
-by `RELAX_HOME` (0.88) each frame and keep `anyMoving` true. Creeping is
-continuous, so a node cannot be yanked home and hauled straight back out — which
-is precisely what teleporting did.
+There is no third branch. **A node that has stopped moving but is not near home
+now falls through everything**: not counted as moving, so `anyMoving` stays
+false, `physicsActive` goes false, the tick early-returns, and the offset is
+frozen for the rest of the session. Measured on a Pixel 7: eight nodes left 0.05
+to 0.13 off station after a single drag, permanently.
 
-**MEASURED ON THE DEVICE, before and after, with the same scripted drag.** The
-harness is worth keeping and is described in §4: `adb forward` to the WebView's
-devtools socket, then `Runtime.evaluate` over CDP importing `/core/renderer.js`
-— importing a module from the page returns the SAME instance the app is running,
-so `getScene()` and `getNodes()` hand over the live objects. Deviation is
-measured as the uploaded `instanceStart` array against `userData.lerpBuf`, which
-is the rest geometry.
+The commit's reasoning about the displaced equilibrium is correct, and the
+teleport thrash it describes was real. What it missed is that the equilibrium is
+legitimate **because a node is being held**. Once nothing is held, nothing
+legitimises it.
 
-| six seconds after an identical drag | before | after |
+**The fix is that condition and nothing else:**
+
+```
+} else if (offDist <= SETTLE_HOME_DIST || !draggedNode) {
+```
+
+While a node is held, the guard stands and the thrash stays fixed. When nothing
+is held, the behaviour is exactly what the frozen `v1/` build does — and that
+build ran for weeks without this.
+
+| six seconds after an identical scripted drag | broken | fixed |
 |---|---|---|
 | line deviation from rest, p=2/3/5 | 0.135 / 0.196 / 0.155 | **0 / 0 / 0** |
-| nodes still off station | **eight**, by 0.05 to 0.13 | **none** |
+| nodes still off station | **eight** | **none** |
 
-**Both fixes ship in `1.0.1`.** Keep both: the curve fix is what makes the lines
-tell the truth, and this one is what makes the truth worth telling.
+**TWO WRONG FIXES WENT IN FIRST AND BOTH ARE REVERTED.** They are recorded
+because the way they were wrong is the useful part:
 
+- **`1e11503`, the curve-restore fix.** Three real-looking faults in
+  `deformCurves()` — a knot at rest was skipped, the upload only happened while
+  deformed, and the tick stopped before it could straighten anything. All
+  plausible, none of them the cause. It made the lines track the nodes
+  faithfully, which meant they started drawing the REAL node positions instead
+  of a stale snapshot, so the report came back "possibly worse". With the settle
+  fix in place, deviation reaches exactly 0 WITHOUT any of it.
+- **`c9a5bd3`, the creep-home fix.** Correct diagnosis of the frozen
+  equilibrium, wrong remedy: scaling the offset every frame while zeroing
+  velocity fights the integrator, and it made the whole figure crawl. "Much much
+  worse."
+
+**The lesson Dakota named, and it is the right one: reference the versions that
+worked.** `v1/modules/physics.js` and `modules/physics.js` are frozen builds
+from before any of this, sitting in the repo. A three-line diff against them
+would have found this in a minute, and instead three theories were built from
+first principles. **Diff against the frozen copies BEFORE theorising**, and
+revert a fix that does not work instead of stacking the next one on top of it.
+
+**Also worth carrying:** `44b65cd` says of itself "NOT YET JUDGED ON A DEVICE".
+It was verified against a MODEL of the figure. The model was right about the
+thrash and silent about the hole the same change opened.
 
 ### ~~A third open defect~~ FIXED: the collapsed panel ate taps
 
