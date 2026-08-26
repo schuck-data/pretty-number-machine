@@ -16,8 +16,9 @@
 //   - prices and copy. modules/ads-data.js has those, and it is checkable
 //     without a browser, which is where a missing headline gets caught
 //   - the purchase itself. platform/index.js is the only thing that talks to a
-//     store, and today there is no store: no billing plugin is wired, so every
-//     purchase honestly fails as "unavailable". See §4 of docs/ANDROID-BUILD.md
+//     store. Since 2026-08-25 that is cordova-plugin-purchase talking to
+//     Play Billing 9. A browser still gets the stub, and a purchase there
+//     still honestly fails as "unavailable" -- by design. See §4 of docs/ANDROID-BUILD.md
 //
 // THE ENTITLEMENT RULE, which is the part worth getting right:
 //
@@ -77,11 +78,15 @@ export function isOwned(id) { return owned.has(id); }
 // adapter collapses that into one boolean so nothing above platform/index.js
 // has to know Play's constants.
 //
-// What goes wrong without it is a build where the service never answers at all
-// — today's, since no billing plugin is wired. restore() returned an empty
-// list, this function read it as "you own nothing", and a seeded entitlement
-// vanished on every launch. Found on a Pixel 7. The same thing would happen on
-// a real device whenever the billing service is disconnected.
+// What goes wrong without it is a build where the service never answers at
+// all. That was every build before 2026-08-25, when no billing plugin was
+// wired: restore() returned an empty list, this function read it as "you own
+// nothing", and a seeded entitlement vanished on every launch. Found on a
+// Pixel 7.
+//
+// A plugin is wired now, so that particular cause is gone. THE GUARD IS NOT
+// REDUNDANT: the same thing happens on a real device whenever the billing
+// service is disconnected, and that is not a state you can rehearse.
 //
 // So: only `available: true` may take something away. Anything else — no
 // plugin, a disconnected service, a plugin that threw — keeps what is cached.

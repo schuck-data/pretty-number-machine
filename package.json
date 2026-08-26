@@ -1,6 +1,6 @@
 {
   "name": "pretty-number-machine",
-  "version": "1.0.0-dev.41",
+  "version": "1.0.0-dev.42",
   "private": true,
   "description": "An interactive visualisation of prime factorisation, where a number's colour is its factorisation.",
   "license": "SEE LICENSE IN LICENSE",
@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
-    "@capacitor/core": "^8.5.0"
+    "@capacitor/core": "^8.5.0",
+    "cordova-plugin-purchase": "^13.18.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0"

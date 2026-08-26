@@ -118,8 +118,100 @@ function getGamesPlugin() {
   return null;
 }
 
+// ============================================================
+// BILLING PLUGIN -- cordova-plugin-purchase
+// ============================================================
+// Chosen 2026-08-25. ANDROID-BUILD.md section 7 left this to Dakota, and the
+// deciding argument was NOT maintenance: RevenueCat is better maintained, ships
+// a Capacitor 8 peer dependency, and would be less code than this. It is also a
+// hosted service, and THIS APP MAKES ZERO NETWORK REQUESTS -- a fact declared
+// on the Play Data safety form, claimed in privacy.html, and printed in the
+// store listing. Putting a third party in the purchase path would falsify all
+// three at once. cordova-plugin-purchase talks to Play Billing over on-device
+// IPC with the Play Store app, so every one of those claims survives.
+//
+// Verified before adopting, as section 4 asks: it bundles
+// com.android.billingclient:billing:9.0.0, past the BL8+ floor.
+//
+// DEV: the plugin is EVENT-DRIVEN and this adapter is promise-shaped, so the
+// bridge is `pendingOrders` -- a map from Play product id to the resolver of
+// the promise purchase() is waiting on. A transaction reaching approved or
+// finished settles it; an order() that comes back with an error settles it the
+// other way.
 function getBillingPlugin() {
+  try {
+    return (typeof window !== 'undefined' && window.CdvPurchase && window.CdvPurchase.store) || null;
+  } catch { return null; }
+}
+
+// Play's enum values, read from the plugin when it is there and hard-coded as a
+// fallback so this file can be reasoned about without it. Both fallbacks are
+// the literal strings the plugin uses.
+function billingConst(group, key, fallback) {
+  try { return window.CdvPurchase?.[group]?.[key] ?? fallback; } catch { return fallback; }
+}
+const PLAY_PLATFORM = () => billingConst('Platform', 'GOOGLE_PLAY', 'android-playstore');
+
+const ownedProducts = new Set();          // PNM ids
+const pendingOrders = new Map();          // play id -> resolve fn
+let billingInit = null;                   // promise of { available }
+
+function pnmFromPlayId(playId) {
+  for (const pnmId of knownProducts()) if (productId(pnmId, 'play') === playId) return pnmId;
   return null;
+}
+
+// Idempotent. Registers both products, wires the listeners, then initialises.
+// `available` is Play's own answer to "could I reach the store at all", and it
+// is the field the rest of the app keys off -- see the note on the stub's
+// restore() and ADS.md section 4. It must never be collapsed into an empty
+// entitlement list.
+function initBilling() {
+  if (billingInit) return billingInit;
+  billingInit = (async () => {
+    const store = getBillingPlugin();
+    if (!store) return { available: false };
+
+    const platform = PLAY_PLATFORM();
+    const type = billingConst('ProductType', 'NON_CONSUMABLE', 'non consumable');
+
+    for (const pnmId of knownProducts()) {
+      const play = productId(pnmId, 'play');
+      if (play) store.register({ id: play, type, platform });
+    }
+
+    const settle = (transaction, result) => {
+      for (const line of (transaction?.products || [])) {
+        const pnmId = pnmFromPlayId(line?.id);
+        if (pnmId && result.ok) ownedProducts.add(pnmId);
+        const resolve = pendingOrders.get(line?.id);
+        if (resolve) { pendingOrders.delete(line?.id); resolve(result); }
+      }
+    };
+
+    store.when()
+      // AN APPROVED TRANSACTION MUST BE FINISHED. Play refunds an
+      // unacknowledged purchase after three days, and finish() is what
+      // acknowledges it -- ANDROID-BUILD.md section 4 flags this as the one
+      // thing to verify a plugin does. We call it here rather than assume.
+      .approved(t => { settle(t, { ok: true }); try { t.finish(); } catch {} })
+      .finished(t => settle(t, { ok: true }))
+      // PENDING is a deferred payment method (cash, bank transfer). It is NOT
+      // an entitlement and must not be treated as one until it resolves.
+      .pending(t => settle(t, { ok: false, reason: 'pending' }));
+
+    try {
+      if (typeof store.error === 'function') {
+        store.error(e => console.warn('[PNM] Billing error:', e?.code, e?.message));
+      }
+      await store.initialize([platform]);
+      return { available: true };
+    } catch (e) {
+      console.error('[PNM] Billing initialize failed:', e);
+      return { available: false };
+    }
+  })();
+  return billingInit;
 }
 
 let warnedNoPlugin = false;
@@ -288,25 +380,72 @@ const native = {
     // Each takes the app's own product id and maps it at the boundary, so
     // nothing above this file ever handles a store string.
     async getProduct(pnmId) {
-      const p = getBillingPlugin();
-      if (!p) { warnOnce(); return stub.billing.getProduct(pnmId); }
-      return null;
+      const store = getBillingPlugin();
+      if (!store) { warnOnce(); return stub.billing.getProduct(pnmId); }
+      const { available } = await initBilling();
+      if (!available) return null;
+      const play = productId(pnmId, 'play');
+      const product = play ? store.get(play, PLAY_PLATFORM()) : null;
+      if (!product) return null;
+      const offer = product.getOffer?.() || product.offers?.[0] || null;
+      return {
+        id: pnmId,
+        title: product.title || null,
+        // The price STRING from Play, already localised and currency-formatted.
+        // ads-data.js carries '$0.99' for the browser stub; this is the real
+        // one, and it is what a buyer outside the US must be shown.
+        price: offer?.pricingPhases?.[0]?.price || null,
+        owned: product.owned === true,
+      };
     },
     async purchase(pnmId) {
-      const p = getBillingPlugin();
-      if (!p) { warnOnce(); return stub.billing.purchase(pnmId); }
-      return { ok: false, reason: 'unimplemented' };
+      const store = getBillingPlugin();
+      if (!store) { warnOnce(); return stub.billing.purchase(pnmId); }
+      const { available } = await initBilling();
+      if (!available) return { ok: false, reason: 'unavailable' };
+
+      const play = productId(pnmId, 'play');
+      const product = play ? store.get(play, PLAY_PLATFORM()) : null;
+      const offer = product?.getOffer?.() || product?.offers?.[0] || null;
+      if (!offer) return { ok: false, reason: 'unavailable' };
+
+      // Register the waiter BEFORE ordering: on a fast path Play can approve
+      // the transaction before order() has returned, and a listener attached
+      // afterwards would miss its own purchase.
+      const settled = new Promise(resolve => pendingOrders.set(play, resolve));
+      let err;
+      try { err = await store.order(offer); }
+      catch (e) { err = e; }
+      if (err) {
+        pendingOrders.delete(play);
+        const code = String(err.code ?? '');
+        const cancelled = /CANCEL/i.test(code) || /cancel/i.test(err.message || '');
+        return { ok: false, reason: cancelled ? 'cancelled' : 'failed' };
+      }
+      return settled;
     },
     // Returns the list of owned app-ids. An array rather than a boolean because
     // there is more than one product now, and because "restore" on a fresh
     // install has to be able to say "these two, not that one".
     async restore() {
-      const p = getBillingPlugin();
-      if (!p) { warnOnce(); return stub.billing.restore(); }
-      // Until a plugin is wired this is still not a real answer, so it must not
-      // claim to be one. `available: false` is what stops it being treated as
-      // proof that the player owns nothing. See the note on the stub above.
-      return { available: false, entitled: [] };
+      const store = getBillingPlugin();
+      if (!store) { warnOnce(); return stub.billing.restore(); }
+      const { available } = await initBilling();
+      // Play could not be reached. Saying `entitled: []` here would read as
+      // "you own nothing" and cost a player their purchase -- it did exactly
+      // that on a Pixel 7. `available: false` is the honest answer.
+      if (!available) return { available: false, entitled: [] };
+
+      try { await store.restorePurchases(); } catch (e) { console.warn('[PNM] restorePurchases:', e); }
+      // Read the owned flags directly as well as trusting the listeners: this
+      // is the launch path, and queryPurchasesAsync answers from the Play Store
+      // app's LOCAL cache, so it works with no network.
+      for (const pnmId of knownProducts()) {
+        const play = productId(pnmId, 'play');
+        const product = play ? store.get(play, PLAY_PLATFORM()) : null;
+        if (product?.owned === true) ownedProducts.add(pnmId);
+      }
+      return { available: true, entitled: [...ownedProducts] };
     },
   },
 };
