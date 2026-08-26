@@ -238,6 +238,71 @@ the document should be fixed.**
 
 ---
 
+### And then, into the night: Play Console, signing, and a working shop
+
+**2026-08-25 into 08-26. THE APP IS ON GOOGLE PLAY.** Internal testing only, but
+installed from the store on a Pixel 9, and **a real test purchase completes and
+survives a restart.** The whole billing path is proven end to end.
+
+| Landed | Where it lives |
+|---|---|
+| **Play Console account cleared** — identity, organisation, and the new *Android developer verification*, all verified | Console |
+| **App record** `com.schuckdata.pnm`, Play App Signing enrolled, app signing key minted 2026-08-25 23:03 | Console |
+| **Package name registered** for Android developer verification — 3 keys, which Google filled in ITSELF from the app record | Console |
+| **Upload keystore** at `C:\Users\DS89\keys\pnm-upload.jks`, outside the repo | Dakota's machine + password manager |
+| **Signing config** reading a gitignored `android/keystore.properties` | `android/app/build.gradle` |
+| **All 10 content declarations**; content rating came back **3+ / PEGI 3 / ESRB Everyone worldwide** | Console |
+| **Store listing** — copy, icon, the new feature graphic, screenshots, video | Console |
+| **Merchant account**, then **two products**: `ads_addition` $0.99 and `ads_multiplication` $4.95, purchase option `buy` | Console |
+| **Billing plugin wired and verified on a Pixel 9** | `www/platform/index.js` |
+| **The feature graphic rebuilt** — arc-level weave, nodes flush in the stroke, trimmed to three LCM spans | `tools/logo/` |
+
+**THE BILLING DECISION IS MADE, and the reason is not the obvious one.**
+`ANDROID-BUILD.md` §7 offered RevenueCat, `cordova-plugin-purchase`, or a local
+plugin. **RevenueCat wins on every ordinary criterion** — better maintained,
+ships a Capacitor 8 peer dependency, less code, tracks Billing Library versions
+for you. It is also **a hosted service**, and this app makes zero network
+requests — a fact declared on the Play Data safety form, claimed in
+`privacy.html`, and printed in the store listing. Adopting it would have
+falsified all three at once, for a $0.99 product. **`cordova-plugin-purchase`
+was chosen because it keeps the app silent**, and it was verified before
+adopting: it bundles `com.android.billingclient:billing:9.0.0`.
+
+**Six things worth carrying forward:**
+
+- **Order of operations, which is not guessable.** Play will not let you create
+  in-app products until an UPLOADED build declares
+  `com.android.vending.BILLING`. So the plugin must be installed and a bundle
+  uploaded BEFORE the products exist — not after, which is the order everything
+  else in the console implies.
+- **The app signing key does not exist until an app record does.** Android
+  developer verification wants a SHA-256, and the right one is the app signing
+  key's, not the upload key's — the same distinction §5 step 3 already records
+  for the PGS credential. Registering early and finishing later is correct; the
+  draft holds the name. In the event Google filled the keys in unprompted once
+  the record existed.
+- **Play never unlocks anything.** It records that an account owns the opaque
+  string `ads_addition`. `PRODUCT_IDS` in `platform/index.js` is the ONLY place
+  Play's vocabulary meets the app's, `reconcile()` turns the answer into a local
+  `Set`, and `isOwned()` is what the rest of the app asks. That indirection is
+  what makes an iOS shell a column rather than a migration.
+- **An approved transaction must be `finish()`ed** or Play refunds it after
+  three days. The adapter calls it rather than trusting the plugin to.
+- **A licence tester needs the RIGHT BUILD on the phone.** `dev.41` had no
+  plugin, so a purchase on it fails as "unavailable" and looks exactly like a
+  broken adapter. Read the version label off the panel before believing anything
+  about billing.
+- **Rasterising bit again, exactly as §4 warns.** A Chrome screenshot was taken
+  of an HTML file a previous step had failed to write, and the SIZE FLOOR
+  PASSED — Chrome's error page is big enough. The only check that caught it was
+  looking at the image. Chrome also silently refuses a RELATIVE `--screenshot`
+  path.
+
+**Still open after all this:** Play Games Services (queue item 1, and not a
+launch blocker — achievements run locally); the production release itself; the
+contrast pass; and the three defects below. The panel-taps one is a one-line fix
+and reads as "this app is broken" to a first-time user.
+
 ## 0. Where things actually are
 
 ### The app, as it exists today
@@ -331,11 +396,10 @@ on work.
    paste the console-issued ids into `STORE_IDS`. Nothing else should need to
    change: everything already runs against the adapter, and the in-memory
    fallback keeps a browser working.
-2. **Choose a billing plugin**, same shape of job. `platform/index.js` has
-   `PRODUCT_IDS` and an id-aware `billing` adapter waiting. Until then every
-   purchase honestly fails as "the store is not available right now", which is
-   what the paywall says. **A plugin must map its result onto `available`** —
-   `ADS.md` §4 explains why that field is not decoration.
+2. ~~**Choose a billing plugin**~~ **DONE 2026-08-25 — `cordova-plugin-purchase`,
+   verified with a real test purchase on a Pixel 9.** Both products exist in the
+   console and the entitlement survives a restart. The reasoning, and why the
+   better-maintained option was rejected, is in the dated section above.
 3. **Play Console**: verification state, second Admin user, merchant profile,
    then the achievement list. **Do not create achievements until the list is
    final** — they can be added afterwards and effectively never removed.
@@ -378,6 +442,68 @@ now that owning it reveals a *second* thing to buy.
 `check-ads.mjs` did not catch this — it asserts the two cadence constants, not
 what they animate. It is the same shape of miss as the CSS specificity bug in
 §1b: **a grep proves the code was written, not that it reaches the screen.**
+
+### A second open defect: node 24 sticks after a touch in chord shape
+
+Seen by Dakota on a **Pixel 9, 2026-08-25**, on the first store-delivered build
+(`v1.0.0-dev.41`, internal testing) — so it is a real-device observation, not a
+desktop one, and it has not been reproduced anywhere else yet.
+
+**What was seen:** in **chord** shape, touching node **24** leaves it settled in
+the wrong spot rather than returning home. The parastichy lines appear to pull
+on it, and it buckles.
+
+**Why it is worth reading the physics work of the same day before touching it.**
+§4 records that the settle test was changed that morning to require the node to
+be near home (`SETTLE_HOME_DIST`), and that the release binding was moved to the
+window to survive a lost `pointerup`. A node that settles in the wrong PLACE is
+the failure mode adjacent to both. It may be the new distance test settling a
+node the run shapes are still tensioning, in which case the fix is in the
+interaction between the two and not in either alone.
+
+**24 is not an arbitrary number** — it is 2^3 x 3, so it carries more parastichy
+runs through it than most of its neighbours. Whether the defect is about 24
+specifically or about any heavily-connected node is the first thing to
+establish, and it is cheap: try 12, 36, 48.
+
+Unreproduced, uninvestigated, and deliberately parked.
+
+### A third open defect: the collapsed panel still eats taps
+
+Reported by Dakota on the Pixel 9, 2026-08-25, from the store-delivered build.
+**The panel looks gone, but touching where it used to be still toggles primes.**
+Diagnosed in the source the same day; **deliberately not fixed, because it was
+found mid-launch.**
+
+**The mechanism is confirmed.** `#panel.collapsed` is hidden by transform alone
+— `translateX(calc(-280px - safe-area))` in the desktop layout (line ~135) and
+`translateY(100%)` in the phone layout (line ~1774). **There is no
+`pointer-events` rule on it anywhere.** A transform moves pixels; it does not
+make an element inert. Whenever the panel fails to fully clear the hit-testable
+region it sits there invisible and live, and the prime toggles are the largest
+touch targets in it, which is why they are what fires.
+
+**This codebase has already solved this exact bug once.** Line ~1030 carries
+`#ach-toast:not(.visible) { pointer-events: none; }`, and ACHIEVEMENTS §8 says
+of the swallowed-taps bug that the stylesheet backstop "is what actually
+guarantees that, never the class". Same failure, different element.
+
+**The fix is one line**, and it is safe: `#panel-toggle`, `#sheet-grip` and
+`#panel-top` are all SIBLINGS of `#panel`, not children, so nothing needed stays
+behind the guard.
+
+```
+#panel.collapsed { pointer-events: none; }
+```
+
+**Do not let that close the question.** The backstop makes the panel inert
+regardless of WHY it is still under a thumb, which is a guard and not a
+diagnosis. Why `translateY(100%)` sometimes leaves the panel in the
+hit-testable region is unexplained. The untested guess is that `100%` resolves
+against a stale height after a resize or a rotation — the camera re-framing on
+resize (§9) touches adjacent ground. **Measure it before believing it**; §4
+records what it cost the last time a physics theory was reasoned out rather
+than observed.
 
 ### Achievements need revisiting, and it is a real design task
 

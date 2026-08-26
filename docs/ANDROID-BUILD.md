@@ -370,7 +370,7 @@ is the live reason the plugin choice in §7 is the first decision to make.
 
 | Decision | Options | Owner |
 |---|---|---|
-| Billing plugin | RevenueCat (service, easiest) vs `cordova-plugin-purchase` (no third party) vs own plugin | Dakota |
+| ~~Billing plugin~~ **DECIDED 2026-08-25: `cordova-plugin-purchase`** (Billing Library 9.0.0, verified before adopting). RevenueCat was rejected DESPITE being the better-maintained, less-code option: it is a hosted service, and a third party in the purchase path would falsify the zero-network-requests claim made on the Data safety form, in `privacy.html` and in the store listing. | ~~Dakota~~ done |
 | Web copy at schuckdata.com | Leave frozen as a free demo; or retire | Dakota |
 | The achievement list | Design task; ten-plus, XP budget 2000 | together |
 | Achievements UI | PGS overlay only, or an in-app list too | later, cheap either way |
