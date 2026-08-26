@@ -643,7 +643,7 @@ const mod = {
       const vMag = vel.length();
       if (vMag > 0.0005 || fMag > 0.0005) {
         anyMoving = true;
-      } else if (offDist <= SETTLE_HOME_DIST || !draggedNode) {
+      } else if (offDist <= SETTLE_HOME_DIST) {
         off.set(0, 0, 0);
         vel.set(0, 0, 0);
         nd.mesh.position.copy(rest);
