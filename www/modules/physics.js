@@ -81,7 +81,6 @@ let nodesRef = [];
 let nodeByNRef = new Map();
 let curveN = 0;
 let curveState = null;
-let lastDim = -1;
 
 // Event handler refs (for cleanup)
 let _onDown = null, _onMove = null, _onUp = null;
@@ -187,10 +186,17 @@ function buildSprings(nodes, nodeByN, N, state) {
     velocities.set(nd.n, new THREE.Vector3());
   }
 
-  const dim = state.dimension;
   const selectedPrimes = state.primes;
 
   // Connect consecutive multiples of each selected prime
+  // A spring records only WHO it connects. Its rest length is derived in
+  // animate() from the two home positions each frame, never stored. A stored
+  // copy describes the shape the scene was BUILT at, and the morph does not
+  // rebuild the scene — so after any morph the whole network sat under silent
+  // tension, and the first node touched (the one node a lazy refresh in the
+  // force loop skipped, since the loop skips the dragged node) kept the stale
+  // lengths and was hauled to a displaced equilibrium on release. Measured at
+  // 2.23 off home for a bare tap, springs built at dim 0.5 and paused at 1.44.
   for (const p of selectedPrimes) {
     const multiples = [];
     for (let k = 1; k * p <= N; k++) {
@@ -202,17 +208,12 @@ function buildSprings(nodes, nodeByN, N, state) {
       const springsB = springs.get(b);
       if (!springsA || !springsB) continue;
 
-      // Compute rest distance
-      const posA = interpolatedPos(a, N, dim);
-      const posB = interpolatedPos(b, N, dim);
-      const restDist = posA.distanceTo(posB);
-
       // Avoid duplicates
       if (!springsA.some(s => s.other === b)) {
-        springsA.push({ other: b, restDist });
+        springsA.push({ other: b });
       }
       if (!springsB.some(s => s.other === a)) {
-        springsB.push({ other: a, restDist });
+        springsB.push({ other: a });
       }
     }
   }
@@ -535,9 +536,6 @@ const mod = {
     const N = ctx.N;
     let anyMoving = false;
 
-    const dimChanged = dim !== lastDim;
-    lastDim = dim;
-
     // Spring + anchor forces (use rest + offset, NOT mesh.position which core may overwrite)
     for (const nd of nodesRef) {
       if (nd === draggedNode) continue;
@@ -582,14 +580,18 @@ const mod = {
           const other = nodeByNRef.get(spring.other);
           if (!other) continue;
 
-          const restDist = dimChanged
-            ? rest.distanceTo(interpolatedPos(spring.other, N, dim))
-            : spring.restDist;
-          if (dimChanged) spring.restDist = restDist;
-
           // Other node's position from module state
           const otherOff = offsets.get(spring.other);
           const otherRest = interpolatedPos(spring.other, N, dim);
+
+          // Rest length is the distance between the two homes AT THE CURRENT
+          // dim, derived from positions this loop already computes. It must
+          // never be cached: a cached length describes an old shape, and any
+          // lazy refresh has to pick which frames and which nodes to run on —
+          // the hole that left exactly one node stale. Both directions of a
+          // pair also agree by construction now, where two stored copies
+          // could drift apart and push harder than they pulled.
+          const restDist = rest.distanceTo(otherRest);
           const otherX = otherRest.x + (otherOff ? otherOff.x : 0);
           const otherY = otherRest.y + (otherOff ? otherOff.y : 0);
           const otherZ = otherRest.z + (otherOff ? otherOff.z : 0);
@@ -707,7 +709,6 @@ const mod = {
     velocities.clear();
     draggedNode = null;
     physicsActive = false;
-    lastDim = -1;
   },
 
   enable() {

@@ -324,10 +324,12 @@ adopting: it bundles `com.android.billingclient:billing:9.0.0`.
   path.
 
 **Still open after all this:** Play Games Services (queue item 1, and not a
-launch blocker — achievements run locally); the production release itself; the
-contrast pass; and ONE of the three defects below — node 24. The panel-taps one
-was fixed the same night in `dev.43`, and the shimmer the next morning in
-`dev.44`.
+launch blocker — achievements run locally); the production release itself; and
+the contrast pass. The three defects are now all addressed: the panel-taps one
+was fixed the same night in `dev.43`, the shimmer the next morning in `dev.44`,
+and the touched-node one — node 24 — was diagnosed and fixed on 2026-08-26
+(stale spring rest lengths; see its section below), **pending device
+confirmation**.
 
 ## 0. Where things actually are
 
@@ -499,10 +501,13 @@ bug and the fix in one reading.
 **Not yet seen on a device.** The cadence is five minutes, so confirming it on
 hardware means leaving the app open and idle.
 
-### STILL OPEN: a touched node ends up away from home
+### ~~STILL OPEN~~ DIAGNOSED AND FIXED: a touched node ends up away from home
 
-**`www/modules/physics.js` is byte-identical to the `1.0.0` in review. Eight
-attempts on 2026-08-26, all reverted, none accepted.**
+**FIXED 2026-08-26, later the same day — see the dated subsection at the end of
+this section. `www/modules/physics.js` now differs from the `1.0.0` in review
+by exactly this fix. NOT YET CONFIRMED ON A DEVICE.** Eight patch attempts
+earlier that day were all reverted; the record of them below is kept because
+none of them touched the actual cause and knowing that is worth something.
 
 This section deliberately records only **what was observed** and **what was
 tried and did not work**. No cause is claimed. Several confident explanations
@@ -579,6 +584,62 @@ the same symptom, and `v1`'s force loop is byte-identical to the current one.
   stacked, and the second was evaluated on top of the first.
 - Diff against the frozen `v1/modules/physics.js` and `modules/physics.js` in
   this repo before theorising. Only twelve hunks differ in the whole file.
+
+#### DIAGNOSED AND FIXED, 2026-08-26 — stale spring rest lengths
+
+Dakota re-described the symptom more precisely than the record above: **paused,
+no nodes touching, the FIRST node touched collapses a little toward the centre
+of the figure — as though it had been under tension and was released to where
+the forces balance. Later touches behave.** That first-vs-later asymmetry is
+what gave it away: it points at first-time-only state, and physics has exactly
+one piece of that.
+
+**The mechanism, confirmed by measurement:**
+
+1. `buildSprings()` cached each spring's `restDist` from the node home
+   positions **at the dim the scene was last BUILT at**. The morph never
+   rebuilds the scene, so after any travel the entire network described an old
+   shape — silent tension, invisible only because physics was asleep.
+2. The lazy refresh (`dimChanged` → recompute `restDist`) lived inside
+   `animate()`, which returns early unless physics is active. **The first touch
+   is what wakes physics**, and on that first frame the refresh ran for every
+   node EXCEPT the one under the finger — the force loop skips the dragged
+   node — and then `lastDim` was consumed. The touched node was left the only
+   node in the figure with rest lengths from the old shape.
+3. On release its wrong springs hauled it to a displaced equilibrium, and the
+   settle test rightly held it there (it is quiet, and it is not near home).
+
+**Reproduced in desktop Chrome (headless, render loop confirmed live), no
+touch hardware involved — a bare TAP, zero drag:** springs built at dim 0.5,
+paused at 1.435, tap node 12 → **2.2278 off home, radially inward**, its four
+spring partners (10, 14, 9, 15) pulled into a consistent wrong equilibrium
+around it. Tap node 18 next → no new displacement. **Control:** same page,
+same paused dim, `rebuild()` (springs rebuilt at the on-screen shape), tap 20
+and then 12 again → **0.0000 both**. The stale rest lengths are the whole
+defect.
+
+**The fix is to stop caching a derivable quantity.** A spring now records only
+who it connects; the rest length is derived in the force loop as
+`rest.distanceTo(otherRest)` — both vectors were already being computed there
+every frame, so the cost is one extra sqrt per spring per frame. The
+`dimChanged` / `lastDim` machinery is deleted with the cache. This also ends a
+second latent wrong: the two directions of one spring each carried their own
+`restDist` copy, and after a partial refresh they disagreed — non-reciprocal
+forces. Derived per frame, the pair agrees by construction.
+
+**Verified after the fix, same protocol:** first tap after pause → 0.0000.
+Real drag (0.43 out) → settles back to ≤ 0.007, a thirtieth of a node radius,
+which is the pre-existing quiet-threshold behaviour and invisible.
+
+**Two honest caveats.** (1) Not yet confirmed on a device; the phone currently
+carries the release `1.0.1` (versionCode 6), which has no CDP socket, so
+confirmation is a debug build or Dakota's fingers. (2) The observation table
+above records "spring rest-length error 0.0000" for the node-24 session, which
+this mechanism would not predict for the dragged node's own two entries; that
+measurement cannot be reconstructed now (it may have run after a refresh, or
+read the refreshed copies), so whether node 24 was this bug or this bug plus
+something else is settled only by the device. The reproduction, control and
+fix above stand on their own measurements.
 
 #### TOOLING
 
