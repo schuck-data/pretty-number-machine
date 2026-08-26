@@ -248,11 +248,15 @@ the "days rather than hours" expectation for a first title did not apply.
 176 countries plus rest of world, 100% rollout. The *Play Games on PC*
 opt-in noted below drew no complaint; review passed with it set.
 
-**Next up: the `1.0.2` update** (versionCode 7 — code 6 was a local-only
-build) carrying the physics rest-length fix, closed the same day. The signed
-AAB is built at `android/app/build/outputs/bundle/release/app-release.aab`;
-it uploads via Production → Create new release. Updates to a published app
-review faster than first submissions, but email is still the confirmation.
+**And the `1.0.2` update is SUBMITTED — Submission 2, Production only, in
+review 2026-08-26 16:23.** versionCode 7 (code 6 was a local-only build),
+carrying the physics rest-length fix closed earlier the same day. Rollout is
+100% and proceeds on approval; email is the confirmation. One console wrinkle
+worth recording: "Create new release" was greyed out by a leftover empty
+draft on the Production track, and building the release inside that draft
+first showed BOTH bundles (5 and 7) attached — the published `5 (1.0.0)` had
+to be removed from the draft (⋮ → remove; the live release is untouched by
+this) so the release carried exactly one bundle.
 
 **The version was renamed for the release.** It shipped as `1.0.0`, not
 `1.0.0-dev.44` — the versionName is printed in the panel beside the copyright,
