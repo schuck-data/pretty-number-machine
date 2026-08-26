@@ -499,83 +499,96 @@ bug and the fix in one reading.
 **Not yet seen on a device.** The cadence is five minutes, so confirming it on
 hardware means leaving the app open and idle.
 
-### STILL OPEN: a touched node stops away from home — and the settle test cannot fix it
+### STILL OPEN: a touched node stops away from home
 
-**`www/modules/physics.js` is byte-identical to the `1.0.0` in review. Nothing
-here is solved.** But the problem is now characterised precisely, which it was
-not before, and three remedies are ruled out by measurement rather than by
-argument.
+**`www/modules/physics.js` is byte-identical to the `1.0.0` in review.** Six
+attempts, all reverted. What follows is what is now KNOWN, measured on a Pixel 7
+over CDP, and it is a great deal more than was known before — but the cause is
+still not identified.
 
 #### THE INVARIANT, agreed with Dakota 2026-08-26
 
-**If the figure is quiet, it is home. Nothing else is allowed to be still.**
+**If the figure is quiet, it is home. Nothing else may be still.** Perpetual
+motion is fine — that is the OOPS! dance, where collision makes home unreachable,
+the return effort never completes, and the effort is the engine. **Do not "fix"
+that.** The bug is the opposite: stopped, and not at home.
 
-Motion may continue forever — that is the OOPS! dance, and it is a FEATURE:
-with every prime selected the nodes crowd enough for collision to fire, home
-becomes unreachable, the return effort never completes, and the effort is the
-engine. A limit cycle, not an equilibrium. **Do not "fix" that.** The bug is the
-opposite state: stopped, and not at home.
+#### HOW TO REPRODUCE — the detail that hid this for a whole day
 
-#### REPRODUCING IT — the detail that hid this all day
+**IT ONLY SHOWS WHILE PAUSED.** While the morph runs, `core/renderer.js` rewrites
+every node position on each frame that `dim` changes, painting over whatever
+physics got wrong. Hit play and the figure corrects itself.
 
-**IT ONLY HAPPENS WHILE PAUSED.** When the morph runs, the renderer rewrites
-every node position each frame that `dim` changes (`core/renderer.js`, the
-`if (dim !== lastDim)` block), which overwrites anything physics got wrong. Hit
-play and the figure corrects itself; pause and physics is the only writer.
+Every scripted reproduction that ran with the transport playing converged
+cleanly, which is why several fixes measured "fixed" against a visibly broken
+app. **Set `state.paused = true` before dragging or you are testing nothing.**
 
-Every scripted reproduction ran with the transport playing and therefore
-converged cleanly, which is why four fixes measured "fixed" while Dakota kept
-seeing broken. **Set `state.paused = true` before dragging, or you are testing
-nothing.**
+#### WHAT IS MEASURED
 
-#### WHAT IS ACTUALLY WRONG
-
-Measured on a Pixel 7, paused, dragging node 20, reading physics' own flags:
+Paused, drag node 20, then read physics' own flags through a temporary
+`window.__pnmPhys` hook:
 
 | | |
 |---|---|
-| `physicsActive` | **true** — the tick is running |
-| `draggedNode` | **null** — the release landed |
-| node 20 offset at 2 s | 0.296 |
-| node 20 offset at 8 s | **0.303 — not decaying** |
+| `physicsActive` | **true** — the tick is running every frame |
+| `draggedNode` | **null** — the release lands |
+| offset just after release | 0.37 |
+| offset at 3 s | 0.132 |
+| offset at 8 s | **0.129 — a floor, not a decay** |
+| spring rest-length error vs the current shape | **0.0000** |
+| physics' offset vs the visible displacement | identical — no two-truths problem |
 
-At an offset of 0.30 the anchor force is about 0.0072, **fourteen times** the
-`0.0005` that counts as "not moving". So this is not a weak-force problem. **The
-neighbours' springs are cancelling the anchor**: net force falls under the quiet
-threshold while the displacement is large, and the node is declared at rest
-where it stands.
+**The floor survives an explicit 5%-per-frame decay applied to every offset.**
+`off.multiplyScalar(0.95)` every frame should annihilate 0.13 in under two
+seconds. It does not move. **So the forces are re-injecting displacement at
+exactly the rate it is removed.** Whatever is pushing outward is strong, and it
+is not weak-anchor asymptotics.
 
-**Which means the settle test cannot work as designed.** A local force-and-
-velocity check cannot distinguish "at rest at home" from "at rest, displaced,
-held there by its own neighbours". `44b65cd` describes exactly this displaced
-equilibrium and is right about it. What it did not follow through is that no
-threshold on force can tell the two apart, because at equilibrium both are zero.
-Enforcing the invariant needs a test on the OFFSET, or a global one — not a
-local force test.
+#### RULED OUT, BY MEASUREMENT
 
-#### THREE REMEDIES, ALL RULED OUT BY MEASUREMENT
+- **Stale spring rest lengths** — error is exactly 0; `dimChanged` refreshes them
+- **Nodes and curves disagreeing** — at rest every node-to-curve gap is 0
+- **Curves failing to follow** — `deformCurves` tracks the nodes faithfully
+- **A regression from `44b65cd`** — the live `v1` has it, and `v1`'s force loop
+  is byte-identical
+- **The main figure failing to converge while PLAYING** — it reaches 0 in ~7 s
+- **Collision** — toggling `state._physicsCollision` off changed nothing
+  (0.1289 → 0.1286); note that key may simply not be the live one
 
-| Attempt | Result |
+#### SIX FAILED FIXES
+
+| Attempt | Why it failed |
 |---|---|
-| Snap home whenever motion stops (`v1`'s rule) | Teleports a node inside a coupled network; the springs haul it straight back out. Endless flailing under a real finger. Note a scripted `PointerEvent` drag does NOT reproduce this — it looked clean at 0 frame-jumps over 210 frames |
-| A constant restoring force toward home | A bang-bang controller: overshoots home, flips sign, chatters. Measured a sustained 0.15 oscillation that never settled, with the worst node wandering around the figure |
-| Deriving the snap radius from the quiet threshold (`QUIET / ANCHOR_STIFFNESS` ≈ 0.033) | Closes the weak-anchor band, but not this: node 20 sits at 0.30, far outside any sane snap radius |
+| `deformCurves` upload paths (three faults) | Curves were never the problem |
+| Creep-home when quiet | Fought the integrator; the figure crawled |
+| `v1`'s unconditional snap | Teleports inside a coupled network; flails under a real finger. A scripted `PointerEvent` drag does NOT reproduce this |
+| Constant restoring force | Bang-bang controller; chattered at a sustained 0.15 |
+| Snap radius derived from the quiet threshold | Closes the weak-anchor band, but the residue is 0.30, far outside it |
+| Global settle + continuous bleed | The bleed is cancelled by whatever pushes outward |
 
-Two earlier attempts on the CURVES (`deformCurves` upload paths) were also
-reverted; the curves were never the problem and faithfully follow the nodes.
+#### THE BEST REMAINING LEAD
 
-#### WHERE TO START NEXT
+At `dim = 0.5` (String, the default opening arrangement) the closest pair of
+**home positions** sit **0.333** apart while the node radius is **0.2** — a
+contact distance of 0.4. **The nodes overlap at home.** If anything in the
+system repels overlapping nodes, home is not an occupiable configuration and no
+amount of pulling will reach it, which would explain a hard floor that a 5%
+decay cannot penetrate. That is the same mechanism as the OOPS! dance, running
+in the default view.
 
-Not with another threshold. The invariant is about offsets, so test offsets:
-a node may only be marked at rest when its offset is zero, and something must
-guarantee that offsets reach zero when home is reachable. The obstacle is doing
-that without teleporting (thrash) and without a fixed-magnitude push (chatter) —
-a decay applied only to nodes that would OTHERWISE be declared quiet is the
-untried shape, and it must be measured while **paused**.
+Toggling the collision key did not clear it, but that key may not be what the
+collision code actually reads — **check what actually drives node-node repulsion
+before dismissing this.** The spacing arithmetic above is the strongest single
+clue on the table.
 
-`tools/cdp.mjs` plus a temporary `window.__pnmPhys` hook exposing
-`physicsActive` / `draggedNode` / `offsets` is what made any of this legible.
-See §4.
+#### TOOLING
+
+`tools/cdp.mjs` gives a live REPL into the app on the device: `adb forward` to
+the WebView devtools socket, then `Runtime.evaluate`. `await import()` inside the
+page returns the SAME module instance the app is running, so `getScene()` and
+`getNodes()` hand over live objects. A temporary `window.__pnmPhys` closure
+inside the tick is what exposed `physicsActive` / `draggedNode` / `offsets` /
+spring rest error — add it back when resuming. See §4.
 
 ### ~~A third open defect~~ FIXED: the collapsed panel ate taps
 
