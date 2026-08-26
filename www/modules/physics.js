@@ -47,6 +47,11 @@ const MAX_FORCE = 0.5;
 // rest of the way. A fiftieth of a node radius, so the snap is never visible.
 // See the settling note in animate() for why a distance test is needed at all.
 const SETTLE_HOME_DIST = 0.004;
+// How fast a node creeps home once NOTHING is being held. Multiplied into the
+// offset each frame, so 0.88 takes a 0.13 displacement under SETTLE_HOME_DIST
+// in about thirty frames -- half a second, and continuous rather than a jump.
+// See the settle block for why this exists at all.
+const RELAX_HOME = 0.88;
 const DRAG_MAX_N = 1000;
 
 // === MODULE STATE ===
@@ -675,6 +680,31 @@ const mod = {
         off.set(0, 0, 0);
         vel.set(0, 0, 0);
         nd.mesh.position.copy(rest);
+      } else if (!draggedNode) {
+        // NOT MOVING, NOT HOME, AND NOTHING IS HELD. Measured on a Pixel 7 on
+        // 2026-08-26: after a drag and release the figure froze with eight
+        // nodes still 0.05 to 0.13 off station, permanently. This branch is
+        // where they were stranded -- the first test said "not moving", the
+        // second said "not near enough to snap", and there was no third, so
+        // `anyMoving` stayed false, `physicsActive` went false, the tick
+        // early-returned, and nothing ever touched them again.
+        //
+        // The note above is right that a displaced equilibrium is real: the
+        // anchor spring and the springs to the neighbours genuinely cancel, and
+        // teleporting out of it caused the 4.7-teleports-per-frame thrash. But
+        // that equilibrium is legitimate BECAUSE A NODE IS BEING HELD. Once
+        // nothing is held there is nothing legitimising it, and the rest
+        // configuration should be the only attractor.
+        //
+        // So: creep, do not teleport. Scaling the offset is continuous, so the
+        // node cannot be yanked home and hauled back out -- which is the exact
+        // failure teleporting produced. It also keeps `anyMoving` true, which
+        // is what stops the tick shutting down before the figure is actually
+        // at rest.
+        off.multiplyScalar(RELAX_HOME);
+        vel.set(0, 0, 0);
+        nd.mesh.position.set(rest.x + off.x, rest.y + off.y, rest.z + off.z);
+        anyMoving = true;
       }
     }
 

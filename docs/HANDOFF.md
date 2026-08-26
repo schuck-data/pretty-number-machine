@@ -535,13 +535,53 @@ deformed now OR last pass, latched per object in `userData.physWasDeformed`;
 and a `curveFlushFrames` counter so the idle path and `resetPhysics()` still owe
 the curves a straightening pass after the tick would otherwise have stopped.
 
-**REASONED, NOT YET OBSERVED.** Unlike the panel fix, this one has not been
-watched working. The scene graph is not reachable from the page — nothing is
-exposed on `window` — so a browser reproduction was not possible, and installing
-a local build on the Pixel would force an uninstall on a signature mismatch and
-take the achievement ledger with it. It ships in `1.0.1` and wants confirming on
-the device: drag a node well off station, let go, open the lens, and look at
-whether the arc follows it home.
+**AND THAT DIAGNOSIS WAS INCOMPLETE. The curve faults above are real and the
+fix for them is kept — but they were not what made the figure look broken.**
+Shipped as a fix, tested on the Pixel 7, and Dakota reported it "still
+happening, possibly worse". Correctly: with the curves now tracking faithfully,
+they render the real node positions instead of a stale snapshot, and the real
+node positions were wrong.
+
+**THE ACTUAL CAUSE: nodes freeze in a displaced equilibrium and nothing ever
+moves them again.** The settle block ran two tests and had no third:
+
+```
+if (vMag > 0.0005 || fMag > 0.0005)  anyMoving = true;
+else if (offDist <= SETTLE_HOME_DIST) snap home;
+// and otherwise: nothing at all
+```
+
+A node that has stopped moving but is NOT near home falls through both. It is
+not counted as moving, so `anyMoving` stays false; `physicsActive` goes false;
+the tick early-returns; and the offset is frozen for the life of the session.
+
+The long note above that branch is right that a displaced equilibrium is real —
+the anchor spring and the neighbour springs genuinely cancel, and teleporting
+out of it caused the 4.7-teleports-per-frame thrash it describes. What it missed
+is that such an equilibrium is legitimate **because a node is being held**. Once
+nothing is held, nothing legitimises it, and the rest configuration should be
+the only attractor.
+
+**The fix** is a third branch, taken only when `!draggedNode`: scale the offset
+by `RELAX_HOME` (0.88) each frame and keep `anyMoving` true. Creeping is
+continuous, so a node cannot be yanked home and hauled straight back out — which
+is precisely what teleporting did.
+
+**MEASURED ON THE DEVICE, before and after, with the same scripted drag.** The
+harness is worth keeping and is described in §4: `adb forward` to the WebView's
+devtools socket, then `Runtime.evaluate` over CDP importing `/core/renderer.js`
+— importing a module from the page returns the SAME instance the app is running,
+so `getScene()` and `getNodes()` hand over the live objects. Deviation is
+measured as the uploaded `instanceStart` array against `userData.lerpBuf`, which
+is the rest geometry.
+
+| six seconds after an identical drag | before | after |
+|---|---|---|
+| line deviation from rest, p=2/3/5 | 0.135 / 0.196 / 0.155 | **0 / 0 / 0** |
+| nodes still off station | **eight**, by 0.05 to 0.13 | **none** |
+
+**Both fixes ship in `1.0.1`.** Keep both: the curve fix is what makes the lines
+tell the truth, and this one is what makes the truth worth telling.
 
 
 ### ~~A third open defect~~ FIXED: the collapsed panel ate taps
@@ -791,6 +831,30 @@ held `#0A1226`. `Emulation.setDefaultBackgroundColorOverride` with `a: 0` is the
 fix. Both were caught by a size floor and a framebuffer sample; neither was
 visible in a thumbnail. Verify every render against a size floor and refuse a
 thin one.
+
+**THERE IS A WORKING REPL INTO THE APP ON THE DEVICE, and it is the single most
+useful debugging tool this project has.** The app exposes nothing on `window`,
+which made every earlier attempt at inspection a dead end — but it does not have
+to. From a debug build:
+
+```
+adb shell cat /proc/net/unix | grep -o "webview_devtools_remote_[0-9]*"
+adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>
+```
+
+then drive `Runtime.evaluate` over the CDP WebSocket from `/json/list`. **The
+trick that makes it powerful is that `await import('/core/renderer.js')` inside
+the page returns the SAME module instance the app is running** — module records
+are cached per URL — so `getScene()`, `getNodes()` and `getCamera()` hand over
+the live objects. From there a drag can be synthesised with `PointerEvent`s and
+the result measured numerically instead of squinted at.
+
+It is what turned "the node looks stuck" into "eight nodes are 0.05 to 0.13 off
+station and the line deviation matches", which is the measurement that found the
+settle bug after three wrong theories. **Note that `adb shell input swipe` did
+NOT work for this** — it never grabbed a node — while in-page `PointerEvent`s
+did. Real MotionEvents are still required for the achievement work (§13a of
+ACHIEVEMENTS.md), because those check `isTrusted`; physics does not.
 
 **THE SHIPPED BUILD'S SERVICE WORKER WILL SERVE YOU A STALE `www/`.** The `pnm`
 launch entry serves the REPO ROOT on 8123, and the repo root is the published
