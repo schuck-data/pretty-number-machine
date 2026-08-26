@@ -300,8 +300,9 @@ adopting: it bundles `com.android.billingclient:billing:9.0.0`.
 
 **Still open after all this:** Play Games Services (queue item 1, and not a
 launch blocker — achievements run locally); the production release itself; the
-contrast pass; and two of the three defects below — the panel-taps one was
-fixed the same night and shipped in `dev.43`.
+contrast pass; and ONE of the three defects below — node 24. The panel-taps one
+was fixed the same night in `dev.43`, and the shimmer the next morning in
+`dev.44`.
 
 ## 0. Where things actually are
 
@@ -423,7 +424,7 @@ on work.
    frozen build AND bumping `CACHE_VERSION`, or visitors keep the old icon
    indefinitely — trap #3. Dakota's call, since "frozen" was a decision.
 
-### One open defect: the shimmer invites a hidden button
+### ~~One open defect~~ FIXED: the shimmer invited a hidden button
 
 Found 2026-08-25 while reading, **not yet fixed and not yet seen on a device.**
 `shimmerOnce()` in `ads.js` animates `#ads-btn`, which was the corner's ads
@@ -433,15 +434,43 @@ product* button and put it behind the `+s` door, where `index.html` gives it
 element the player cannot see, except in the one state — tray already open —
 where they have plainly found the shop and need no invitation.
 
-The fix is almost certainly one line, retargeting the shimmer to `#ads-menu-btn`,
-the door. Two things to decide with it: whether the schedule should also stop
-while the tray is open (a shimmering door the player is already looking through
-is noise), and whether owning `ads-addition` is still the right stop condition
-now that owning it reveals a *second* thing to buy.
+**FIXED 2026-08-26**, shipped in `v1.0.0-dev.44`. The retarget to
+`#ads-menu-btn` was the one line. Both attached decisions were taken by Dakota:
 
-`check-ads.mjs` did not catch this — it asserts the two cadence constants, not
-what they animate. It is the same shape of miss as the CSS specificity bug in
-§1b: **a grep proves the code was written, not that it reaches the screen.**
+- **The schedule pauses while the tray is open.** `ads-tray-open` joins
+  `ads-open` and `clear-view` in the same guard. All three mean the player is
+  already busy with the thing the shimmer invites them to.
+- **The stop condition moved from "owns it" to "has seen it."** The old rule was
+  written when the shop was a single $0.99 product; with a three-rung ladder it
+  meant a player who opened the shop and declined got reminded every twenty
+  minutes indefinitely, which is advertising rather than a hint, and it broke
+  this file's own rule that an accepted invitation which keeps pestering is a
+  nag. The audience declared to Play starts at 13, and Families policy reads
+  purchase pressure at that age more strictly.
+
+**Consequence: the second cadence is gone.** `SHIMMER_SEEN_MS` was deleted
+rather than left unused, because a constant nothing reads is a lie waiting to be
+believed. One cadence, five minutes, one chance.
+
+**The stop test is TWO conditions and the second is not redundant.**
+`paywallSeen() || isOwned('ads-addition')`. An entitlement can be restored onto a
+fresh install where the paywall was never opened on THAT device, and a player who
+already owns the ads should not be invited to go and find the shop.
+
+`check-ads.mjs` did not catch the original — it asserted the two cadence
+constants, not what they animate. Same shape of miss as the CSS specificity bug
+in §1b: **a grep proves the code was written, not that it reaches the screen.**
+It now asserts what the shimmer ANIMATES, that the dead constant is gone, and
+both stop conditions — 65 checks, up from 62.
+
+**And the fix was verified by measurement, not by grep**, in a browser with the
+service worker cleared: the door (`#ads-menu-btn`) is `display: flex` at 34x34
+and the `shimmer` class on it resolves to the `ads-shimmer` animation, while
+`#ads-btn` — what it used to animate — is `display: none` at 0x0. That is the
+bug and the fix in one reading.
+
+**Not yet seen on a device.** The cadence is five minutes, so confirming it on
+hardware means leaving the app open and idle.
 
 ### A second open defect: node 24 sticks after a touch in chord shape
 

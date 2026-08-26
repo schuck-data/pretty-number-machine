@@ -249,26 +249,38 @@ function paintButtons() {
 // without ever pressing it — which would be fine if there were nothing behind
 // it, and there is.
 //
-// So it catches the light occasionally. TWO cadences, and the difference is the
-// whole design:
+// So it catches the light occasionally, and then it stops for good:
 //
-//   Never opened     — every 5 minutes. This player does not know the door is
-//                      there. Telling them is the entire job.
-//   Opened, not sold — every 20 minutes. This player has seen the paywall and
-//                      said no, or not yet. They know. Reminding them at the
-//                      same rate would be pestering somebody who has already
-//                      given an answer, which is what the four-times gap is
-//                      for.
-//   Owned            — never. There is nothing left to advertise, and the
-//                      button already carries the gold `owned` ring.
+//   Never opened — every 5 minutes. This player does not know the door is
+//                  there. Telling them is the ENTIRE job.
+//   Opened       — never again. The invitation was accepted; it worked.
+//   Owned        — never. Nothing left to say, and the button already carries
+//                  the gold `owned` ring.
+//
+// REVISED 2026-08-26, and the earlier design is worth recording because it was
+// not wrong so much as overtaken. There used to be a second cadence: seen but
+// not sold dropped to every 20 minutes rather than stopping. That made sense
+// when the shimmer was pointing at a single $0.99 product. It stopped making
+// sense when the shop became a three-rung ladder, because a player who opened
+// the shop and declined was then reminded every 20 minutes indefinitely --
+// which is advertising, not a hint, and it fails this file's own rule that an
+// invitation which keeps pestering after it has been accepted is a nag. The
+// audience declared to Play starts at 13, and Families policy reads purchase
+// pressure aimed at that age more strictly than the same thing aimed at
+// adults. So: one cadence, and one chance.
+//
+// THE STOP TEST IS TWO CONDITIONS, NOT ONE. `paywallSeen()` is the main one,
+// but ownership is checked as well and is NOT redundant: an entitlement can be
+// restored onto a fresh install where the paywall has never been opened on
+// THIS device, and a player who already owns the ads should not be invited to
+// go and find the shop.
 //
 // One wave, not a pulse. This button sits permanently over the figure, and a
 // control that glowed continuously in the corner of a toy would be intolerable
 // — which is exactly why the achievements switch, which lives inside a
 // collapsed panel section and can only be seen on purpose, is allowed a steady
 // glow and this is not.
-const SHIMMER_UNSEEN_MS = 300000;      // 5 minutes
-const SHIMMER_SEEN_MS = 1200000;       // 20 minutes
+const SHIMMER_UNSEEN_MS = 300000;      // 5 minutes, and the only cadence
 const SEEN_KEY = 'pnm-ads-seen-v1';
 let shimmerTimer = null;
 
@@ -281,16 +293,23 @@ function paywallSeen() {
 }
 function markPaywallSeen() {
   try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* private mode */ }
-  scheduleShimmer();                    // drop to the slower cadence at once
+  scheduleShimmer();                    // which now cancels the timer outright
 }
 
 function shimmerOnce() {
-  const el = document.getElementById('ads-btn');
-  // Not while something is open over the figure, and not in clear view. A
-  // shimmer is an invitation, and both of those states mean the player is
-  // already busy with something else.
-  if (!el || isOwned('ads-addition')) return;
+  // THE DOOR, not the product behind it. This read `ads-btn` until 2026-08-26,
+  // which was the corner's ads control when the shimmer was written. The tray
+  // made `ads-btn` the ADDITION PRODUCT button and put it behind the `+s` door,
+  // where index.html gives it `display: none` unless `body.ads-tray-open` -- so
+  // the invitation was animating an element the player could not see, except in
+  // the one state where they had plainly already found the shop.
+  const el = document.getElementById('ads-menu-btn');
+  // Not while something is open over the figure, not in clear view, and not
+  // while the tray itself is open. A shimmer is an invitation, and all three
+  // states mean the player is already busy with the thing it invites them to.
+  if (!el || paywallSeen() || isOwned('ads-addition')) return;
   if (document.body.classList.contains('ads-open')) return;
+  if (document.body.classList.contains('ads-tray-open')) return;
   if (document.body.classList.contains('clear-view')) return;
   el.classList.remove('shimmer');
   void el.offsetWidth;                  // restart the animation
@@ -300,9 +319,10 @@ function shimmerOnce() {
 
 function scheduleShimmer() {
   if (shimmerTimer) { clearInterval(shimmerTimer); shimmerTimer = null; }
-  if (isOwned('ads-addition')) return;  // nothing left to say
-  const every = paywallSeen() ? SHIMMER_SEEN_MS : SHIMMER_UNSEEN_MS;
-  shimmerTimer = setInterval(shimmerOnce, every);
+  // Both stop conditions, and see the note above for why ownership is not
+  // covered by paywallSeen().
+  if (paywallSeen() || isOwned('ads-addition')) return;
+  shimmerTimer = setInterval(shimmerOnce, SHIMMER_UNSEEN_MS);
 }
 
 // ============================================================

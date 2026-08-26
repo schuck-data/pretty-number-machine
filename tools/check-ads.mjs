@@ -260,15 +260,21 @@ for (const p of D.PRODUCTS) {
      TELLS.filter(t => t.test(p.pitch)).map(String), []);
 }
 
-// The shimmer has TWO cadences and the gap between them is the whole design:
-// five minutes for a player who has never opened the paywall (they do not know
-// the door exists), twenty for one who has (they know, and reminding them at
-// the same rate is pestering somebody who already answered). Owned means never.
-// Easy to "simplify" into one interval by someone who has not read why.
-ok('the ads shimmer has a fast cadence for an unseen paywall',
+// The shimmer has ONE cadence and TWO stop conditions since 2026-08-26. It also
+// has to animate the DOOR: it pointed at `ads-btn` for a while after the tray
+// moved that button behind the door, so the invitation fired on something
+// invisible. A grep proves the constant was written; these assert what it
+// animates and when it gives up.
+ok('the ads shimmer has a single five-minute cadence',
    /SHIMMER_UNSEEN_MS\s*=\s*300000/.test(ADS));
-ok('...and a four-times slower one once it has been seen',
-   /SHIMMER_SEEN_MS\s*=\s*1200000/.test(ADS));
+ok('...and the old seen-cadence constant is gone, not merely unused',
+   !/SHIMMER_SEEN_MS/.test(ADS));
+ok('the shimmer animates the tray DOOR, not the product button behind it',
+   /getElementById\('ads-menu-btn'\)/.test(ADS) && !/shimmerOnce[\s\S]{0,400}getElementById\('ads-btn'\)/.test(ADS));
+ok('it stops once the paywall has been seen',
+   /paywallSeen\(\)\s*\|\|\s*isOwned\('ads-addition'\)/.test(ADS));
+ok('...and pauses while the tray is open',
+   /ads-tray-open'\)\)\s*return/.test(ADS));
 ok('an owned product stops the shimmer entirely',
    /isOwned\('ads-addition'\)\)\s*return;/.test(ADS));
 
