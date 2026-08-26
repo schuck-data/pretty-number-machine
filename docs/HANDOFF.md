@@ -547,9 +547,10 @@ re-framing on resize (§9) touches adjacent ground. **Measure it before
 believing it**; §4 records what it cost the last time a physics theory was
 reasoned out rather than observed.
 
-**Not yet confirmed on a device.** The measurement above is a desktop browser.
-Dakota still has to collapse the sheet on the Pixel and try to poke a prime
-through it.
+**Confirmed on a device, 2026-08-26.** Dakota collapsed the sheet on the Pixel
+and could no longer reach a prime through it. Browser measurement and hardware
+agree, so this one is genuinely shut -- except for the geometry question above,
+which is still open and still deliberately so.
 
 ### Achievements need revisiting, and it is a real design task
 
