@@ -18,7 +18,9 @@ and as of 2026-08-25 it has a logo, a full icon set and the store graphics. The
 work ahead is connecting to Play Games Services, choosing a billing plugin, and
 getting it into the store — see `ANDROID-BUILD.md`.**
 
-**Current build: `v1.0.0-dev.41`, installed and verified on a Pixel 7.** Version
+**Current build: `v1.0.2` (versionCode 7), installed on the Pixel 7 2026-08-26,
+version label read back off the panel.** It is `1.0.1` plus the physics
+rest-length fix (see the stuck-node section). Version
 lives in three files that `npm run check` holds in agreement: `package.json`,
 `www/index.html` and `android/app/build.gradle`. Bump all three or the checker
 fails — which is the point, because the WebView caches `https://localhost/` and
@@ -328,8 +330,8 @@ launch blocker — achievements run locally); the production release itself; and
 the contrast pass. The three defects are now all addressed: the panel-taps one
 was fixed the same night in `dev.43`, the shimmer the next morning in `dev.44`,
 and the touched-node one — node 24 — was diagnosed and fixed on 2026-08-26
-(stale spring rest lengths; see its section below), **pending device
-confirmation**.
+(stale spring rest lengths; see its section below), A/B-verified on the
+Pixel 7 and installed as `1.0.2`, **awaiting only Dakota's finger**.
 
 ## 0. Where things actually are
 
@@ -505,9 +507,13 @@ hardware means leaving the app open and idle.
 
 **FIXED 2026-08-26, later the same day — see the dated subsection at the end of
 this section. `www/modules/physics.js` now differs from the `1.0.0` in review
-by exactly this fix. NOT YET CONFIRMED ON A DEVICE.** Eight patch attempts
-earlier that day were all reverted; the record of them below is kept because
-none of them touched the actual cause and knowing that is worth something.
+by exactly this fix, and the fix is A/B-verified ON THE PIXEL 7** (in device
+Chrome — details in the subsection) **and installed as `1.0.2` (versionCode 7).
+The last word is still a finger:** scripted pointers have measured clean before
+while a hand flailed (attempt 3 below), so Dakota poking the installed app is
+the close-out. Eight patch attempts earlier that day were all reverted; the
+record of them below is kept because none of them touched the actual cause and
+knowing that is worth something.
 
 This section deliberately records only **what was observed** and **what was
 tried and did not work**. No cause is claimed. Several confident explanations
@@ -631,15 +637,39 @@ forces. Derived per frame, the pair agrees by construction.
 Real drag (0.43 out) → settles back to ≤ 0.007, a thirtieth of a node radius,
 which is the pre-existing quiet-threshold behaviour and invisible.
 
-**Two honest caveats.** (1) Not yet confirmed on a device; the phone currently
-carries the release `1.0.1` (versionCode 6), which has no CDP socket, so
-confirmation is a debug build or Dakota's fingers. (2) The observation table
-above records "spring rest-length error 0.0000" for the node-24 session, which
-this mechanism would not predict for the dragged node's own two entries; that
-measurement cannot be reconstructed now (it may have run after a refresh, or
-read the refreshed copies), so whether node 24 was this bug or this bug plus
-something else is settled only by the device. The reproduction, control and
-fix above stand on their own measurements.
+**Then verified ON THE PIXEL 7, same day, without touching the installed app's
+data.** The release build has no CDP socket, but Chrome on the device does:
+`adb reverse` the local server onto the phone, open `www/` in device Chrome,
+`adb forward` to `localabstract:chrome_devtools_remote`, and the same probes
+run against real hardware. Results, A/B on the same phone:
+
+| | first tap after pausing mid-morph | drag 1.9–2.1 out, release |
+|---|---|---|
+| pre-fix `physics.js` (`8d31cbe`) | **0.2559 off home, inward** — the bug | — |
+| fixed `physics.js` | **0.0000** | settles to **0.0000** |
+
+The pre-fix displacement is smaller than desktop's 2.23 because the pause
+landed nearer the build shape — the error scales with how far the shape has
+travelled since the last rebuild, which is why the symptom reads as "collapses
+a bit". Note the test was shown able to FAIL on this device before the pass
+was believed.
+
+`1.0.2` (versionCode 7) was then built (release, upload key — the installed
+`1.0.1` was sideloaded, `installerPackageName=null`, so an over-the-top
+install keeps the ledger) and installed; the label was read back off the
+panel. **`npx cap copy` before `assembleRelease`, or the APK carries the
+previous `www/` — the first build of `1.0.2` genuinely contained `1.0.1`'s
+web code and only the asset hash caught it.**
+
+**Two honest caveats.** (1) The A/B ran in device Chrome, not the Capacitor
+WebView, and with scripted pointers, not a hand — same engine, same file, but
+attempt 3 taught that a hand is the only final word, so Dakota's finger on the
+installed `1.0.2` closes this. (2) The observation table above records "spring
+rest-length error 0.0000" for the node-24 session, which this mechanism would
+not predict for the dragged node's own two entries; that measurement cannot be
+reconstructed now (it may have run after a refresh, or read the refreshed
+copies), so whether node 24 was this bug alone is not provable in retrospect.
+The reproduction, control and fix stand on their own measurements.
 
 #### TOOLING
 
