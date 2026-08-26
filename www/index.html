@@ -132,6 +132,27 @@
   }
   /* Must travel its own full width, inset included, or a sliver of panel is
      left stuck to the edge of the screen when it is meant to be away. */
+  /* A COLLAPSED PANEL MUST BE INERT, not merely moved.
+     Found on a Pixel 9, 2026-08-25: the panel looked gone and touching where it
+     had been still toggled primes. Both layouts hide it with a TRANSFORM -- the
+     translateX below, and translateY(100%) in the phone layout -- and a
+     transform moves pixels without making an element stop hit-testing. Whenever
+     it failed to fully clear the hit-testable region it sat there invisible and
+     live, and the prime toggles are the largest targets in it.
+
+     This is the same fix the toast already carries further down
+     (#ach-toast:not(.visible)), and ACHIEVEMENTS.md section 8 says of that one
+     that the stylesheet backstop "is what actually guarantees that, never the
+     class".
+
+     Safe because #panel-toggle, #sheet-grip and #panel-top are all SIBLINGS of
+     #panel rather than children, so nothing reachable hides behind this guard.
+
+     IT IS A GUARD, NOT A DIAGNOSIS. Why the transform sometimes leaves the panel
+     in the hit-testable region is still unexplained -- the untested guess is
+     that translateY(100%) resolves against a stale height after a resize or a
+     rotation. HANDOFF.md keeps that question open on purpose. */
+  #panel.collapsed { pointer-events: none; }
   #panel.collapsed { transform: translateX(calc(-280px - env(safe-area-inset-left))); }
   #panel-toggle {
     position: absolute; z-index: 27;
@@ -2228,7 +2249,7 @@
     </div>
   </div>
 
-  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.42 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
+  <div style="font-size:0.75rem; color:rgba(224,221,213,0.55); margin-top:10px; letter-spacing:0.03em;">v1.0.0-dev.43 &middot; &copy; 2026 Schuck Data (a DS89 Holdco LLC company)</div>
 </div>
 
 <!-- A sibling of #panel, not a child. Inside the panel it would either scroll

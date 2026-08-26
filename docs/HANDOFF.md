@@ -300,8 +300,8 @@ adopting: it bundles `com.android.billingclient:billing:9.0.0`.
 
 **Still open after all this:** Play Games Services (queue item 1, and not a
 launch blocker — achievements run locally); the production release itself; the
-contrast pass; and the three defects below. The panel-taps one is a one-line fix
-and reads as "this app is broken" to a first-time user.
+contrast pass; and two of the three defects below — the panel-taps one was
+fixed the same night and shipped in `dev.43`.
 
 ## 0. Where things actually are
 
@@ -468,7 +468,7 @@ establish, and it is cheap: try 12, 36, 48.
 
 Unreproduced, uninvestigated, and deliberately parked.
 
-### A third open defect: the collapsed panel still eats taps
+### ~~A third open defect~~ FIXED: the collapsed panel ate taps
 
 Reported by Dakota on the Pixel 9, 2026-08-25, from the store-delivered build.
 **The panel looks gone, but touching where it used to be still toggles primes.**
@@ -496,14 +496,31 @@ behind the guard.
 #panel.collapsed { pointer-events: none; }
 ```
 
+**FIXED 2026-08-26** in `www/index.html`, shipped in `v1.0.0-dev.43`. The one
+line went in above the desktop transform rule, where the comment explains
+itself.
+
+**And it was MEASURED, not asserted**, because §1b's lesson is exactly that a
+grep proves a rule was written and not that it wins. Served locally and probed
+with `getComputedStyle` plus `elementFromPoint` on a real prime button:
+
+| | `pointer-events` | what a tap on a prime button hits |
+|---|---|---|
+| Panel open | `auto` | `BUTTON.prime-btn` |
+| Panel collapsed | `none` | `HTML` — falls through |
+
 **Do not let that close the question.** The backstop makes the panel inert
 regardless of WHY it is still under a thumb, which is a guard and not a
 diagnosis. Why `translateY(100%)` sometimes leaves the panel in the
-hit-testable region is unexplained. The untested guess is that `100%` resolves
-against a stale height after a resize or a rotation — the camera re-framing on
-resize (§9) touches adjacent ground. **Measure it before believing it**; §4
-records what it cost the last time a physics theory was reasoned out rather
-than observed.
+hit-testable region is STILL UNEXPLAINED. The untested guess is that `100%`
+resolves against a stale height after a resize or a rotation — the camera
+re-framing on resize (§9) touches adjacent ground. **Measure it before
+believing it**; §4 records what it cost the last time a physics theory was
+reasoned out rather than observed.
+
+**Not yet confirmed on a device.** The measurement above is a desktop browser.
+Dakota still has to collapse the sheet on the Pixel and try to poke a prime
+through it.
 
 ### Achievements need revisiting, and it is a real design task
 
@@ -697,6 +714,26 @@ held `#0A1226`. `Emulation.setDefaultBackgroundColorOverride` with `a: 0` is the
 fix. Both were caught by a size floor and a framebuffer sample; neither was
 visible in a thumbnail. Verify every render against a size floor and refuse a
 thin one.
+
+**THE SHIPPED BUILD'S SERVICE WORKER WILL SERVE YOU A STALE `www/`.** The `pnm`
+launch entry serves the REPO ROOT on 8123, and the repo root is the published
+Pages site — so loading `http://localhost:8123/` registers the v0.14.5 service
+worker at scope **`/`**, and from then on it intercepts `/www/index.html` too
+and answers from the `pnm-v0.14.5` cache. On 2026-08-26 that made a CSS fix
+which was provably present in the file on disk appear not to apply at all, and
+the only reason it was caught was checking `navigator.serviceWorker.controller`
+alongside `document.styleSheets`. The two builds are supposed to have separate
+scopes and namespaces, and on schuckdata.com they do; served from one local
+root they do not. **Before testing `www/` locally**, unregister everything and
+drop the caches:
+
+```js
+navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
+```
+
+Then hard-reload. A stale service worker is trap #1, and this is the third coat
+it has worn.
 
 **A tool that navigates to a file it does not write will silently render an
 error page.** The asset rasteriser navigated to `<name>.html` assuming an earlier
