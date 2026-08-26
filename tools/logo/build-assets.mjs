@@ -102,7 +102,19 @@ if (out) {
   // icon's weight they were 40% of the braid's height and read as blobs. The
   // 5-chain was tried and dropped: its arcs are so much wider than 2's and 3's
   // that blue swamps the weave instead of joining it.
+  // TRIMMED, 2026-08-25. Both chains now begin at 6 and end at 24 -- three whole
+  // lowest-common-multiple spans, which is the mark's own argument applied to the
+  // wide format. Untrimmed, the 2-chain started at 2 and the 3-chain at 3, which
+  // left a ragged stub on the left; and buildBraid centred on the NUMBER LINE
+  // rather than on the figure, so the trimmed form sat off to one side until it
+  // learned to fit itself.
+  //
+  // The weave and the node size are buildBraid's defaults now, not overrides:
+  // arcs alternate over and under (it drew two flat ribbons before), and nodes
+  // are sized off the STROKE rather than off the canvas, so they sit in the line
+  // instead of bulging past it. nodeScale: 0.28 against a canvas-relative radius
+  // was what made the braid look bumpy.
   writeFileSync(`${out}/play-feature-1024x500.svg`,
-    buildBraid({ N: 24, primes: [2, 3], size: 1024, aspect: 1024 / 500, inset: 0.92, nodeScale: 0.28, lineScale: 0.7 }));
+    buildBraid({ N: 24, primes: [2, 3], trim: { 2: 2, 3: 1 }, size: 1024, aspect: 1024 / 500, inset: 0.92, lineScale: 0.7 }));
   console.log(Object.keys(ASSETS).length + 1 + ' svgs -> ' + out);
 }

@@ -98,36 +98,87 @@ if (process.argv[1] && process.argv[1].endsWith('make-logo.mjs')) {
 export function buildBraid({
   N = 12, primes = [2, 3], size = 512, aspect = 1,
   background = true, vertical = false, inset = 0.84, nodeScale = 1, lineScale = 1,
+  samples = 28,
+  trim = {},          // whole arcs dropped off the low-number end
+  weave = true,        // alternate which chain passes over, arc by arc
+  over = null,         // { p: [arcIndex...] }; null derives an alternating weave
+  nodeFlush = 0.92,    // node DIAMETER as a multiple of the stroke width
 } = {}) {
   const primeRGB = getPrimeRGB(primes, SCHEME);
   const W = size, H = Math.round(size / aspect);
-  const chains = primes.map(p => ({ p, pts: buildLineArcs(p, N, 28) })).filter(c => c.pts);
 
-  // world extent: x spans -SPHERE_R..+SPHERE_R, y is the arc bulge
-  let maxY = 0;
-  for (const c of chains) for (let i = 1; i < c.pts.length; i += 3) maxY = Math.max(maxY, Math.abs(c.pts[i]));
-  const halfX = SPHERE_R, halfY = Math.max(maxY, 0.001);
+  // Kept as a list of ARCS rather than one polyline, for the same reason
+  // buildMark does it: the weave needs individual arcs re-ordered in the paint
+  // list. Each arc carries one extra point from the next so the joins stay
+  // seamless once they are separate paths.
+  const chains = [];
+  for (const p of primes) {
+    const raw = buildLineArcs(p, N, samples);
+    if (!raw) continue;
+    const all = [];
+    for (let i = 0; i < raw.length; i += 3) all.push([raw[i], raw[i + 1]]);
+    const arcs = [];
+    for (let a = (trim[p] || 0); a * samples < all.length; a++) {
+      const seg = all.slice(a * samples, Math.min((a + 1) * samples + 1, all.length));
+      if (seg.length > 1) arcs.push(seg);
+    }
+    if (arcs.length) chains.push({ p, arcs, pts: arcs.flat() });
+  }
+
+  // Fit whatever survived the trim, so the braid is centred on ITSELF rather
+  // than on the number line it was cut from -- the same correction buildMark
+  // makes. Without it a trimmed braid sits off to one side of the canvas.
+  let minX = Infinity, maxX = -Infinity, maxY = 0;
+  for (const c of chains) for (const [x, y] of c.pts) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    maxY = Math.max(maxY, Math.abs(y));
+  }
+  const halfX = Math.max((maxX - minX) / 2, 1e-6), halfY = Math.max(maxY, 0.001);
+  const midX = (minX + maxX) / 2;
 
   const along = vertical ? H : W, across = vertical ? W : H;
   const S = Math.min((along / 2) * inset / halfX, (across / 2) * inset / halfY);
-  const map = (x, y) => vertical ? [W / 2 + S * y, H / 2 + S * x] : [W / 2 + S * x, H / 2 - S * y];
+  const map = (x, y) => vertical
+    ? [W / 2 + S * y, H / 2 + S * (x - midX)]
+    : [W / 2 + S * (x - midX), H / 2 - S * y];
 
   const out = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
   if (background) out.push(`<rect width="${W}" height="${H}" fill="${BG}"/>`);
 
   const lw = size * 0.030 * lineScale;
-  for (const { p, pts } of chains) {
-    const d = [];
-    for (let i = 0; i < pts.length; i += 3) {
-      const [x, y] = map(pts[i], pts[i + 1]);
-      d.push((i ? 'L' : 'M') + x.toFixed(2) + ' ' + y.toFixed(2));
-    }
-    out.push(`<path d="${d.join(' ')}" fill="none" stroke="${hex(primeRGB[p])}" stroke-width="${lw}" stroke-linecap="round"/>`);
-  }
+  const pathFor = (p, seg) => {
+    const d = seg.map(([x, y], i) => {
+      const [px, py] = map(x, y);
+      return (i ? 'L' : 'M') + px.toFixed(2) + ' ' + py.toFixed(2);
+    }).join(' ');
+    return `<path d="${d}" fill="none" stroke="${hex(primeRGB[p])}" stroke-width="${lw.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  };
 
-  const nodeR = size * 0.045 * nodeScale;
+  // THE WEAVE. Same two-pass paint as buildMark: everything that goes UNDER,
+  // then the arcs named in `over` coming back on top. Drawn as two whole
+  // polylines -- which is what this function did until 2026-08-25 -- one colour
+  // sits above the other along its entire length, which reads as one ribbon
+  // laid on another rather than a braid.
+  //
+  // The default alternates every other arc of the FIRST prime. The arc is the
+  // natural unit: it runs node to node, so a crossing falls inside it rather
+  // than at a seam.
+  const overMap = over || (weave && chains.length > 1
+    ? { [chains[0].p]: chains[0].arcs.map((_, i) => i).filter(i => i % 2 === 1) }
+    : {});
+  const isOver = (p, i) => (overMap[p] || []).includes(i);
+  for (const { p, arcs } of chains) arcs.forEach((seg, i) => { if (!isOver(p, i)) out.push(pathFor(p, seg)); });
+  for (const { p, arcs } of chains) arcs.forEach((seg, i) => { if (isOver(p, i)) out.push(pathFor(p, seg)); });
+
+  // Nodes sit FLUSH in the stroke. Sized independently they read as beads
+  // threaded on the line and the braid goes bumpy; at or just inside the stroke
+  // width they read as part of it, and the colour law still does its work --
+  // every common multiple is a different colour from either chain, which is the
+  // whole point of putting them here.
+  const nodeR = (lw / 2) * nodeFlush * nodeScale;
   for (const n of getVisibleNodes(N, primes).filter(v => v > 1)) {
     const x = SPHERE_R * (2 * n / N - 1);
+    if (x < minX - 1e-6 || x > maxX + 1e-6) continue;
     const [px, py] = map(x, 0);
     out.push(`<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${nodeR.toFixed(2)}" fill="${hex(nodeColor(n, primeRGB, primes, mixModeFor(SCHEME)))}"/>`);
   }
