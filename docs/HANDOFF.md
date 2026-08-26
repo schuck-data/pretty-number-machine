@@ -240,13 +240,19 @@ the document should be fixed.**
 
 ---
 
-### SUBMITTED TO PRODUCTION — 2026-08-26, 12:55
+### ~~SUBMITTED TO PRODUCTION~~ PUBLISHED — 2026-08-26
 
-**`1.0.0`, versionCode 5, submitted to production and IN REVIEW.** 176 countries
-plus rest of world, 100% rollout, no staged release. Submission 1.
+**THE APP IS LIVE ON GOOGLE PLAY.** Submission 1 (`1.0.0`, versionCode 5,
+submitted 12:55) shows **Published** in Submission activity, the same day —
+the "days rather than hours" expectation for a first title did not apply.
+176 countries plus rest of world, 100% rollout. The *Play Games on PC*
+opt-in noted below drew no complaint; review passed with it set.
 
-First-time apps take days rather than hours, and it is a review of a new
-developer's first title as much as of this app. Email either way.
+**Next up: the `1.0.2` update** (versionCode 7 — code 6 was a local-only
+build) carrying the physics rest-length fix, closed the same day. The signed
+AAB is built at `android/app/build/outputs/bundle/release/app-release.aab`;
+it uploads via Production → Create new release. Updates to a published app
+review faster than first submissions, but email is still the confirmation.
 
 **The version was renamed for the release.** It shipped as `1.0.0`, not
 `1.0.0-dev.44` — the versionName is printed in the panel beside the copyright,
