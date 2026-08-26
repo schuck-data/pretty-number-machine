@@ -444,10 +444,12 @@ on work.
    only to the panel's prime buttons. It needs applying against the ACTIVE
    background, plus a companion that darkens rather than lightens for the light
    ones. Deliberately deferred by Dakota, who wanted the options first.
-5. **The frozen web copies still carry the old icons.** `/` and `/v1/` show the
-   RGB-Venn mark while the app shows the braid. Changing them means touching a
-   frozen build AND bumping `CACHE_VERSION`, or visitors keep the old icon
-   indefinitely — trap #3. Dakota's call, since "frozen" was a decision.
+5. ~~**The frozen web copies still carry the old icons.**~~ **DECIDED
+   2026-08-26: they stay.** `/` and `/v1/` keep the RGB-Venn mark while the app
+   wears the braid, and that divergence is now deliberate — Dakota's word was
+   "they are vintage". Do not tidy this up. Touching a frozen build to sync an
+   icon would mean bumping `CACHE_VERSION` as well, or visitors keep the old one
+   anyway (trap #3), and it would spend risk on a build nobody is developing.
 
 ### ~~One open defect~~ FIXED: the shimmer invited a hidden button
 
@@ -497,30 +499,50 @@ bug and the fix in one reading.
 **Not yet seen on a device.** The cadence is five minutes, so confirming it on
 hardware means leaving the app open and idle.
 
-### A second open defect: node 24 sticks after a touch in chord shape
+### ~~A second open defect~~ DIAGNOSED: the parastichy line never returns home
 
-Seen by Dakota on a **Pixel 9, 2026-08-25**, on the first store-delivered build
-(`v1.0.0-dev.41`, internal testing) — so it is a real-device observation, not a
-desktop one, and it has not been reproduced anywhere else yet.
+First seen 2026-08-25 as "node 24 sticks in chord shape". Seen again
+2026-08-26 as node **18**, and that sighting is the one that cracked it: the
+node snapped home when the lens opened and **the parastichy line stayed
+collapsed around where the node used to be.** A screengrab off the Pixel 7 over
+`adb exec-out screencap` shows the 2-chain making a tight cusp between 16 and 20
+while node 18 sits well to its left, untouched by the arc that is supposed to
+pass through it.
 
-**What was seen:** in **chord** shape, touching node **24** leaves it settled in
-the wrong spot rather than returning home. The parastichy lines appear to pull
-on it, and it buckles.
+**IT WAS NEVER A PHYSICS BUG.** The nodes were always going home correctly. The
+LINE was not, and it is three separate faults in `deformCurves()` and its
+caller, each of them independently sufficient — which is why single fixes kept
+appearing to do nothing and why three earlier theories died.
 
-**Why it is worth reading the physics work of the same day before touching it.**
-§4 records that the settle test was changed that morning to require the node to
-be near home (`SETTLE_HOME_DIST`), and that the release binding was moved to the
-window to survive a lost `pointerup`. A node that settles in the wrong PLACE is
-the failure mode adjacent to both. It may be the new distance test settling a
-node the run shapes are still tensioning, in which case the fix is in the
-interaction between the two and not in either alone.
+| `modules/physics.js` | The fault |
+|---|---|
+| `if (hasMag < 0.001) continue;` | A knot at rest was SKIPPED as an optimisation. Skipping means not writing, so the array kept whatever that point held while the node was displaced. The frames that would have straightened the curve are exactly the frames that declined to touch it |
+| `if (anyDeformed) attr.data.needsUpdate = true;` | The upload only happened WHILE deformed. The transition to rest is the one that matters and it is the one this misses: the array becomes correct and never reaches the GPU |
+| `if (!draggedNode && !physicsActive) return;` | Once physics idles the tick returns early, so there are no further frames in which to fix anything |
 
-**24 is not an arbitrary number** — it is 2^3 x 3, so it carries more parastichy
-runs through it than most of its neighbours. Whether the defect is about 24
-specifically or about any heavily-connected node is the first thing to
-establish, and it is cheap: try 12, 36, 48.
+And `resetPhysics()` zeroed the offsets and set `physicsActive = false` without
+flushing the curves — **which is precisely what opening the lens calls.** Hence
+the exact symptom: node home, line stranded.
 
-Unreproduced, uninvestigated, and deliberately parked.
+**This also answers why it appeared after the settle work of 2026-08-25.** A
+node that teleports home under `SETTLE_HOME_DIST` goes from displaced to zero in
+ONE frame. There is no gradual approach left to disguise a missing upload, so a
+latent bug became a visible one. The settle change did not cause it; it removed
+the thing that was hiding it.
+
+**The fix**, all in `physics.js`: write every point every pass; upload if
+deformed now OR last pass, latched per object in `userData.physWasDeformed`;
+and a `curveFlushFrames` counter so the idle path and `resetPhysics()` still owe
+the curves a straightening pass after the tick would otherwise have stopped.
+
+**REASONED, NOT YET OBSERVED.** Unlike the panel fix, this one has not been
+watched working. The scene graph is not reachable from the page — nothing is
+exposed on `window` — so a browser reproduction was not possible, and installing
+a local build on the Pixel would force an uninstall on a signature mismatch and
+take the achievement ledger with it. It ships in `1.0.1` and wants confirming on
+the device: drag a node well off station, let go, open the lens, and look at
+whether the arc follows it home.
+
 
 ### ~~A third open defect~~ FIXED: the collapsed panel ate taps
 

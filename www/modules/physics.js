@@ -67,6 +67,11 @@ const _camDir = new THREE.Vector3();
 
 let draggedNode = null;       // node data object being dragged
 let physicsActive = false;
+// Frames still owed to the CURVES after the nodes have stopped. The deformation
+// pass runs inside the physics tick, and the tick returns early once nothing is
+// moving -- so without this the last frame anybody draws is a DEFORMED one and
+// the lines stay bent after the nodes have gone home. See deformCurves().
+let curveFlushFrames = 0;
 let touchEnabled = true;      // toggle from module controls
 let collisionEnabled = true;  // toggle from module controls
 
@@ -327,9 +332,14 @@ function deformCurves(dim) {
 
       const hasMag = Math.abs(dAx) + Math.abs(dAy) + Math.abs(dAz) +
                      Math.abs(dBx) + Math.abs(dBy) + Math.abs(dBz);
-      if (hasMag < 0.001) continue;
-
-      anyDeformed = true;
+      // DO NOT SKIP A KNOT AT REST. This used to `continue` when the
+      // displacement was negligible, as an optimisation -- but skipping means
+      // NOT WRITING, and the array then keeps whatever this point held while the
+      // node was displaced. The curve could therefore never return to rest: the
+      // frames that would have straightened it are exactly the frames that
+      // declined to touch it. Write every point every pass; `anyDeformed` is
+      // now only about whether an UPLOAD is needed.
+      if (hasMag >= 0.001) anyDeformed = true;
       const w = tInSeg;
       const si = i * 3, ei = (i + 1) * 3, bi = i * 6;
 
@@ -361,7 +371,12 @@ function deformCurves(dim) {
       arr[bi + 5] = lerpBuf[ei + 2] + dAz2 * (1 - w2) + dBz2 * w2;
     }
 
-    if (anyDeformed) attr.data.needsUpdate = true;
+    // Upload if it is deformed NOW or was deformed LAST TIME. The transition
+    // to rest is the one that matters and it is the one a plain `if
+    // (anyDeformed)` misses: the array is correct, and never reaches the GPU,
+    // so the line stays visibly bent around a node that has gone home.
+    if (anyDeformed || obj.userData.physWasDeformed) attr.data.needsUpdate = true;
+    obj.userData.physWasDeformed = anyDeformed;
   });
 }
 
@@ -379,6 +394,10 @@ function resetPhysics() {
   }
   draggedNode = null;
   physicsActive = false;
+  // The offsets are zero now, but the CURVES have not been told. Opening the
+  // lens calls this, which is how a node could snap home while its parastichy
+  // line stayed collapsed around where the node used to be.
+  curveFlushFrames = 2;
   const controls = getControls();
   if (controls) controls.enabled = true;
 }
@@ -529,7 +548,16 @@ const mod = {
     }
     lensSuppressed = false;
 
-    if (!draggedNode && !physicsActive) return;
+    if (!draggedNode && !physicsActive) {
+      // Still owed a straightening pass. Without this the tick stops before the
+      // curves are told the nodes went home -- and after resetPhysics(), which
+      // is what opening the lens calls, that is guaranteed.
+      if (curveFlushFrames > 0) {
+        curveFlushFrames--;
+        if (curveState?.showCurves) deformCurves(ctx.dim);
+      }
+      return;
+    }
 
     const dim = ctx.dim;
     const N = ctx.N;
@@ -698,7 +726,11 @@ const mod = {
       deformCurves(dim);
     }
 
+    // Going idle owes the curves a pass, because the tick is about to stop
+    // running them.
+    const wasActive = physicsActive;
     physicsActive = anyMoving || !!draggedNode;
+    if (wasActive && !physicsActive) curveFlushFrames = 2;
   },
 
   destroy() {
