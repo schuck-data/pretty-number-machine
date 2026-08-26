@@ -238,6 +238,31 @@ the document should be fixed.**
 
 ---
 
+### SUBMITTED TO PRODUCTION — 2026-08-26, 12:55
+
+**`1.0.0`, versionCode 5, submitted to production and IN REVIEW.** 176 countries
+plus rest of world, 100% rollout, no staged release. Submission 1.
+
+First-time apps take days rather than hours, and it is a review of a new
+developer's first title as much as of this app. Email either way.
+
+**The version was renamed for the release.** It shipped as `1.0.0`, not
+`1.0.0-dev.44` — the versionName is printed in the panel beside the copyright,
+which is where a curious player looks, and a public build calling itself `dev`
+reads as unfinished. versionCode is what Play orders by, so the name was free.
+**Codes 1–5 are now spent** and can never be reused, rollback or not.
+
+**One thing to watch in the submission record:** *Google Play Games on PC* is
+set to **opted-in** under Advanced settings → Form factors, and that was never a
+deliberate choice. The app would probably survive it — it was a web app first
+and already handles a mouse — but the PC surface wants its own assets (600x400
+logo, 16:9 feature graphic, 4–8 PC screenshots) and none were supplied. If
+review returns a PC-specific complaint, that is the cause, and opting out is the
+fix.
+
+**Do not push changes to the production track while review is running** unless
+review asks for them.
+
 ### And then, into the night: Play Console, signing, and a working shop
 
 **2026-08-25 into 08-26. THE APP IS ON GOOGLE PLAY.** Internal testing only, but
